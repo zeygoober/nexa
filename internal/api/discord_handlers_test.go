@@ -348,7 +348,7 @@ func finishDiscordLink(t *testing.T, ts *httptest.Server, state, code string) *u
 
 // Nexa at its own address, a second one and the one it moved from, with
 // Discord listing the callbacks under the first and the last, as it does for
-// nexa.fish: everyone links through a listed callback and is returned to the
+// nexa.pm: everyone links through a listed callback and is returned to the
 // address they started at, and the desktop app's browser gets a page of its own.
 func TestDiscordLinkFromEveryAddress(t *testing.T) {
 	const own, alt, moved = "https://nexa.test", "https://alt.test", "https://old.test"

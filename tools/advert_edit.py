@@ -322,7 +322,7 @@ class Cut:
         self.texts.append({"kind": "tagline", "t0": tag, "t1": end, "text": "Free. Private. Yours."})
         # the address stays on screen past the music, so nobody misses it
         hold = end + URL_HOLD
-        self.texts.append({"kind": "url", "t0": url, "t1": hold, "text": "nexa.fish"})
+        self.texts.append({"kind": "url", "t0": url, "t1": hold, "text": "nexa.pm"})
         for t in self.texts:
             if t["t1"] == end:
                 t["t1"] = hold
@@ -618,7 +618,7 @@ class Cut:
         self.texts.append({"kind": "wordmark", "t0": mark, "t1": end, "size": 150, "y": 860})
         self.texts.append({"kind": "tagline", "t0": tag, "t1": end, "text": "Free. Private. Yours.", "y": 1010})
         hold = end + URL_HOLD
-        self.texts.append({"kind": "url", "t0": url, "t1": hold, "text": "nexa.fish", "y": 1110, "size": 96})
+        self.texts.append({"kind": "url", "t0": url, "t1": hold, "text": "nexa.pm", "y": 1110, "size": 96})
         for t in self.texts:
             if t["t1"] == end:
                 t["t1"] = hold

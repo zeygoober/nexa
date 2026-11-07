@@ -83,7 +83,7 @@ var Impersonated = map[string][]string{
 	"discord":   {"discord.com", "discord.gg", "discordapp.com", "discord.media", "discordapp.net", "discord.new", "discord.gift", "discordstatus.com", "dis.gd"},
 	"nitro":     {"discord.com"},
 	"steam":     {"steampowered.com", "steamcommunity.com", "steamstatic.com", "steamgames.com", "steamchina.com"},
-	"nexa":      {"nexa.fish", "mathtest.lol", "evilion.xyz"},
+	"nexa":      {"nexa.pm"},
 	"paypal":    {"paypal.com", "paypal.me"},
 	"roblox":    {"roblox.com", "rbxcdn.com"},
 	"epicgames": {"epicgames.com"},

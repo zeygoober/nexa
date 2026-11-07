@@ -37,7 +37,7 @@ function baseUrl(): URL {
       /* fall back to the public site */
     }
   }
-  return new URL(BUILT_FOR || "https://nexa.fish");
+  return new URL(BUILT_FOR || "https://nexa.pm");
 }
 
 export const BASE = baseUrl();

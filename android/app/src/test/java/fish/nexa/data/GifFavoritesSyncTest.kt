@@ -47,7 +47,7 @@ class GifFavoritesSyncTest {
 
     @Test
     fun resignedLinksAreTheSameFavourite() {
-        val a = "https://nexa.fish/media/proxy/1790000000-abc/aHR0cHM6Ly9leGFtcGxl/x.gif"
+        val a = "https://nexa.pm/media/proxy/1790000000-abc/aHR0cHM6Ly9leGFtcGxl/x.gif"
         val b = "/media/proxy/1800000000-def/aHR0cHM6Ly9leGFtcGxl/x.gif"
         assertEquals(SettingsStore.gifKey(a), SettingsStore.gifKey(b))
         assertEquals(null, SettingsStore.gifEdits(doc(a), doc(b)))

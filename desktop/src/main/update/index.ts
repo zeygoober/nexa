@@ -56,7 +56,7 @@ export class Updater extends EventEmitter {
   private restarting = false;
 
   constructor(
-    /** Where releases are published, e.g. https://nexa.fish/desktop/ */
+    /** Where releases are published, e.g. https://nexa.pm/desktop/ */
     private readonly feed: string,
     /** The download page, for builds that cannot update themselves. */
     private readonly downloadPage: string,

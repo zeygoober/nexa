@@ -124,7 +124,7 @@ android {
         versionName = (findProperty("nexaVersionName") as String?)?.trim()?.takeIf { it.isNotEmpty() } ?: "1.1.0"
 
         // -PserverUrl=http://127.0.0.1:18555 points a build at a local chatd (through adb reverse)
-        val server = (findProperty("serverUrl") as String?)?.trim().takeUnless { it.isNullOrEmpty() } ?: "https://nexa.fish"
+        val server = (findProperty("serverUrl") as String?)?.trim().takeUnless { it.isNullOrEmpty() } ?: "https://nexa.pm"
         buildConfigField("String", "DEFAULT_SERVER", "\"$server\"")
         // -PallSeasons=true: every seasonal theme in season every day, for trying them out (never for a release)
         buildConfigField("boolean", "ALL_SEASONS", (findProperty("allSeasons") as String?)?.trim().equals("true").toString())

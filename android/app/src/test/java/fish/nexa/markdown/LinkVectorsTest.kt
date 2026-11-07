@@ -20,7 +20,7 @@ class LinkVectorsTest {
         @JvmStatic
         fun assets() = Vectors.useAssets()
 
-        const val HERE = "https://nexa.fish/channels/@me"
+        const val HERE = "https://nexa.pm/channels/@me"
     }
 
     private fun JsonObject.s(k: String): String? = this[k]?.takeIf { it !is JsonNull }?.jsonPrimitive?.contentOrNull
@@ -83,7 +83,7 @@ class LinkVectorsTest {
     fun invites() {
         val shown = Vectors["invites"].jsonArray.map { it.jsonObject }
         Vectors.expectAll("shownInvite", shown) { c ->
-            val got = AppLinks.shownInvite(c.s("url")!!, "https://nexa.fish")
+            val got = AppLinks.shownInvite(c.s("url")!!, "https://nexa.pm")
             if (got == c.s("shown")) null else "url ${c.s("url")}: web ${c.s("shown")} kotlin $got"
         }
         val fragments = Vectors["fragments"].jsonArray.map { it.jsonObject }

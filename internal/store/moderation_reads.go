@@ -28,8 +28,9 @@ const (
 // ModUnread is the threads waiting on the staff that a member of staff has
 // not read, newest activity first.
 type ModUnread struct {
-	Cases []ids.ID `json:"cases"`
-	Bugs  []ids.ID `json:"bugs"`
+	Cases       []ids.ID `json:"cases"`
+	Bugs        []ids.ID `json:"bugs"`
+	Suggestions []ids.ID `json:"suggestions"`
 }
 
 // readAllOf is how far a member of staff has read everything at once (0: never).
@@ -47,7 +48,7 @@ func readAllOf(ctx context.Context, q interface {
 // ModUnreadFor lists the case threads and bug reports waiting on the staff
 // that uid has not read.
 func (s *Store) ModUnreadFor(ctx context.Context, uid ids.ID) (ModUnread, error) {
-	out := ModUnread{Cases: []ids.ID{}, Bugs: []ids.ID{}}
+	out := ModUnread{Cases: []ids.ID{}, Bugs: []ids.ID{}, Suggestions: []ids.ID{}}
 	all, err := readAllOf(ctx, s.db.R, uid)
 	if err != nil {
 		return out, err
@@ -60,14 +61,25 @@ func (s *Store) ModUnreadFor(ctx context.Context, uid ids.ID) (ModUnread, error)
 	if err != nil {
 		return out, err
 	}
-	bugs, err := s.idList(ctx, `SELECT b.id FROM bug_reports b
+	// bug reports and suggestions share a table and a read position kind; each has its own badge
+	reports := func(kind string) ([]ids.ID, error) {
+		return s.idList(ctx, `SELECT b.id FROM bug_reports b
 		LEFT JOIN mod_reads r ON r.user_id = ? AND r.kind = 'bug' AND r.item_id = b.id
-		WHERE b.awaiting = 'staff'
+		WHERE b.awaiting = 'staff' AND b.kind = ?
 		AND ((b.id > ? AND b.id > coalesce(r.read_id, 0))
 			OR EXISTS (SELECT 1 FROM bug_messages m WHERE m.report_id = b.id AND m.kind = 'member' AND m.id > ? AND m.id > coalesce(r.read_id, 0)))
-		ORDER BY b.last_activity_at DESC, b.id DESC LIMIT 500`, int64(uid), all, all)
+		ORDER BY b.last_activity_at DESC, b.id DESC LIMIT 500`, int64(uid), kind, all, all)
+	}
+	bugs, err := reports(BugKindBug)
 	if err != nil {
 		return out, err
+	}
+	suggestions, err := reports(BugKindSuggestion)
+	if err != nil {
+		return out, err
+	}
+	if suggestions != nil {
+		out.Suggestions = suggestions
 	}
 	if cases != nil {
 		out.Cases = cases

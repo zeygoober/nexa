@@ -17,7 +17,7 @@ import { shareOrigin } from "@/lib/appLinks";
 import { isBot } from "@/lib/botCopies";
 import { copyText } from "@/lib/clipboard";
 import { centsOf, limitsOf, PAID_PLANS, payWhatYouWant, plansInfo, PWYW_MAX, PWYW_MIN } from "@/lib/plans";
-import { CONTACT_EMAIL, OWNER_USERNAME } from "@/lib/legal";
+import { OWNER_USERNAME } from "@/lib/legal";
 import { formatBytes, formatShortDate } from "@/lib/time";
 import { fold } from "@/search/text";
 import { useAuth } from "@/stores/auth";
@@ -633,7 +633,7 @@ function Refunds({ inSettings }: { inSettings: boolean }) {
           <h2 className={s.h2} id="support-refunds">{t("support.refunds.title")}</h2>
           <p className={s.refundBody}>{t("support.refunds.body")}</p>
           <p className={s.hint}>{t("support.refunds.cancel")}</p>
-          <p className={s.hint}>{t("support.refunds.contact", { email: CONTACT_EMAIL, username: OWNER_USERNAME })}</p>
+          <p className={s.hint}>{t("support.refunds.contact", { username: OWNER_USERNAME })}</p>
           {inSettings ? null : (
             <p className={s.hint}>
               <button className={s.linkish} onClick={() => nav("/terms")}>{t("support.termsLink")}</button>

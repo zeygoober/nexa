@@ -5,7 +5,7 @@ import { expressions as expressionsApi } from "@/api/expressions";
 import type { StickerPack } from "@/api/types";
 
 /**
- * Sticker and emoji pack links in chats (https://nexa.fish/stickers/pack/ID),
+ * Sticker and emoji pack links in chats (https://nexa.pm/stickers/pack/ID),
  * drawn as cards (components/chat/PackCards). What a card shows is asked of
  * the server, so it is the pack as it is now, and whether this account has it.
  */

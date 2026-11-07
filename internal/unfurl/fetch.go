@@ -34,7 +34,7 @@ const (
 	// nothing. "Mozilla/5.0 (compatible; …)" is the form those sites read a
 	// crawler's name from. Inside the brackets, "like Twitterbot" sent YouTube
 	// to its phone site, whose tags are not in its head.
-	defaultUserAgent = "Mozilla/5.0 (compatible; Nexa-Unfurl/1.0; +https://nexa.fish) like Twitterbot"
+	defaultUserAgent = "Mozilla/5.0 (compatible; Nexa-Unfurl/1.0; +https://nexa.pm) like Twitterbot"
 	defaultTimeout   = 6 * time.Second
 	defaultMaxBytes  = 2 << 20
 	mediaHeadBytes   = 64 << 10

@@ -380,36 +380,36 @@ async function main(): Promise<void> {
   };
 
   // links to the app
-  const here = "https://nexa.fish/channels/@me";
+  const here = "https://nexa.pm/channels/@me";
   const hrefs = [
-    "https://nexa.fish/invite/abc123#k=1.AAAA", "https://nexa.fish/invite/abc123/", "http://nexa.fish/note/abcdefghijklmnop#key", "https://nexa.fish/@maya.dev",
-    "https://nexa.fish/channels/1/2/3", "https://nexa.fish/api/v1/x", "https://nexa.fish/file.png", "https://nexa.fish/call/xyz", "https://nexa.fish/channels/@me#top",
-    "https://other.example/invite/abc", "https://NEXA.FISH/Invite/x", "https://nexa.fish:8443/invite/x", "nexa.fish/invite/x", "https://nexa.fish/download?x=1#y",
+    "https://nexa.pm/invite/abc123#k=1.AAAA", "https://nexa.pm/invite/abc123/", "http://nexa.pm/note/abcdefghijklmnop#key", "https://nexa.pm/@maya.dev",
+    "https://nexa.pm/channels/1/2/3", "https://nexa.pm/api/v1/x", "https://nexa.pm/file.png", "https://nexa.pm/call/xyz", "https://nexa.pm/channels/@me#top",
+    "https://other.example/invite/abc", "https://NEXA.FISH/Invite/x", "https://nexa.pm:8443/invite/x", "nexa.pm/invite/x", "https://nexa.pm/download?x=1#y",
   ];
-  const links = hrefs.map((href) => ({ href, link: appLink(href, { href: here, host: "nexa.fish" }) }));
+  const links = hrefs.map((href) => ({ href, link: appLink(href, { href: here, host: "nexa.pm" }) }));
   const targetsOut = ["/channels/@me/1/2", "/channels/5/6/7/", "/channels/5/6", "/channels/5/6/7?x#y"].map((path) => ({ path, target: messageTarget(path) }));
-  const cards = ["https://nexa.fish/invite/a#k=1 https://nexa.fish/invite/a https://nexa.fish/invite/b <https://nexa.fish/invite/c> `https://nexa.fish/invite/d`", "https://nexa.fish/@ann https://nexa.fish/@bob https://nexa.fish/@ann https://nexa.fish/@c https://nexa.fish/@d", "https://nexa.fish/note/abcdefghijklmnop#k ||https://nexa.fish/note/bbbbbbbbbbbbbbbb||"].map((src) => {
+  const cards = ["https://nexa.pm/invite/a#k=1 https://nexa.pm/invite/a https://nexa.pm/invite/b <https://nexa.pm/invite/c> `https://nexa.pm/invite/d`", "https://nexa.pm/@ann https://nexa.pm/@bob https://nexa.pm/@ann https://nexa.pm/@c https://nexa.pm/@d", "https://nexa.pm/note/abcdefghijklmnop#k ||https://nexa.pm/note/bbbbbbbbbbbbbbbb||"].map((src) => {
     const nodes = parse(src);
-    const at = { href: here, host: "nexa.fish" };
+    const at = { href: here, host: "nexa.pm" };
     return { src, invites: inviteLinksIn(nodes, at), notes: noteLinksIn(nodes, at), profiles: profileLinksIn(nodes, at) };
   });
   const g = globalThis as unknown as { window?: unknown };
   const hadWindow = "window" in g;
-  g.window = { location: { origin: "https://nexa.fish" } };
+  g.window = { location: { origin: "https://nexa.pm" } };
   const invites = [
-    "https://nexa.fish/invite/abc#k=1.x", "https://nexa.fish/invite/abc/#k", "https://nexa.fish/invite/abc", "https://nexa.fish/invite/a/b#k", "https://evil.example/invite/abc#k",
-    "http://nexa.fish/invite/abc#k", "https://nexa.fish:443/invite/abc#k", "not a url",
+    "https://nexa.pm/invite/abc#k=1.x", "https://nexa.pm/invite/abc/#k", "https://nexa.pm/invite/abc", "https://nexa.pm/invite/a/b#k", "https://evil.example/invite/abc#k",
+    "http://nexa.pm/invite/abc#k", "https://nexa.pm:443/invite/abc#k", "not a url",
   ].map((url) => ({ url, shown: shownInvite(url) }));
-  // media links, as a page at https://nexa.fish sees them at NOW
+  // media links, as a page at https://nexa.pm sees them at NOW
   const nowWas = Date.now;
   Date.now = () => NOW;
-  (g as { location?: unknown }).location = { href: "https://nexa.fish/channels/@me", origin: "https://nexa.fish" };
+  (g as { location?: unknown }).location = { href: "https://nexa.pm/channels/@me", origin: "https://nexa.pm" };
   const fresh = Math.floor((NOW + 3_600_000) / 1000);
   const soon = Math.floor((NOW + 60_000) / 1000);
   const mediaUrls = [
-    `https://nexa.fish/media/proxy/${fresh}-abc/key1/pic.png`, `/media/proxy/${fresh}-abc/key2`, `https://nexa.fish/media/proxy/${soon}-x/key3`,
-    `https://nexa.fish/media/proxy/old-signature/key4`, "https://nexa.fish/media/avatar/1", "/media/avatar/2", "//evil.example/x", "/\\evil.example/x",
-    "/\tx", "https://evil.example/pic.png", "data:image/png;base64,AA", "blob:https://nexa.fish/1", "relative/path.png", "https://nexa.fish:8443/media/x",
+    `https://nexa.pm/media/proxy/${fresh}-abc/key1/pic.png`, `/media/proxy/${fresh}-abc/key2`, `https://nexa.pm/media/proxy/${soon}-x/key3`,
+    `https://nexa.pm/media/proxy/old-signature/key4`, "https://nexa.pm/media/avatar/1", "/media/avatar/2", "//evil.example/x", "/\\evil.example/x",
+    "/\tx", "https://evil.example/pic.png", "data:image/png;base64,AA", "blob:https://nexa.pm/1", "relative/path.png", "https://nexa.pm:8443/media/x",
     `https://other.example/media/proxy/${fresh}-a/k`, "",
   ];
   const media = mediaUrls.map((url) => {

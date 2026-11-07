@@ -16,7 +16,7 @@ import (
 	"evilion.xyz/chat/internal/unfurl"
 )
 
-// Profile links: https://nexa.fish/@username. Anyone may open one, signed in
+// Profile links: https://nexa.pm/@username. Anyone may open one, signed in
 // or not. The app shows the person's own profile card (web/src/pages/
 // ProfilePage.tsx), or the profile inside Nexa for someone signed in; pasted
 // in a chat it is drawn as that card, and pasted anywhere else it unfurls to

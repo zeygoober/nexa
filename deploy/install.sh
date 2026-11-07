@@ -36,7 +36,7 @@ doit() { if [ "$CHECK" = 1 ]; then echo "      would: $*"; else "$@"; fi; }
 # --- settings from chatd.env (defaults match config.go) ---------------------
 env_get() { local k="$1" d="$2"; local v; v="$(grep -E "^${k}=" "$ROOT/chatd.env" 2>/dev/null | head -1 | cut -d= -f2- | sed -e 's/^"//' -e 's/"$//' -e "s/^'//" -e "s/'$//")"; echo "${v:-$d}"; }
 LISTEN="$(env_get LISTEN 127.0.0.1:8090)"
-PUBLIC_URL="$(env_get PUBLIC_URL https://chat.evilion.xyz)"
+PUBLIC_URL="$(env_get PUBLIC_URL https://nexa.pm)"
 HOSTNAME_="${PUBLIC_URL#https://}"; HOSTNAME_="${HOSTNAME_#http://}"; HOSTNAME_="${HOSTNAME_%%/*}"
 
 # --- who runs it ------------------------------------------------------------

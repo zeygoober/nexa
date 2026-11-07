@@ -1,5 +1,5 @@
 import { Database, Eye, Gavel, Lock, ScrollText, Sparkles } from "lucide-react";
-import { CONTACT_EMAIL, GITHUB_URL, OWNER_USERNAME } from "@/lib/legal";
+import { CONTACT_EMAIL, CONTACT_HREF, GITHUB_URL, OWNER_USERNAME } from "@/lib/legal";
 import { t } from "@/i18n";
 import s from "./Legal.module.css";
 
@@ -16,9 +16,13 @@ import s from "./Legal.module.css";
 export function ContactBlock() {
   return (
     <p className={s.body} dir="auto">
-      {t("legal.contactHere", { user: OWNER_USERNAME })} <a href={`mailto:${CONTACT_EMAIL}`}>{CONTACT_EMAIL}</a>
-      <br />
-      {t("legal.inApp", { user: `@${OWNER_USERNAME}` })}
+      {t("legal.contactHere", { user: OWNER_USERNAME })} <a href={CONTACT_HREF}>{CONTACT_EMAIL || `@${OWNER_USERNAME}`}</a>
+      {CONTACT_EMAIL ? (
+        <>
+          <br />
+          {t("legal.inApp", { user: `@${OWNER_USERNAME}` })}
+        </>
+      ) : null}
     </p>
   );
 }
@@ -67,7 +71,8 @@ export function LegalHighlights() {
  * brought, for an agreement from before it.
  */
 export function LegalChanges({ previous }: { previous: string }) {
-  const changes = [t("legal.newFileStorage")];
+  const changes = [t("legal.newOwner")];
+  if (previous < "2026-11-06.1") changes.push(t("legal.newFileStorage"));
   if (previous < "2026-11-02.1") changes.push(t("legal.newReportOutcomes"));
   if (previous < "2026-11-01.1") changes.push(t("legal.newTurnstile"));
   if (previous < "2026-10-31.1") changes.push(t("legal.newCallUsage"));

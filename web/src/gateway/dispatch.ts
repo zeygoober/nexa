@@ -107,6 +107,7 @@ function applyNexaState(st: NexaState | undefined): void {
     useModeration.getState().setCounts(st.staff.counts);
     useModeration.getState().setOwner(st.staff.owner_id);
     useModeration.getState().setBugCounts(st.staff.bugs);
+    useModeration.getState().setBugCounts(st.staff.suggestions, "suggestion");
     useModeration.getState().setUnread(st.staff.unread);
     useModeration.getState().setReportCounts(st.staff.reports);
   }
@@ -752,7 +753,7 @@ export async function applyEvent(e: GatewayEvent): Promise<void> {
       return;
     }
     case "mod_bug":
-      useModeration.getState().setBugCounts(e.d.counts);
+      useModeration.getState().setBugCounts(e.d.counts, e.d.report.kind);
       emitModEvent({ type: "bug", report: e.d.report, messages: e.d.messages, people: e.d.people });
       // a new report, or the reporter writing, is what the staff are waiting for
       if (!e.d.report.last_message) for (const h of bugAlertHooks) h({ kind: "staff", report: e.d.report, isNew: true });

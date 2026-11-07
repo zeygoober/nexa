@@ -211,7 +211,7 @@ func TestBugListFiltersSortsAndCounts(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	c, err := s.CountBugReports(ctx)
+	c, err := s.CountBugReports(ctx, BugKindBug)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -314,5 +314,44 @@ func TestDeletingAnAccountTakesItsBugReports(t *testing.T) {
 	}
 	if _, err := s.BugReportByID(ctx, keep.ID); err != nil {
 		t.Errorf("someone else's report went too: %v", err)
+	}
+}
+
+// Suggestions share the table, the numbers and the read positions with bug
+// reports, but each kind has its own list, counts and staff badge.
+func TestSuggestionsStayApartFromBugs(t *testing.T) {
+	s := newStore(t)
+	ctx := context.Background()
+	bob := mkUser(t, s, "bob")
+	alice := mkUser(t, s, "alice")
+	bug := newBug(t, s, bob, "Calls drop")
+	idea := &BugReport{Kind: BugKindSuggestion, UserID: bob.ID, ReporterUsername: bob.Username, Subject: "Dark scrollbars", Description: "Scrollbars could follow the theme."}
+	if err := s.CreateBugReport(ctx, idea, nil); err != nil {
+		t.Fatal(err)
+	}
+	if bug.Kind != BugKindBug || idea.Number != bug.Number+1 {
+		t.Fatalf("kinds and numbers: %q %d, %q %d", bug.Kind, bug.Number, idea.Kind, idea.Number)
+	}
+	if got, err := s.BugReportByID(ctx, idea.ID); err != nil || got.Kind != BugKindSuggestion {
+		t.Fatalf("stored kind: %+v %v", got, err)
+	}
+	for kind, want := range map[string]ids.ID{BugKindBug: bug.ID, BugKindSuggestion: idea.ID} {
+		list, err := s.BugReportList(ctx, BugFilter{Kind: kind})
+		if err != nil || len(list) != 1 || list[0].ID != want {
+			t.Errorf("%s list: %v %v", kind, list, err)
+		}
+		if c, err := s.CountBugReports(ctx, kind); err != nil || c.All != 1 || c.Waiting != 1 {
+			t.Errorf("%s counts: %+v %v", kind, c, err)
+		}
+	}
+	u, err := s.ModUnreadFor(ctx, alice.ID)
+	if err != nil || len(u.Bugs) != 1 || u.Bugs[0] != bug.ID || len(u.Suggestions) != 1 || u.Suggestions[0] != idea.ID {
+		t.Fatalf("unread: %+v %v", u, err)
+	}
+	if err := s.MarkModRead(ctx, alice.ID, ModReadBug, idea.ID, 0); err != nil {
+		t.Fatal(err)
+	}
+	if u, _ := s.ModUnreadFor(ctx, alice.ID); len(u.Suggestions) != 0 || len(u.Bugs) != 1 {
+		t.Errorf("reading the suggestion: %+v", u)
 	}
 }

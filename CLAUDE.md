@@ -3,8 +3,10 @@
 Guidance for Claude Code (claude.ai/code) in this repository. Rules first, then commands and testing, then how
 each part is built.
 
-Nexa is the end-to-end encrypted chat app at https://nexa.fish (also https://mathtest.lol; the old address
-https://chat.evilion.xyz moves browsers on). This repository is all of it: the Go server (`cmd/`,
+Nexa is the end-to-end encrypted chat app at https://nexa.pm, run by its owner zey (`@zey`, the
+`ADMIN_USERNAME` account). It is a relaunch of terrydavisthe2nd/nexa (git remote `upstream`; nexa.fish,
+mathtest.lol and chat.evilion.xyz were that project's addresses and are not ours), published as
+zeynalka3/nexa (remote `origin`). History before 2026-11-07 is upstream's. This repository is all of it: the Go server (`cmd/`,
 `internal/`), the React + TypeScript web app (`web/`), the Electron desktop app that runs the web app
 (`desktop/`) and the native Android app (`android/`, Kotlin + Jetpack Compose). README.md is the public
 overview and `ENCRYPTION.md` the public encryption explanation. The original design spec is
@@ -33,7 +35,8 @@ without `--to` publish immediately. Never run them to check a change; use the co
 write nothing live. Never test against port 8090, `data/` or the repo's `chatd.env`. On this server never
 start chatd from the repository root either (`make run`, `go run ./cmd/chatd`): it reads the live `chatd.env`
 and `./data` and migrates the database before it listens, so an unreleased build would migrate the live
-database. Deploy only when the owner says "deploy" (see Deploying).
+database. The live instance runs on the VPS (see Deploying), where the same holds for `/home/nexa/nexa`.
+Deploy only when the owner says "deploy" (see Deploying).
 
 ### Anything touching UI goes through the frontend-design skill, in full. Never cut corners on UI
 
@@ -67,6 +70,12 @@ Testing):
 2. Android: build the debug app against the same server and use every screen touched in the emulator, in Dark,
    Light and one preset.
 3. Put the phone-size web screenshots next to the emulator's and fix whichever side is off.
+
+Open follow-ups, web first by the owner's choice (remove each when done):
+
+- Suggestions on Android (2026-11-07): the server and web have them (Nexa, moderation and safety). Android
+  needs the Suggest a Feature button on the Nexa page, the form with `kind: "suggestion"`, the staff tab and
+  the thread without device details, using the existing `suggestions.*` strings.
 
 Passing unit tests do not replace looking at the screens.
 
@@ -160,7 +169,11 @@ Small fixes and polish need none.
 - Descriptions, hints, toasts and errors are short, plain sentences that sound like a person. Avoid em dashes;
   use a comma, a full stop or parentheses.
 - Never describe the owner in the third person or sell Nexa as run by one person (app, home page, Terms).
-  Contact details read "Contact the owner (nora) here: ...".
+  Contact details read "Contact the owner (zey) here: ...". There is no public contact email for now (the
+  owner's decision, 2026-11-07): `CONTACT_EMAIL` in `lib/legal.ts` is "", so every contact link is
+  `CONTACT_HREF`, the owner's profile (`/@zey`), and the legal documents say "in the app, message @zey". Never
+  put the owner's personal address in the app, the documents or Git; setting `CONTACT_EMAIL` brings the mail
+  links back on web and Android.
 - Describe Nexa on its own terms and never compare it to Discord. Name Discord only where a feature really
   talks to it (the desktop Rich Presence relay, Discord activity sync, Discord template import).
 - Never hardcode user-visible English. The web uses `t("key")` / `<Tr>` from `@/i18n`; Android uses `t("key")`
@@ -256,15 +269,15 @@ there; the mover takes held files left on disk a minute old every half minute. G
 it follows the link there and asks for a preflight no real browser makes, and delete
 `window.showSaveFilePicker` in headless Chromium, which never answers it.
 
-### The dev instance (dev.nexa.fish)
+### The dev instance (dev.nexa.pm)
 
-When the owner asks for the dev site, run the new build at https://dev.nexa.fish: the tunnel sends it to
+When the owner asks for the dev site, run the new build at https://dev.nexa.pm: the tunnel sends it to
 127.0.0.1:6969. `make run-dev` builds into `web/dist-dev` and `bin/chatd_dev` (never `web/dist` or
 `bin/chatd`, so nothing live changes) and starts it from the repository root with `DATA_DIR=./data-dev` (the
 one sanctioned exception to never starting chatd from the root: it reads `chatd.env` but never `./data`). It
 runs in the foreground, so start it in the background; stop it with `pkill -f bin/chatd_dev`.
 
-- `chatd.env`'s real captcha keys fail there unless dev.nexa.fish is on the Turnstile widget's hostnames, so
+- `chatd.env`'s real captcha keys fail there unless dev.nexa.pm is on the Turnstile widget's hostnames, so
   every captcha says "The captcha check failed". Run it with Cloudflare's test keys in the environment, which
   win over `chatd.env` and never show a challenge. An empty variable does not override the file, so `/instance`
   still names hCaptcha, which is harmless: current apps read `turnstile` first.
@@ -273,12 +286,12 @@ runs in the foreground, so start it in the background; stop it with `pkill -f bi
   make web-dev server-dev
   TURNSTILE_SITE_KEY=1x00000000000000000000AA TURNSTILE_SECRET_KEY=1x0000000000000000000000000000000AA \
     HCAPTCHA_SITE_KEY= HCAPTCHA_SECRET_KEY= \
-    LISTEN=127.0.0.1:6969 PUBLIC_URL=https://dev.nexa.fish DATA_DIR=./data-dev R2_BUCKET=off \
+    LISTEN=127.0.0.1:6969 PUBLIC_URL=https://dev.nexa.pm DATA_DIR=./data-dev R2_BUCKET=off \
     DESKTOP_DIR=./data-dev/desktop WEB_DIST=./web/dist-dev ./bin/chatd_dev -env chatd.env      # in the background
   ```
 
 - Desktop clients for it: `python3 tools/desktop_dev_build.py` builds every platform into `~/.cache/nexa-desktop-dev`
-  and puts the installers in `data-dev/desktop` (so `DESKTOP_DIR` above serves them at dev.nexa.fish/desktop/ and on
+  and puts the installers in `data-dev/desktop` (so `DESKTOP_DIR` above serves them at dev.nexa.pm/desktop/ and on
   its download page), publishing nothing live. Its address is fixed when built (`NEXA_BUILD_URL`, `__NEXA_BUILD_URL__`
   in `config.ts`, empty in a release), since an installed app ignores environment overrides. It installs as "Nexa Dev",
   with its own bundle id and profile, beside the real app and never over it. It is not signed with the update key, so
@@ -572,7 +585,7 @@ serves until SIGINT or SIGTERM.
   `turn_credentials`), integrations (`webhooks`, `discord_links`), notes (`notes`, `note_members`,
   `note_invites`, `note_links`, `note_files`, `note_versions`, `note_version_files`, `note_keys`,
   `note_updates`, `note_uploads`), Nexa and moderation (`mod_cases`, `mod_messages`, `mod_message_files`,
-  `mod_restrictions`, `mod_announcements`, `mod_log`, `mod_reads`, `nexa_reads`, `bug_reports`,
+  `mod_restrictions`, `mod_announcements`, `mod_log`, `mod_reads`, `nexa_reads`, `bug_reports` (bugs and suggestions, by `kind`),
   `bug_attachments`, `bug_messages`, `bug_message_files`, `client_errors`), reports (`safety_reports`,
   `safety_report_events`, `safety_report_files`, `safety_report_snapshot_blobs`), apps (`applications`,
   `application_emojis`, `application_commands`, `application_command_permissions`,
@@ -886,8 +899,16 @@ it:
   deleted 180 days after last use by the maintenance loop, and with the account).
   `GET /moderation/users/{id}/alts` lists alts with how many addresses they share, never the addresses; only
   the legal report prints addresses. The Privacy Policy's section 3e describes it.
-- Bug reports (`/api/v1/bugs`), client crash reports (`/api/v1/client-errors`), and the instance settings
+- Bug reports and suggestions (`/api/v1/bugs`), client crash reports (`/api/v1/client-errors`), and the instance settings
   (registration mode and key, which override `chatd.env` until cleared).
+- Suggestions (added 2026-11-07) are bug reports with `bug_reports.kind = 'suggestion'` (migration 0054;
+  every older row is `'bug'`): the same table, numbers, statuses, thread, files and notifications, sent with
+  `kind` on `POST /bugs` and listed with `?kind=suggestion`; `/moderation/summary` returns `suggestions`
+  counts beside `bugs`. Members send one from the Nexa page (`SuggestButton`, `openSuggest`, ReportBugModal
+  with `kind`); staff work them in the Suggestions tab (`/channels/@admin/suggestions`, BugsTab with `kind`),
+  which every rank that sees Bug Reports sees. Words come from `suggestions.*`, and a suggestion's thread
+  shows no device details (`bugKind` in `lib/bugs.ts`). Android does not have Suggestions yet: it is the
+  open follow-up (see Web and mobile), and Android lists and threads must show `kind` once it does.
 - Case threads and bug reports are conversations with private blobs of kind `case` and `bug`. A closed case,
   or a bug report set to resolved, won't fix or closed, takes nothing from anyone, staff included, until staff
   reopen it. `mod_reads` keeps what each member of staff has read.
@@ -1089,7 +1110,7 @@ several games with exactly one name, the most rated wins (`mostRated`): IGDB lis
 
 ### Optional host maintenance
 
-`MAINTENANCE_FILE` is empty by default; only nexa.fish points it at the host-written
+`MAINTENANCE_FILE` is empty by default; only nexa.pm points it at the host-written
 `/var/lib/nexa-maintenance/schedule.json`. `api/maintenance.go` serves public `GET /api/v1/maintenance`; a
 missing or invalid file means no notice, and the app never runs reboot commands. The optional units
 `deploy/nexa-maintenance-*` reboot the host 48 hours after boot, replacing any daily reboot timer
@@ -1340,7 +1361,13 @@ the gate cannot scroll the homepage.
 
 ### Public source
 
-`lib/legal.ts` exports `GITHUB_URL` (Android `Legal.githubUrl`). The homepage names open source in its
+`lib/legal.ts` exports `GITHUB_URL` (Android `Legal.githubUrl`), the owner's public repository; upstream's
+MIT copyright line in `LICENSE` stays as it is. `lib/legal.ts` also holds `LEGAL_EFFECTIVE` (the documents'
+"Effective:" date, held to it by a test), `CONTACT_EMAIL`, `CONTACT_HREF` and `OWNER_USERNAME`; Android reads
+them from the file. A change to what the documents say bumps `LEGAL_EFFECTIVE`, which asks every account to
+agree again, and adds a `legal.new*` line (English in every locale) at the top of `LegalChanges` (web
+`LegalContent.tsx`, Android `Legal.kt`), with the older lines kept behind their version checks. 2026-11-07
+added `legal.newOwner`: zey, nexa.pm, and the server in France. The homepage names open source in its
 introduction and as the first of its five promises and links GitHub; Settings has a GitHub shortcut on every
 platform; the About page and Settings, About explain the MIT license and invite contributions. README.md uses
 the synthetic `web/public/home/app.png`, which holds no personal conversations.
@@ -1437,7 +1464,7 @@ Mentions write `<@id>` as messages do and notify nobody (`lib/notes/mentions.ts`
 ## Desktop app (`desktop/`)
 
 Electron; bump the version in `desktop/package.json` for every release. `src/main/index.ts` opens one window
-on the live site (`config.ts`: https://nexa.fish, or `EVILION_URL` in an unpackaged app; `npm start` builds
+on the live site (`config.ts`: https://nexa.pm, or `EVILION_URL` in an unpackaged app; `npm start` builds
 and runs it), with a tray, system-wide keybinds (`shortcuts.ts`), the screen picker (`displayPicker.ts`),
 takeover from an older Mac copy (`succession.ts`) and permissions limited to Nexa's origin. `build.mjs`
 bundles with esbuild, `electron-builder.yml` packs. `appAudio.ts` shares window sound (from 1.2.7 voice
@@ -1651,12 +1678,24 @@ talks to the server as deployed, so it never depends on unreleased server change
 
 ## Deploying (only when the owner says "deploy")
 
-- A web-only change: `make web`. chatd reads `web/dist` from disk on every request, so it is live at once,
-  with no restart.
-- A server change: `make server` (it keeps the binary it replaces as `bin/chatd.prev`), then
-  `sudo systemctl restart xyz.evilion.chat` (the unit runs `run.sh`). Say so when the deploy runs a database
-  migration.
-- `make build` builds both, then the Android and desktop apps when they changed (see Android, Releases, and
-  Desktop app); nothing is built on another machine and copied over.
-- Back up first (`bash backup.sh`, which keeps only the newest set) only when the request asks for it.
+Since 2026-11-07 the live instance is a Contabo VPS in France (161.97.174.252), reached as
+`ssh -i ~/.ssh/id_nexa root@161.97.174.252`. It is not a git checkout and nothing is pushed there by Git:
+
+- The `nexa` user owns `/home/nexa/nexa`, which holds the source plus what is never in Git: `chatd.env`
+  (`ADMIN_USERNAME=zey`, `REGISTRATION=open`, `PUBLIC_URL=https://nexa.pm`), `data/` (SQLite `chat.db`),
+  `bin/` and `logs/`. Go and Node live under `/usr/local`.
+- `nexa.service` runs `run.sh` (chatd on `127.0.0.1:8090`) as `nexa`; `cloudflared-nexa.service` is the
+  Cloudflare tunnel that serves nexa.pm, so the firewall (ufw) opens only SSH.
+- To deploy a commit: copy a `git archive` of it to the VPS and unpack it over `/home/nexa/nexa` without
+  touching `chatd.env`, `data/`, `bin/` or `logs/`, `chown -R nexa:nexa` it, run `/home/nexa/build.sh` as
+  `nexa` (`make server` then `make web`, with the commit as `VERSION`), then
+  `systemctl restart nexa`. Say so when the deploy runs a database migration. A web-only change needs no
+  restart: chatd reads `web/dist` from disk on every request.
+- Check it afterwards: `systemctl is-active nexa cloudflared-nexa`, `curl -s 127.0.0.1:8090/api/health` on
+  the VPS, and https://nexa.pm in a browser.
+- Back up first (`bash backup.sh`, which keeps only the newest set) only when the request asks for it. The
+  2026-11-07 wipe that made zey the owner kept the old instance as `/home/nexa/data.wiped-20261107-180326`
+  and `chatd.env.bak-20261107-180326`.
 - To roll back: `cp bin/chatd.prev bin/chatd` and restart (not across a migration; see Database).
+- Android and desktop releases are not built or published from the VPS yet; their release steps (Android,
+  Releases, Desktop app) still describe upstream's setup.

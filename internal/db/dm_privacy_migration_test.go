@@ -27,6 +27,8 @@ func TestMigrationMovesTheOldDMDefault(t *testing.T) {
 	INSERT INTO users(id,username,display_name,auth_hash,kdf_salt,kdf_params,public_key,enc_private_key,created_at,updated_at) VALUES
 	  (4,'d','D','h',x'00','{}',x'00',x'00',0,0);
 	-- back to how version 17 looked: undo what later migrations add
+	DROP INDEX idx_bug_reports_kind;
+	ALTER TABLE bug_reports DROP COLUMN kind;
 	DROP TABLE webhooks;
 	ALTER TABLE messages DROP COLUMN webhook_id;
 	ALTER TABLE messages DROP COLUMN plain;

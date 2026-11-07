@@ -12,7 +12,7 @@ import { useUI, type ContextMenuItem } from "@/stores/ui";
 import { useUsers } from "@/stores/users";
 
 /**
- * Profile links: https://nexa.fish/@username.
+ * Profile links: https://nexa.pm/@username.
  *
  * Anyone may open one, signed in or not. Signed out, it is the person's own
  * profile card on a page of its own (pages/ProfilePage); signed in, it is

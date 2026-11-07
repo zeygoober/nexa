@@ -3,7 +3,7 @@
  * and how it looks, what a report may carry, and the facts about this app and
  * device that the reporter can choose to send with it.
  */
-import type { BugContext, BugCounts, BugFile, BugStatus, MemberBug, StaffBug } from "@/api/bugs";
+import type { BugContext, BugCounts, BugFile, BugKind, BugStatus, MemberBug, StaffBug } from "@/api/bugs";
 import type { CaseCounts } from "@/api/moderation";
 import { desktopBridge } from "@/lib/desktopBridge";
 import { t } from "@/i18n";
@@ -49,34 +49,41 @@ export function bugFileProblem(file: { type: string; size: number }, taken: { co
 /** How a status is coloured: the panel's tag tones, and none for a finished report. */
 export type BugTone = "info" | "warn" | "done" | "";
 
-export function bugStatusLabel(s: BugStatus): string {
+/**
+ * What a status is called. Suggestions share the statuses with bug reports,
+ * in their own words: in progress is Planned, resolved is Done, and won't
+ * fix is Won't Do.
+ */
+export function bugStatusLabel(s: BugStatus, kind: BugKind = "bug"): string {
+  const idea = kind === "suggestion";
   switch (s) {
     case "open":
       return t("bugs.status.open");
     case "in_progress":
-      return t("bugs.status.inProgress");
+      return idea ? t("suggestions.status.planned") : t("bugs.status.inProgress");
     case "resolved":
-      return t("bugs.status.resolved");
+      return idea ? t("suggestions.status.done") : t("bugs.status.resolved");
     case "wont_fix":
-      return t("bugs.status.wontFix");
+      return idea ? t("suggestions.status.wontDo") : t("bugs.status.wontFix");
     default:
       return t("bugs.status.closed");
   }
 }
 
 /** One sentence on what a status means, for the menu staff pick it from. */
-export function bugStatusHint(s: BugStatus): string {
+export function bugStatusHint(s: BugStatus, kind: BugKind = "bug"): string {
+  const idea = kind === "suggestion";
   switch (s) {
     case "open":
       return t("bugs.status.openHint");
     case "in_progress":
-      return t("bugs.status.inProgressHint");
+      return idea ? t("suggestions.status.plannedHint") : t("bugs.status.inProgressHint");
     case "resolved":
-      return t("bugs.status.resolvedHint");
+      return idea ? t("suggestions.status.doneHint") : t("bugs.status.resolvedHint");
     case "wont_fix":
-      return t("bugs.status.wontFixHint");
+      return idea ? t("suggestions.status.wontDoHint") : t("bugs.status.wontFixHint");
     default:
-      return t("bugs.status.closedHint");
+      return idea ? t("suggestions.status.closedHint") : t("bugs.status.closedHint");
   }
 }
 
@@ -96,6 +103,11 @@ export function bugStatusTone(s: BugStatus): BugTone {
 /** Whether a report is finished with: fixed, not going to be, or closed. */
 export function bugFinished(s: BugStatus): boolean {
   return s === "resolved" || s === "wont_fix" || s === "closed";
+}
+
+/** A report's kind, for one sent before suggestions existed too. */
+export function bugKind(r: { kind?: BugKind | undefined }): BugKind {
+  return r.kind === "suggestion" ? "suggestion" : "bug";
 }
 
 /** "#12", as reports are referred to. */

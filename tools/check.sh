@@ -4,7 +4,7 @@
 #   tools/check.sh            web, server and desktop
 #
 # Nothing here writes to web/dist, data/ or any live directory: the web build
-# goes to a scratch directory, because web/dist is what nexa.fish serves
+# goes to a scratch directory, because web/dist is what nexa.pm serves
 # and building into it *is* the deploy.
 set -uo pipefail
 cd "$(dirname "$0")/.."

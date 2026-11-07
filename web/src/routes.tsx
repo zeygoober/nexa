@@ -59,6 +59,7 @@ const AdminBadges = lazyPage(() => adminPanel().then((m) => ({ default: m.Badges
 const AdminGames = lazyPage(() => adminPanel().then((m) => ({ default: m.GamesTab })));
 const AdminReports = lazyPage(() => import("@/components/reports/ReportsTab").then((m) => ({ default: m.ReportsTab })));
 const AdminBugs = lazyPage(() => adminPanel().then((m) => ({ default: m.BugsTab })));
+const AdminSuggestions = lazyPage(() => adminPanel().then((m) => ({ default: () => <m.BugsTab kind="suggestion" /> })));
 
 export function AppRoutes() {
   return (
@@ -123,6 +124,8 @@ export function AppRoutes() {
                     <Route path="reports/:reportId" element={<AdminReports />} />
                     <Route path="bugs" element={<AdminBugs />} />
                     <Route path="bugs/:reportId" element={<AdminBugs />} />
+                    <Route path="suggestions" element={<AdminSuggestions />} />
+                    <Route path="suggestions/:reportId" element={<AdminSuggestions />} />
                     <Route path="*" element={<Navigate to="reports" replace />} />
                   </Route>
                   <Route path="@discover" element={<DiscoveryPage />} />

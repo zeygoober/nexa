@@ -6,13 +6,13 @@ import { unwrapPrivateKey, wrapPrivateKey } from "@/crypto/keys";
 describe("QR sign-in codes", () => {
   it("carry the request and the one-time key, and nothing else reads as one", () => {
     const eph = generateIdentity();
-    const link = qrLink("https://nexa.fish", "AbCdEfGhIjKlMnOpQrStUv", eph.publicKey);
-    expect(link.startsWith("https://nexa.fish/login/qr#AbCdEfGhIjKlMnOpQrStUv.")).toBe(true);
+    const link = qrLink("https://nexa.pm", "AbCdEfGhIjKlMnOpQrStUv", eph.publicKey);
+    expect(link.startsWith("https://nexa.pm/login/qr#AbCdEfGhIjKlMnOpQrStUv.")).toBe(true);
     const got = parseQrLink(link);
     expect(got?.id).toBe("AbCdEfGhIjKlMnOpQrStUv");
     expect(got?.publicKey).toEqual(eph.publicKey);
     expect(parseQrLink("#short.abc")).toBeNull();
-    expect(parseQrLink("https://nexa.fish/login/qr")).toBeNull();
+    expect(parseQrLink("https://nexa.pm/login/qr")).toBeNull();
   });
 
   it("hand over an identity only the waiting device opens", async () => {

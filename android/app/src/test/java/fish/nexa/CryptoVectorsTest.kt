@@ -127,6 +127,6 @@ class CryptoVectorsTest {
         val secret = NoteCrypto.LinkSecret(l["token"]!!.jsonPrimitive.content, l["key"]!!.jsonPrimitive.content)
         assertArrayEquals(hex("noteKey"), NoteCrypto.unwrapKeyFromLink(secret, s("linkWrapped")))
         assertEquals(s("linkHash"), NoteCrypto.tokenHash(secret.token))
-        assertEquals(secret, NoteCrypto.parseLink("https://nexa.fish" + NoteCrypto.linkPath(secret), "https://nexa.fish"))
+        assertEquals(secret, NoteCrypto.parseLink("https://nexa.pm" + NoteCrypto.linkPath(secret), "https://nexa.pm"))
     }
 }

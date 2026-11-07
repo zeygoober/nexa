@@ -12,6 +12,8 @@ import type { People } from "./moderation";
 import type { Snowflake } from "./types";
 
 export type BugStatus = "open" | "in_progress" | "resolved" | "wont_fix" | "closed";
+/** What a report is: something broken, or an idea. Both travel the same way; the words and the staff tab differ. */
+export type BugKind = "bug" | "suggestion";
 export const BUG_STATUSES: BugStatus[] = ["open", "in_progress", "resolved", "wont_fix", "closed"];
 
 /** A screenshot or recording sent with a report. */
@@ -47,6 +49,8 @@ export interface BugContext {
 /** A report as its reporter sees it. */
 export interface MemberBug {
   id: Snowflake;
+  /** Older servers leave it out: those reports are all bugs. */
+  kind?: BugKind;
   number: number;
   subject: string;
   description: string;
@@ -99,6 +103,7 @@ export type BugView = "waiting" | "active" | BugStatus | "all";
 export type BugSort = "activity" | "newest" | "oldest";
 
 export interface NewBug {
+  kind?: BugKind;
   subject: string;
   description: string;
   context?: BugContext;
@@ -139,11 +144,12 @@ export const bugs = {
 };
 
 export const staffBugs = {
-  list(p: { view: BugView; files?: boolean; q?: string; sort?: BugSort; before?: StaffBug; limit?: number }): Promise<{ reports: StaffBug[]; counts: BugCounts; people: People; has_more: boolean }> {
+  list(p: { kind?: BugKind; view: BugView; files?: boolean; q?: string; sort?: BugSort; before?: StaffBug; limit?: number }): Promise<{ reports: StaffBug[]; counts: BugCounts; people: People; has_more: boolean }> {
     const status = p.view === "waiting" || p.view === "all" ? undefined : p.view;
     const sort = p.sort ?? "activity";
     return api.request("GET", "/moderation/bugs", undefined, {
       query: {
+        kind: p.kind ?? "bug",
         status,
         waiting: p.view === "waiting" ? "1" : undefined,
         files: p.files ? "1" : undefined,

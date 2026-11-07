@@ -3,7 +3,7 @@ import type { LegalBlock, LegalDoc } from "@/lib/legalDocs";
 import s from "./Legal.module.css";
 
 /** Emails and this site's own pages, made into links; everything else stays text. */
-const LINKABLE = /([\w.+-]+@[\w-]+\.[\w.]+)|((?:https?:\/\/)?(?:nexa\.fish|mathtest\.lol|chat\.evilion\.xyz)(?:\/[\w/-]*)?)/g;
+const LINKABLE = /([\w.+-]+@[\w-]+\.[\w.]+)|((?:https?:\/\/)?(?:nexa\.pm)(?:\/[\w/-]*)?)/g;
 
 function linkify(text: string): ReactNode {
   const out: ReactNode[] = [];
@@ -15,7 +15,7 @@ function linkify(text: string): ReactNode {
     if (at > last) out.push(text.slice(last, at));
     if (m[1]) out.push(<a key={at} href={`mailto:${raw}`}>{raw}</a>);
     else {
-      const path = raw.replace(/^(https?:\/\/)?(?:nexa\.fish|mathtest\.lol|chat\.evilion\.xyz)/, "") || "/";
+      const path = raw.replace(/^(https?:\/\/)?(?:nexa\.pm)/, "") || "/";
       out.push(<a key={at} href={path}>{raw}</a>);
     }
     last = at + raw.length;

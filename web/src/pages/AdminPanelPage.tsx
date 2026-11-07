@@ -50,6 +50,7 @@ export default function AdminPanelPage() {
         const st = useModeration.getState();
         st.setCounts(r.counts);
         st.setBugCounts(r.bugs);
+        st.setBugCounts(r.suggestions, "suggestion");
         st.setReportCounts(r.reports);
         st.setUnread(r.unread);
         st.setOwner(r.owner_id);

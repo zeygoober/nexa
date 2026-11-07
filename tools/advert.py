@@ -1050,7 +1050,7 @@ def film(only, phones=False):
     try:
         with sync_playwright() as pw:
             browser = pw.chromium.launch(channel="chromium", args=[
-                f"--host-resolver-rules=MAP nexa.fish 127.0.0.1:{front.port}",
+                f"--host-resolver-rules=MAP nexa.pm 127.0.0.1:{front.port}",
                 "--ignore-certificate-errors", "--auto-accept-this-tab-capture",
                 "--use-fake-device-for-media-stream", "--autoplay-policy=no-user-gesture-required",
                 "--mute-audio", "--disable-renderer-backgrounding",

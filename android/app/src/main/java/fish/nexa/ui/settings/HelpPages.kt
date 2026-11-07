@@ -174,7 +174,8 @@ fun AboutPage() {
     }
 
     SectionHeading(t("settings.about.contact"), Modifier.settingAnchor("contact"))
-    InfoRow("Mail", t("settings.about.email"), {
+    // no address while legal.ts has none: the in-app row below is the way to reach the owner
+    if (Legal.contactEmail.isNotEmpty()) InfoRow("Mail", t("settings.about.email"), {
         Txt(
             Legal.contactEmail, style = Nx.type.bodySmall.copy(fontSize = Nx.type.sp(13.5f)), color = c.link,
             modifier = Modifier.clip(Radii.Xs).pressable(remember { MutableInteractionSource() }) {

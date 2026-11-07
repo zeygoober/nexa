@@ -15,7 +15,7 @@ import java.util.regex.Pattern
  */
 object AutomodChecks {
     /** Hosts that are this app's own, where links and invites are Nexa's. */
-    val OWN_HOSTS = listOf("nexa.fish", "mathtest.lol", "chat.evilion.xyz")
+    val OWN_HOSTS = listOf("nexa.pm")
 
     private const val TLDS = "com|net|org|io|gg|co|me|tv|app|dev|xyz|ru|cn|uk|de|fr|info|biz|link|ly|gift|fish|lol|site|online|shop|store|club|top|live|stream|fun|click|win|pro|cc|to|su|in|us|ca|eu|nl|br|jp|kr|au|es|it|pl|tk|ml|ga|cf|gq|ws"
     private val URL_RE = Pattern.compile("\\bhttps?://[^\\s<>()]+|\\b(?:www\\.)?(?:[a-z0-9-]+\\.)+(?:$TLDS)\\b(?:/[^\\s<>()]*)?", Pattern.CASE_INSENSITIVE or Pattern.UNICODE_CASE)

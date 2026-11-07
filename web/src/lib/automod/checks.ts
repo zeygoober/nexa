@@ -9,7 +9,7 @@ import { Matcher, fold } from "./match";
  */
 
 /** Hosts that are this app's own, where links and invites are Nexa's. */
-export const OWN_HOSTS = ["nexa.fish", "mathtest.lol", "chat.evilion.xyz"];
+export const OWN_HOSTS = ["nexa.pm"];
 
 const TLDS = "com|net|org|io|gg|co|me|tv|app|dev|xyz|ru|cn|uk|de|fr|info|biz|link|ly|gift|fish|lol|site|online|shop|store|club|top|live|stream|fun|click|win|pro|cc|to|su|in|us|ca|eu|nl|br|jp|kr|au|es|it|pl|tk|ml|ga|cf|gq|ws";
 const URL_RE = new RegExp(`\\bhttps?:\\/\\/[^\\s<>()]+|\\b(?:www\\.)?(?:[a-z0-9-]+\\.)+(?:${TLDS})\\b(?:\\/[^\\s<>()]*)?`, "giu");

@@ -25,7 +25,7 @@ import (
 // here, since it could sign in but never read anything.
 //
 // A passkey belongs to the address it was made on (its RP ID): one made at
-// nexa.fish is offered there and in the Android app, one made at another of
+// nexa.pm is offered there and in the Android app, one made at another of
 // Nexa's addresses only there.
 
 const (

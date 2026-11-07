@@ -24,7 +24,7 @@ import { mediaSrc } from "./mediaLinks";
 import { roundAvatar } from "./roundIcon";
 import { heldBy } from "./automod/rules";
 import { currentBlockRules, isQuiet, loadedAuthorOf } from "./blocked";
-import { bugAlertHooks, bugNumber, bugStatusLabel, type BugAlert } from "./bugs";
+import { bugAlertHooks, bugKind, bugNumber, bugStatusLabel, type BugAlert } from "./bugs";
 import { alertsForReport, staffAlerts } from "./staffAlerts";
 import { reasonTone } from "./reportReasons";
 import type { SafetyReport } from "@/api/reports";
@@ -265,14 +265,20 @@ function onBugAlert(a: BugAlert): void {
   const me = useAuth.getState().me;
   if (!me || doNotDisturb()) return;
   if (a.kind === "staff" && !staffAlerts(useSettings.getState().settings).bugs) return;
-  const path = a.kind === "staff" ? `/channels/@admin/bugs/${a.report.id}` : `/channels/@me/nexa/bugs/${a.report.id}`;
+  const idea = bugKind(a.report) === "suggestion";
+  const path = a.kind === "staff" ? `/channels/@admin/${idea ? "suggestions" : "bugs"}/${a.report.id}` : `/channels/@me/nexa/bugs/${a.report.id}`;
   if (appOnScreen() && typeof location !== "undefined" && location.pathname === path) return;
   const settings = useSettings.getState().settings;
   if (settings.notifications.sounds) void playSound("message");
   if (appOnScreen() || !notificationsEnabled(settings)) return;
   const number = a.report.number;
-  const title = a.kind === "staff" ? (a.isNew ? t("bugs.notify.newTitle") : t("bugs.notify.replyTitle")) : "Nexa";
-  const body = a.kind === "staff" ? a.report.subject : a.kind === "reply" ? t("bugs.feed.replied", { number: bugNumber(number) }) : t("bugs.feed.statusChanged", { number: bugNumber(number), status: bugStatusLabel(a.report.status) });
+  const title = a.kind === "staff" ? (a.isNew ? t(idea ? "suggestions.notify.newTitle" : "bugs.notify.newTitle") : t(idea ? "suggestions.notify.replyTitle" : "bugs.notify.replyTitle")) : "Nexa";
+  const body =
+    a.kind === "staff"
+      ? a.report.subject
+      : a.kind === "reply"
+        ? t(idea ? "suggestions.feed.replied" : "bugs.feed.replied", { number: bugNumber(number) })
+        : t(idea ? "suggestions.feed.statusChanged" : "bugs.feed.statusChanged", { number: bugNumber(number), status: bugStatusLabel(a.report.status, bugKind(a.report)) });
   void showNotification(title, { body, tag: `ec-bug-${a.report.id}`, icon: "/icons/icon-192.png", silent: true }, path);
 }
 

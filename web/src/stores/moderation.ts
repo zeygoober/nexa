@@ -3,7 +3,7 @@ import { create } from "zustand";
 import { moderation as modApi, type Announcement, type CaseCounts, type CaseMessage, type ModLogEntry, type ModUnread, type People, type StaffCase } from "@/api/moderation";
 import { staffBugs } from "@/api/bugs";
 import type { SafetyReport } from "@/api/reports";
-import type { BugCounts, BugMessage, StaffBug } from "@/api/bugs";
+import type { BugCounts, BugKind, BugMessage, StaffBug } from "@/api/bugs";
 
 /**
  * The staff's side: how much is waiting on them (the rail and sidebar show
@@ -25,6 +25,8 @@ interface ModerationStore {
   counts: CaseCounts | null;
   /** How many bug reports each view of the Bug Reports tab holds. */
   bugCounts: BugCounts | null;
+  /** The same for the Suggestions tab. */
+  suggestionCounts: BugCounts | null;
   /** How many safety reports hold each status: the Reports tab's badge. */
   reportCounts: Record<string, number> | null;
   /** Shared games waiting on an admin. */
@@ -36,11 +38,11 @@ interface ModerationStore {
    * has not read: what the badges on the rail, the sidebar and the panel's
    * tabs count, and what Mark as Read clears.
    */
-  unread: ModUnread;
+  unread: Required<ModUnread>;
   ownerId: string | null;
   people: People;
   setCounts: (c: CaseCounts | undefined) => void;
-  setBugCounts: (c: BugCounts | null | undefined) => void;
+  setBugCounts: (c: BugCounts | null | undefined, kind?: BugKind) => void;
   setUnread: (u: ModUnread | null | undefined) => void;
   /** Mark as Read: everything, on every device of this account. */
   readAll: () => Promise<void>;
@@ -51,11 +53,11 @@ interface ModerationStore {
   reset: () => void;
 }
 
-const NONE: ModUnread = { cases: [], bugs: [] };
+const NONE: Required<ModUnread> = { cases: [], bugs: [], suggestions: [] };
 
 /** How many threads wait unread. */
 export function unreadCount(u: ModUnread): number {
-  return u.cases.length + u.bugs.length;
+  return u.cases.length + u.bugs.length + (u.suggestions?.length ?? 0);
 }
 
 /**
@@ -69,6 +71,7 @@ export function attentionCount(s: Pick<ModerationStore, "unread" | "reportCounts
 export const useModeration = create<ModerationStore>()((set, get) => ({
   counts: null,
   bugCounts: null,
+  suggestionCounts: null,
   reportCounts: null,
   setReportCounts: (reportCounts) => reportCounts && set({ reportCounts }),
   gamesWaiting: 0,
@@ -77,14 +80,14 @@ export const useModeration = create<ModerationStore>()((set, get) => ({
   ownerId: null,
   people: {},
   setCounts: (counts) => counts && set({ counts }),
-  setBugCounts: (bugCounts) => bugCounts && set({ bugCounts }),
-  setUnread: (u) => u && set({ unread: { cases: u.cases ?? [], bugs: u.bugs ?? [] } }),
+  setBugCounts: (c, kind = "bug") => c && set(kind === "suggestion" ? { suggestionCounts: c } : { bugCounts: c }),
+  setUnread: (u) => u && set({ unread: { cases: u.cases ?? [], bugs: u.bugs ?? [], suggestions: u.suggestions ?? [] } }),
   readAll: async () => {
     const before = get().unread;
     // gone at once; the server's own word follows as mod_unread
     set({ unread: NONE });
     try {
-      set({ unread: await modApi.readAll() });
+      get().setUnread(await modApi.readAll());
     } catch (err) {
       if (get().unread === NONE) set({ unread: before });
       throw err;
@@ -92,15 +95,16 @@ export const useModeration = create<ModerationStore>()((set, get) => ({
   },
   readThread: (kind, id, messageId) => {
     const u = get().unread;
-    const list = kind === "case" ? u.cases : u.bugs;
+    // bug reports and suggestions are read the same way, as "bug"
+    const list = kind === "case" ? u.cases : [...u.bugs, ...u.suggestions];
     if (!list.includes(id)) return;
-    set({ unread: kind === "case" ? { ...u, cases: u.cases.filter((x) => x !== id) } : { ...u, bugs: u.bugs.filter((x) => x !== id) } });
+    set({ unread: kind === "case" ? { ...u, cases: u.cases.filter((x) => x !== id) } : { ...u, bugs: u.bugs.filter((x) => x !== id), suggestions: u.suggestions.filter((x) => x !== id) } });
     const ask = kind === "case" ? modApi.readCase(id, messageId) : staffBugs.read(id, messageId);
-    void ask.then((next) => set({ unread: next })).catch(() => undefined);
+    void ask.then((next) => get().setUnread(next)).catch(() => undefined);
   },
   setOwner: (id) => id && set({ ownerId: id }),
   mergePeople: (p) => p && set((s) => ({ people: { ...s.people, ...p } })),
-  reset: () => set({ counts: null, bugCounts: null, reportCounts: null, gamesWaiting: 0, unread: NONE, ownerId: null, people: {} }),
+  reset: () => set({ counts: null, bugCounts: null, suggestionCounts: null, reportCounts: null, gamesWaiting: 0, unread: NONE, ownerId: null, people: {} }),
 }));
 
 const listeners = new Set<(e: ModEvent) => void>();

@@ -13,7 +13,7 @@ func TestLinkChannels(t *testing.T) {
 		res, out := do(t, c.ts, "POST", "/api/v1/servers/"+c.server+"/channels", c.tokA, body)
 		return res.StatusCode, out
 	}
-	for _, bad := range []string{"", "nexa.fish", "javascript:alert(1)", "ftp://example.com/x", "https://user:pw@example.com/", "https://", "https://exa mple.com/", "mailto:a@example.com"} {
+	for _, bad := range []string{"", "nexa.pm", "javascript:alert(1)", "ftp://example.com/x", "https://user:pw@example.com/", "https://", "https://exa mple.com/", "mailto:a@example.com"} {
 		if code, body := create(map[string]any{"type": "link", "name": "Website", "url": bad}); code != 400 || errCode(body) != "invalid_url" {
 			t.Errorf("a link to %q: %d %v", bad, code, body)
 		}

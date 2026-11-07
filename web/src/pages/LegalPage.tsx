@@ -3,7 +3,7 @@ import { NexaWordmark } from "@/components/common/Brand";
 import { Spinner } from "@/components/common/Spinner";
 import { ContactBlock, LegalHighlights, OpenSourceBlock } from "@/components/legal/LegalContent";
 import { LegalDocument } from "@/components/legal/LegalDocument";
-import { CONTACT_EMAIL } from "@/lib/legal";
+import { CONTACT_HREF } from "@/lib/legal";
 import { useLegalDocs } from "@/lib/legalDocs";
 import { hasSavedSession, useAuth } from "@/stores/auth";
 import { t } from "@/i18n";
@@ -26,7 +26,7 @@ export default function LegalPage({ page }: { page: "terms" | "privacy" | "about
     ...(signedIn ? [<Link key="open" to="/channels/@me">{t("home.nav.open")}</Link>] : [<Link key="start" to="/register">{t("home.nav.getStarted")}</Link>, <Link key="login" to="/login">{t("home.nav.logIn")}</Link>]),
     ...(page === "privacy" ? [<Link key="terms" to="/terms">{t("legal.termsTitle")}</Link>] : []),
     ...(page === "terms" ? [<Link key="privacy" to="/privacy">{t("legal.privacyTitle")}</Link>] : []),
-    ...(page !== "about" ? [<Link key="about" to="/about">{t("legal.aboutTitle")}</Link>, <a key="contact" href={`mailto:${CONTACT_EMAIL}`}>{t("legal.contactOwner")}</a>] : []),
+    ...(page !== "about" ? [<Link key="about" to="/about">{t("legal.aboutTitle")}</Link>, <a key="contact" href={CONTACT_HREF}>{t("legal.contactOwner")}</a>] : []),
   ];
   return (
     <div className={s.page}>

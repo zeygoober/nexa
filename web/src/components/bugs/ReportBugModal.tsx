@@ -2,7 +2,7 @@ import { AlertCircle, ChevronDown, CircleCheck, ImagePlus, Play, Plus, ShieldAle
 import { useEffect, useId, useMemo, useRef, useState, type ClipboardEvent, type DragEvent } from "react";
 import { useNavigate } from "react-router-dom";
 import { ApiError } from "@/api/client";
-import { bugs as bugsApi, type MemberBug } from "@/api/bugs";
+import { bugs as bugsApi, type BugKind, type MemberBug } from "@/api/bugs";
 import { Button } from "@/components/common/Button";
 import { Modal } from "@/components/common/Modal";
 import { TextArea, TextInput } from "@/components/common/TextInput";
@@ -30,8 +30,8 @@ interface Pending {
   abort: AbortController;
 }
 
-/** What was written before the dialog closed without sending, kept for the rest of the session. */
-let draft = { subject: "", description: "" };
+/** What was written before the dialog closed without sending, kept for the rest of the session: a bug report and a suggestion each have their own. */
+const drafts: Record<BugKind, { subject: string; description: string }> = { bug: { subject: "", description: "" }, suggestion: { subject: "", description: "" } };
 
 /** Where the dialog was opened from, which the report can say. */
 export type BugFrom = "dm" | "group" | "friends" | "settings" | "nexa";
@@ -69,8 +69,16 @@ let seq = 0;
  * that help reproduce it, each of which they can read before sending. Files go
  * up as they are added, so sending is quick. It says plainly that reports are
  * not end-to-end encrypted, and once sent, where the answer will come.
+ *
+ * Suggest a Feature is the same dialog for an idea: its own words, pictures
+ * or a recording if they help, and no device details, which an idea has no
+ * use for. It goes to the team as a suggestion, answered the same way.
  */
-export default function ReportBugModal({ onClose, from }: { onClose: () => void; from?: BugFrom | undefined }) {
+export default function ReportBugModal({ onClose, from, kind = "bug" }: { onClose: () => void; from?: BugFrom | undefined; kind?: BugKind | undefined }) {
+  const idea = kind === "suggestion";
+  // the words that differ between the two: a key under bugs.form or suggestions.form
+  const w = (key: string, values?: Record<string, string | number>) => t(`${idea ? "suggestions" : "bugs"}.form.${key}`, values);
+  const draft = drafts[kind];
   const nav = useNavigate();
   const locale = useLocale();
   const settings = useSettings((st) => st.settings);
@@ -78,7 +86,7 @@ export default function ReportBugModal({ onClose, from }: { onClose: () => void;
   const [description, setDescription] = useState(draft.description);
   const [files, setFiles] = useState<Pending[]>([]);
   const [fileErrors, setFileErrors] = useState<string[]>([]);
-  const [withContext, setWithContext] = useState(true);
+  const [withContext, setWithContext] = useState(!idea);
   const [showFacts, setShowFacts] = useState(false);
   const [tried, setTried] = useState(false);
   const [sending, setSending] = useState(false);
@@ -111,8 +119,8 @@ export default function ReportBugModal({ onClose, from }: { onClose: () => void;
   const facts = useMemo(() => contextRows(context), [context]);
 
   useEffect(() => {
-    if (!sent) draft = { subject, description };
-  }, [subject, description, sent]);
+    if (!sent) drafts[kind] = { subject, description };
+  }, [subject, description, sent, kind]);
 
   // files still going up stop, and their previews are let go, when the dialog does
   useEffect(
@@ -208,7 +216,7 @@ export default function ReportBugModal({ onClose, from }: { onClose: () => void;
   const subjectLen = [...subject.trim()].length;
   const descriptionLen = [...description.trim()].length;
   const subjectProblem = subjectLen < BUG_LIMITS.subjectMin ? t("bugs.form.subjectNeeded") : subjectLen > BUG_LIMITS.subjectMax ? t("bugs.form.subjectLong") : null;
-  const descriptionProblem = descriptionLen < BUG_LIMITS.descriptionMin ? t("bugs.form.descriptionNeeded") : descriptionLen > BUG_LIMITS.descriptionMax ? t("bugs.form.descriptionLong") : null;
+  const descriptionProblem = descriptionLen < BUG_LIMITS.descriptionMin ? w("descriptionNeeded") : descriptionLen > BUG_LIMITS.descriptionMax ? t("bugs.form.descriptionLong") : null;
   const uploading = files.some((f) => f.state === "uploading");
   const failed = files.some((f) => f.state === "failed");
 
@@ -221,15 +229,16 @@ export default function ReportBugModal({ onClose, from }: { onClose: () => void;
     setSending(true);
     try {
       const r = await bugsApi.create({
+        kind,
         subject: subject.trim(),
         description: description.trim(),
         context: withContext ? context : undefined,
         attachments: files.map((f) => ({ id: f.id!, name: f.file.name })),
       });
-      draft = { subject: "", description: "" };
+      drafts[kind] = { subject: "", description: "" };
       setSent(r.report);
     } catch (err) {
-      setError(problemText(err, t("bugs.form.sendFailed")));
+      setError(problemText(err, w("sendFailed")));
     } finally {
       setSending(false);
     }
@@ -243,7 +252,7 @@ export default function ReportBugModal({ onClose, from }: { onClose: () => void;
 
   if (sent) {
     return (
-      <Modal open onClose={onClose} title={t("bugs.form.title")} width={520} footer={
+      <Modal open onClose={onClose} title={w("title")} width={520} footer={
         <>
           <Button variant="secondary" onClick={onClose} data-testid="bug-done">
             {t("bugs.form.done")}
@@ -257,8 +266,8 @@ export default function ReportBugModal({ onClose, from }: { onClose: () => void;
           <span className={s.sentIcon} aria-hidden="true">
             <CircleCheck size={24} />
           </span>
-          <h3 className={s.sentTitle}>{t("bugs.form.sentTitle", { number: bugNumber(sent.number) })}</h3>
-          <p className={s.sentText}>{t("bugs.form.sentText")}</p>
+          <h3 className={s.sentTitle}>{w("sentTitle", { number: bugNumber(sent.number) })}</h3>
+          <p className={s.sentText}>{w("sentText")}</p>
         </div>
       </Modal>
     );
@@ -270,7 +279,7 @@ export default function ReportBugModal({ onClose, from }: { onClose: () => void;
     <Modal
       open
       onClose={onClose}
-      title={t("bugs.form.title")}
+      title={w("title")}
       width={580}
       // a click beside the dialog does not throw away files on their way up
       closeOnOverlay={files.length === 0}
@@ -280,13 +289,13 @@ export default function ReportBugModal({ onClose, from }: { onClose: () => void;
             {t("bugs.form.cancel")}
           </Button>
           <Button onClick={() => void send()} loading={sending} data-testid="bug-send">
-            {t("bugs.form.send")}
+            {w("send")}
           </Button>
         </>
       }
     >
       <div className={s.form} onPaste={onPaste} onDragEnter={onDragEnter} onDragOver={onDragOver} onDragLeave={onDragLeave} onDrop={onDrop} data-testid="bug-form">
-        <p className={s.lead}>{t("bugs.form.lead")}</p>
+        <p className={s.lead}>{w("lead")}</p>
 
         <div className={s.field}>
           <div className={s.fieldHead}>
@@ -303,7 +312,7 @@ export default function ReportBugModal({ onClose, from }: { onClose: () => void;
             id={subjectId}
             value={subject}
             onChange={(e) => setSubject(e.target.value)}
-            placeholder={t("bugs.form.subjectPlaceholder")}
+            placeholder={w("subjectPlaceholder")}
             maxLength={BUG_LIMITS.subjectMax + 20}
             invalid={tried && !!subjectProblem}
             aria-invalid={tried && !!subjectProblem}
@@ -329,7 +338,7 @@ export default function ReportBugModal({ onClose, from }: { onClose: () => void;
         <div className={s.field}>
           <div className={s.fieldHead}>
             <label className={s.fieldLabel} htmlFor={descriptionId}>
-              {t("bugs.form.description")}
+              {w("description")}
             </label>
             {descriptionLen > BUG_LIMITS.descriptionMax - 300 ? (
               <span className={s.fieldCount} data-over={descriptionLen > BUG_LIMITS.descriptionMax || undefined}>
@@ -343,7 +352,7 @@ export default function ReportBugModal({ onClose, from }: { onClose: () => void;
             className={s.description}
             value={description}
             onChange={(e) => setDescription(e.target.value)}
-            placeholder={t("bugs.form.descriptionPlaceholder")}
+            placeholder={w("descriptionPlaceholder")}
             invalid={tried && !!descriptionProblem}
             aria-invalid={tried && !!descriptionProblem}
             aria-describedby={`${descriptionId}-hint`}
@@ -357,14 +366,14 @@ export default function ReportBugModal({ onClose, from }: { onClose: () => void;
             </p>
           ) : (
             <p className={s.hint} id={`${descriptionId}-hint`}>
-              {t("bugs.form.descriptionHint")}
+              {w("descriptionHint")}
             </p>
           )}
         </div>
 
         <div className={s.field}>
           <span className={s.fieldLabel} id={`${ids}-files`}>
-            {t("bugs.form.files")}
+            {w("files")}
           </span>
           <input ref={picker} type="file" accept={BUG_ACCEPT} multiple hidden onChange={(e) => {
             add([...(e.target.files ?? [])]);
@@ -376,7 +385,7 @@ export default function ReportBugModal({ onClose, from }: { onClose: () => void;
                 <ImagePlus size={20} />
               </span>
               <span className={s.dropText}>
-                <span className={s.dropTitle}>{t("bugs.form.addFiles")}</span>
+                <span className={s.dropTitle}>{w("addFiles")}</span>
                 <span className={s.dropSub} id={`${ids}-files-sub`}>
                   {touch ? t("bugs.form.filesLimits") : t("bugs.form.filesHint")}
                 </span>
@@ -440,28 +449,30 @@ export default function ReportBugModal({ onClose, from }: { onClose: () => void;
           ) : null}
         </div>
 
-        <div className={s.details}>
-          <Toggle checked={withContext} onChange={setWithContext} label={t("bugs.form.includeDetails")} description={t("bugs.form.includeDetailsHint")} />
-          {withContext ? (
-            <>
-              <button type="button" className={s.disclose} aria-expanded={showFacts} aria-controls={`${ids}-facts`} onClick={() => setShowFacts((v) => !v)} data-testid="bug-show-details">
-                {showFacts ? t("bugs.form.hideDetails") : t("bugs.form.showDetails")}
-                <ChevronDown size={15} aria-hidden="true" />
-              </button>
-              {showFacts ? (
-                <dl className={s.facts} id={`${ids}-facts`} data-testid="bug-facts">
-                  {facts.map((f) => (
-                    <FactRow key={f.key} label={f.label} value={f.value} ltr={f.key !== "language" && f.key !== "opened_from" && f.key !== "device" && f.key !== "app" && f.key !== "custom_css"} />
-                  ))}
-                </dl>
-              ) : null}
-            </>
-          ) : null}
-        </div>
+        {idea ? null : (
+          <div className={s.details}>
+            <Toggle checked={withContext} onChange={setWithContext} label={t("bugs.form.includeDetails")} description={t("bugs.form.includeDetailsHint")} />
+            {withContext ? (
+              <>
+                <button type="button" className={s.disclose} aria-expanded={showFacts} aria-controls={`${ids}-facts`} onClick={() => setShowFacts((v) => !v)} data-testid="bug-show-details">
+                  {showFacts ? t("bugs.form.hideDetails") : t("bugs.form.showDetails")}
+                  <ChevronDown size={15} aria-hidden="true" />
+                </button>
+                {showFacts ? (
+                  <dl className={s.facts} id={`${ids}-facts`} data-testid="bug-facts">
+                    {facts.map((f) => (
+                      <FactRow key={f.key} label={f.label} value={f.value} ltr={f.key !== "language" && f.key !== "opened_from" && f.key !== "device" && f.key !== "app" && f.key !== "custom_css"} />
+                    ))}
+                  </dl>
+                ) : null}
+              </>
+            ) : null}
+          </div>
+        )}
 
         <p className={s.privacy}>
           <ShieldAlert size={16} aria-hidden="true" />
-          {t("bugs.form.notEncrypted")}
+          {w("notEncrypted")}
         </p>
         {error ? (
           <p className={s.formError} role="alert" data-testid="bug-error">

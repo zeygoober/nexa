@@ -142,7 +142,7 @@ export function ThemePreview({ tokens, onPick }: { tokens: TokenMap; onPick: (to
                     <span data-token="text">theme.css</span>
                   </code>{" "}
                   <span className={b.link} data-token="link">
-                    nexa.fish
+                    nexa.pm
                   </span>
                 </span>
                 <span className={b.reacts}>
@@ -193,7 +193,7 @@ export function ThemePreview({ tokens, onPick }: { tokens: TokenMap; onPick: (to
                   </span>
                 </span>
                 <span className={b.embed} data-token="embed-bg">
-                  <span data-token="text-brand">nexa.fish</span>
+                  <span data-token="text-brand">nexa.pm</span>
                   <b data-token="link">{T("sampleEmbedTitle")}</b>
                   <span data-token="text-subtle">{T("sampleEmbedBody")}</span>
                 </span>

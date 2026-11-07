@@ -1,4 +1,4 @@
-import { Bug } from "lucide-react";
+import { Bug, Lightbulb } from "lucide-react";
 import { useLayoutEffect, useRef, useState, type RefObject } from "react";
 import { Tooltip } from "@/components/common/Tooltip";
 import type { ContextMenuItem } from "@/stores/ui";
@@ -10,6 +10,11 @@ import s from "./Bugs.module.css";
 /** Opens the Report a Bug dialog, saying where it was opened from. */
 export function openReportBug(from: BugFrom): void {
   useUI.getState().openModal("reportBug", { from });
+}
+
+/** Opens Suggest a Feature: the same dialog, for an idea rather than a problem. */
+export function openSuggest(from: BugFrom): void {
+  useUI.getState().openModal("reportBug", { from, kind: "suggestion" });
 }
 
 /** The same, as an item for a menu (a phone's header keeps its buttons in one). */
@@ -65,5 +70,16 @@ export function ReportBugButton({ from, className, wrapClassName, labelled = fal
         </button>
       </Tooltip>
     </span>
+  );
+}
+
+/** Suggest a Feature in a header, with its name: beside Report a Bug where that is labelled too. */
+export function SuggestButton({ from }: { from: BugFrom }) {
+  const label = t("suggestions.suggest");
+  return (
+    <button type="button" className={s.headerButton} onClick={() => openSuggest(from)} aria-label={label} data-testid="suggest-feature">
+      <Lightbulb size={18} aria-hidden="true" />
+      <span>{label}</span>
+    </button>
   );
 }

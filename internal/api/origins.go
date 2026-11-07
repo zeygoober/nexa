@@ -20,7 +20,7 @@ const (
 )
 
 // addressOf reports which of Nexa's addresses a host (with its port, if it
-// has one) is, and that address as configured: "https://nexa.fish".
+// has one) is, and that address as configured: "https://nexa.pm".
 func (s *Server) addressOf(host string) (string, addressKind) {
 	host = strings.ToLower(strings.TrimSpace(host))
 	if host == "" {

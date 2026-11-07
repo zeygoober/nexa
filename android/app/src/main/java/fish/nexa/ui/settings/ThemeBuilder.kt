@@ -597,7 +597,7 @@ private fun MiniApp(tokens: TokenMap, onPick: (String) -> Unit) {
                                     append(" ")
                                     withStyle(SpanStyle(background = p["code-bg"], fontFamily = Nx.type.mono, fontSize = Nx.type.sp(10f))) { append("theme.css") }
                                     append(" ")
-                                    withStyle(SpanStyle(color = p["link"], textDecoration = TextDecoration.Underline)) { append("nexa.fish") }
+                                    withStyle(SpanStyle(color = p["link"], textDecoration = TextDecoration.Underline)) { append("nexa.pm") }
                                 },
                                 style = tiny.copy(color = p["text"]),
                                 modifier = Modifier.part("text"),
@@ -671,7 +671,7 @@ private fun MiniApp(tokens: TokenMap, onPick: (String) -> Unit) {
                                     .padding(horizontal = 8.dp, vertical = 5.dp),
                                 verticalArrangement = Arrangement.spacedBy(1.dp),
                             ) {
-                                Txt("nexa.fish", style = small.copy(fontSize = Nx.type.sp(9f)), color = p["text-brand"], modifier = Modifier.part("text-brand"))
+                                Txt("nexa.pm", style = small.copy(fontSize = Nx.type.sp(9f)), color = p["text-brand"], modifier = Modifier.part("text-brand"))
                                 Txt(t("settings.themeBuilder.sampleEmbedTitle"), style = tiny.copy(fontWeight = FontWeight(650)), color = p["link"], modifier = Modifier.part("link"))
                                 Txt(t("settings.themeBuilder.sampleEmbedBody"), style = tiny, color = p["text-subtle"], modifier = Modifier.part("text-subtle"))
                             }

@@ -3,7 +3,7 @@
 Nexa is a self-hosted chat app for communities and private conversations. It has a web
 app, desktop apps for Windows, macOS and Linux, and a native Android app.
 
-Try [Nexa in your browser](https://nexa.fish) or [download an app](https://nexa.fish/download).
+Try [Nexa in your browser](https://nexa.pm) or [download an app](https://nexa.pm/download).
 
 ![Nexa's chat interface with a server, channels, messages and member list](web/public/home/app.png)
 

@@ -7,7 +7,7 @@ import { Spinner } from "@/components/common/Spinner";
 import { NexaAvatar, OfficialBadge, PersonChip } from "@/components/nexa/NexaBits";
 import { NoticeCard } from "@/components/nexa/NoticeCard";
 import { BugFeedEntry, bugFeedKind, isBugItem, type BugItem } from "@/components/bugs/BugFeed";
-import { ReportBugButton } from "@/components/bugs/ReportBugButton";
+import { ReportBugButton, SuggestButton } from "@/components/bugs/ReportBugButton";
 import { ReportFeedEntry, isReportItem, type ReportItem } from "@/components/reports/ReportFeed";
 import { PageHeaderButtons } from "@/components/shell/PageHeader";
 import { useRenderCtx } from "@/lib/markdownCtx";
@@ -91,6 +91,7 @@ export default function NexaPage() {
           <span className={s.headerSub}>{t("nexa.headerSub")}</span>
         </span>
         <span className={s.spacer} />
+        <SuggestButton from="nexa" />
         <ReportBugButton from="nexa" labelled />
       </header>
       <div className={s.feed} ref={scroller} onScroll={onScroll}>

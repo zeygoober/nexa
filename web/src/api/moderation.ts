@@ -194,6 +194,8 @@ export interface CaseCounts {
 export interface ModUnread {
   cases: Snowflake[];
   bugs: Snowflake[];
+  /** Suggestions waiting on the staff; older servers leave it out. */
+  suggestions?: Snowflake[];
 }
 
 /** An account's standing, as it arrives with the account and on every change. */
@@ -211,7 +213,7 @@ export interface NexaState {
   /** The owner of Nexa, for every account ("0" when there is none yet; absent from older servers). */
   owner_id?: Snowflake;
   /** Staff only: what is waiting on them (bug report counts and what they have not read are absent from older servers). */
-  staff?: { counts: CaseCounts; owner_id: Snowflake; bugs?: BugCounts; unread?: ModUnread; reports?: Record<string, number> };
+  staff?: { counts: CaseCounts; owner_id: Snowflake; bugs?: BugCounts; suggestions?: BugCounts; unread?: ModUnread; reports?: Record<string, number> };
 }
 
 export interface Announcement {
@@ -514,7 +516,7 @@ export const nexa = {
 };
 
 export const moderation = {
-  summary(): Promise<{ counts: CaseCounts; bugs?: BugCounts | null; reports?: Record<string, number>; unread?: ModUnread; owner_id: Snowflake; nexa_id: Snowflake; staff_ids: Snowflake[]; people: People }> {
+  summary(): Promise<{ counts: CaseCounts; bugs?: BugCounts | null; suggestions?: BugCounts | null; reports?: Record<string, number>; unread?: ModUnread; owner_id: Snowflake; nexa_id: Snowflake; staff_ids: Snowflake[]; people: People }> {
     return api.request("GET", "/moderation/summary");
   },
   /** Mark as Read: every case thread and bug report, read up to now. */

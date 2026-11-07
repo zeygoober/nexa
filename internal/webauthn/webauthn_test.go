@@ -22,12 +22,12 @@ func TestRegisterThenSignIn(t *testing.T) {
 	for _, alg := range []int64{AlgES256, AlgEdDSA} {
 		a := fake.New(alg)
 		challenge := []byte("register-challenge-0123456789abc")
-		att := a.Create("nexa.fish")
+		att := a.Create("nexa.pm")
 		authData, err := AuthDataFromAttestation(att)
 		if err != nil {
 			t.Fatal(err)
 		}
-		ad, err := ParseAuthData(authData, "nexa.fish")
+		ad, err := ParseAuthData(authData, "nexa.pm")
 		if err != nil {
 			t.Fatalf("alg %d: %v", alg, err)
 		}
@@ -41,8 +41,8 @@ func TestRegisterThenSignIn(t *testing.T) {
 		if _, err := ParseAuthData(authData, "evil.example"); err == nil {
 			t.Fatal("a passkey made for another site was taken")
 		}
-		cd := clientData("webauthn.get", challenge, "https://nexa.fish")
-		if o, err := CheckClientData(cd, "webauthn.get", challenge); err != nil || o != "https://nexa.fish" {
+		cd := clientData("webauthn.get", challenge, "https://nexa.pm")
+		if o, err := CheckClientData(cd, "webauthn.get", challenge); err != nil || o != "https://nexa.pm" {
 			t.Fatalf("client data: %v %q", err, o)
 		}
 		if _, err := CheckClientData(cd, "webauthn.get", []byte("another")); err == nil {
@@ -51,7 +51,7 @@ func TestRegisterThenSignIn(t *testing.T) {
 		if _, err := CheckClientData(cd, "webauthn.create", challenge); err == nil {
 			t.Fatal("the wrong type was taken")
 		}
-		gotAD, sig := a.Get("nexa.fish", cd)
+		gotAD, sig := a.Get("nexa.pm", cd)
 		if err := VerifySignature(spki, alg, gotAD, cd, sig); err != nil {
 			t.Fatalf("alg %d: good signature refused: %v", alg, err)
 		}
@@ -63,13 +63,13 @@ func TestRegisterThenSignIn(t *testing.T) {
 }
 
 func TestUserVerificationIsRequired(t *testing.T) {
-	h := sha256.Sum256([]byte("nexa.fish"))
+	h := sha256.Sum256([]byte("nexa.pm"))
 	raw := append(h[:], flagUP, 0, 0, 0, 1)
-	if _, err := ParseAuthData(raw, "nexa.fish"); err == nil {
+	if _, err := ParseAuthData(raw, "nexa.pm"); err == nil {
 		t.Fatal("an answer without user verification was taken")
 	}
 	raw[32] = flagUP | flagUV
-	if _, err := ParseAuthData(raw, "nexa.fish"); err != nil {
+	if _, err := ParseAuthData(raw, "nexa.pm"); err != nil {
 		t.Fatal(err)
 	}
 }

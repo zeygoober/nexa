@@ -35,8 +35,8 @@ VIEW, SCALE, FINAL = (1280, 720), 2, (1920, 1080)
 # 540 CSS pixels wide at twice that: 1080 pixels across, as delivered.
 PHONE, PHONE_SCALE = (540, 1170), 2
 # The address the footage shows: the throwaway server answers as Nexa's own,
-# through TLS on a local port that headless Chrome sends nexa.fish to.
-ADDRESS = "https://nexa.fish"
+# through TLS on a local port that headless Chrome sends nexa.pm to.
+ADDRESS = "https://nexa.pm"
 WORK = Path(os.environ.get("TRAILER_WORK", "/tmp/nexa-trailer"))
 random.seed(7)
 
@@ -237,12 +237,12 @@ SHARE_JS = r"""
 """
 
 # ---------------------------------------------------------------------------
-# https://nexa.fish, here
+# https://nexa.pm, here
 # ---------------------------------------------------------------------------
 
 
 class TlsFront(threading.Thread):
-    """TLS on a local port with a certificate made up for nexa.fish, the bytes
+    """TLS on a local port with a certificate made up for nexa.pm, the bytes
     passed to and from chatd as they are, so links in the footage read as
     Nexa's own address. Only the browsers launched here are sent to it."""
 
@@ -255,8 +255,8 @@ class TlsFront(threading.Thread):
         s.close()
         tls = WORK / "tls"
         tls.mkdir(parents=True, exist_ok=True)
-        subprocess.run(["openssl", "req", "-x509", "-newkey", "rsa:2048", "-nodes", "-days", "2", "-subj", "/CN=nexa.fish",
-                        "-addext", "subjectAltName=DNS:nexa.fish", "-keyout", str(tls / "key.pem"), "-out", str(tls / "cert.pem")],
+        subprocess.run(["openssl", "req", "-x509", "-newkey", "rsa:2048", "-nodes", "-days", "2", "-subj", "/CN=nexa.pm",
+                        "-addext", "subjectAltName=DNS:nexa.pm", "-keyout", str(tls / "key.pem"), "-out", str(tls / "cert.pem")],
                        check=True, capture_output=True)
         self.ctx = ssl.create_default_context(ssl.Purpose.CLIENT_AUTH)
         self.ctx.load_cert_chain(str(tls / "cert.pem"), str(tls / "key.pem"))
@@ -2109,7 +2109,7 @@ def main():
     try:
         with sync_playwright() as pw:
             browser = pw.chromium.launch(channel="chromium", args=[
-                f"--host-resolver-rules=MAP nexa.fish 127.0.0.1:{front.port}",
+                f"--host-resolver-rules=MAP nexa.pm 127.0.0.1:{front.port}",
                 "--ignore-certificate-errors",
                 # the recorder films its own tab without asking
                 "--auto-accept-this-tab-capture",

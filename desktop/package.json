@@ -4,7 +4,7 @@
   "version": "1.2.11",
   "description": "Nexa for your computer, with Rich Presence that works alongside Discord.",
   "author": "terrydavisthe2nd",
-  "homepage": "https://nexa.fish",
+  "homepage": "https://nexa.pm",
   "license": "MIT",
   "private": true,
   "main": "dist-app/main.js",

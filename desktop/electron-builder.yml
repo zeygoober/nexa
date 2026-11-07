@@ -21,7 +21,7 @@ compression: maximum
 artifactName: "nexa-${version}-${os}-${arch}.${ext}"
 publish:
   provider: generic
-  url: https://nexa.fish/desktop/
+  url: https://nexa.pm/desktop/
   channel: latest
 # signs the Mac app ad hoc as it is packed, on Linux too (sign-mac.cjs)
 afterPack: ./sign-mac.cjs
@@ -67,7 +67,7 @@ linux:
   icon: resources/icon.png
   category: Network;Chat;InstantMessaging
   executableName: nexa
-  maintainer: Nexa <evilionx3@proton.me>
+  maintainer: Nexa (zey)
   synopsis: Nexa for your computer
   target:
     - target: AppImage

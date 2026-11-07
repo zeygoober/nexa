@@ -56,6 +56,18 @@ var ErrBugAttachment = errors.New("bug attachment not available")
 // back to open or in progress.
 var ErrBugClosed = errors.New("bug report closed")
 
+// What a report is: something broken, or an idea for something new. Both are
+// worked the same way, in the same table; the staff see them in separate tabs.
+const (
+	BugKindBug        = "bug"
+	BugKindSuggestion = "suggestion"
+)
+
+// ValidBugKind reports whether k is one of the kinds above.
+func ValidBugKind(k string) bool {
+	return k == BugKindBug || k == BugKindSuggestion
+}
+
 // BugFinished reports whether a status ends a report's conversation.
 func BugFinished(status string) bool {
 	return status == BugResolved || status == BugWontFix || status == BugClosed
@@ -64,6 +76,7 @@ func BugFinished(status string) bool {
 // BugReport is one report, without its files and thread.
 type BugReport struct {
 	ID                  ids.ID          `json:"id"`
+	Kind                string          `json:"kind"`
 	Number              int64           `json:"number"`
 	UserID              ids.ID          `json:"user_id"`
 	ReporterUsername    string          `json:"reporter_username"`
@@ -111,14 +124,14 @@ type BugMessage struct {
 // what staff wrote, and the status changes they made.
 const bugNews = `(m.kind = 'staff' OR (m.kind = 'system' AND m.event = 'status'))`
 
-const bugCols = `id, number, user_id, reporter_username, reporter_display_name, subject, description, context, status, status_at, status_by, awaiting, attachment_count, last_activity_at, member_read_id, created_at`
+const bugCols = `id, number, user_id, reporter_username, reporter_display_name, subject, description, context, status, status_at, status_by, awaiting, attachment_count, last_activity_at, member_read_id, created_at, kind`
 
 func scanBugReport(r rowScanner) (*BugReport, error) {
 	var b BugReport
 	var context string
 	var statusAt, statusBy sql.NullInt64
 	err := r.Scan(&b.ID, &b.Number, &b.UserID, &b.ReporterUsername, &b.ReporterDisplayName, &b.Subject, &b.Description, &context,
-		&b.Status, &statusAt, &statusBy, &b.Awaiting, &b.AttachmentCount, &b.LastActivityAt, &b.MemberReadID, &b.CreatedAt)
+		&b.Status, &statusAt, &statusBy, &b.Awaiting, &b.AttachmentCount, &b.LastActivityAt, &b.MemberReadID, &b.CreatedAt, &b.Kind)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, ErrNotFound
@@ -170,6 +183,9 @@ func (s *Store) CreateBugReport(ctx context.Context, r *BugReport, files []BugAt
 	if r.Status == "" {
 		r.Status = BugOpen
 	}
+	if !ValidBugKind(r.Kind) {
+		r.Kind = BugKindBug
+	}
 	if r.Awaiting == "" {
 		// a new report is waiting for someone on the team to look at it
 		r.Awaiting = AwaitStaff
@@ -185,9 +201,9 @@ func (s *Store) CreateBugReport(ctx context.Context, r *BugReport, files []BugAt
 		if err := tx.QueryRowContext(ctx, `SELECT coalesce(max(number), 0) + 1 FROM bug_reports`).Scan(&r.Number); err != nil {
 			return err
 		}
-		if _, err := tx.ExecContext(ctx, `INSERT INTO bug_reports (`+bugCols+`) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+		if _, err := tx.ExecContext(ctx, `INSERT INTO bug_reports (`+bugCols+`) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
 			int64(r.ID), r.Number, int64(r.UserID), r.ReporterUsername, r.ReporterDisplayName, r.Subject, r.Description, string(r.Context),
-			r.Status, nullInt64(r.StatusAt), nullID(r.StatusBy), r.Awaiting, r.AttachmentCount, r.LastActivityAt, int64(r.MemberReadID), r.CreatedAt); err != nil {
+			r.Status, nullInt64(r.StatusAt), nullID(r.StatusBy), r.Awaiting, r.AttachmentCount, r.LastActivityAt, int64(r.MemberReadID), r.CreatedAt, r.Kind); err != nil {
 			return err
 		}
 		for i, f := range files {
@@ -228,6 +244,8 @@ func (s *Store) BugReportsForUser(ctx context.Context, uid ids.ID) ([]*BugReport
 
 // BugFilter picks which reports the staff list shows, and in what order.
 type BugFilter struct {
+	// Kind is bug or suggestion; "" lists both.
+	Kind string
 	// Status is one state, "active" (open or in progress), or "" for all.
 	Status string
 	// Waiting keeps the reports waiting on staff: new ones, and ones the
@@ -256,6 +274,10 @@ func (s *Store) BugReportList(ctx context.Context, f BugFilter) ([]*BugReport, e
 	}
 	var where []string
 	var args []any
+	if ValidBugKind(f.Kind) {
+		where = append(where, `kind = ?`)
+		args = append(args, f.Kind)
+	}
 	switch {
 	case f.Status == "active":
 		where = append(where, `status IN ('open', 'in_progress')`)
@@ -324,8 +346,8 @@ type BugCounts struct {
 	All        int `json:"all"`
 }
 
-// CountBugReports counts the reports in each view.
-func (s *Store) CountBugReports(ctx context.Context) (BugCounts, error) {
+// CountBugReports counts the reports of one kind in each view.
+func (s *Store) CountBugReports(ctx context.Context, kind string) (BugCounts, error) {
 	var c BugCounts
 	err := s.db.R.QueryRowContext(ctx, `SELECT
 		coalesce(sum(CASE WHEN awaiting = 'staff' THEN 1 ELSE 0 END), 0),
@@ -335,7 +357,7 @@ func (s *Store) CountBugReports(ctx context.Context) (BugCounts, error) {
 		coalesce(sum(CASE WHEN status = 'wont_fix' THEN 1 ELSE 0 END), 0),
 		coalesce(sum(CASE WHEN status = 'closed' THEN 1 ELSE 0 END), 0),
 		count(*)
-		FROM bug_reports`).Scan(&c.Waiting, &c.Open, &c.InProgress, &c.Resolved, &c.WontFix, &c.Closed, &c.All)
+		FROM bug_reports WHERE kind = ?`, kind).Scan(&c.Waiting, &c.Open, &c.InProgress, &c.Resolved, &c.WontFix, &c.Closed, &c.All)
 	return c, err
 }
 

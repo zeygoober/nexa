@@ -226,7 +226,8 @@ type staffSummary struct {
 	OwnerID ids.ID              `json:"owner_id"`
 	// Bugs counts the bug reports in each view of their tab (nil when they
 	// could not be read).
-	Bugs *store.BugCounts `json:"bugs,omitempty"`
+	Bugs        *store.BugCounts `json:"bugs,omitempty"`
+	Suggestions *store.BugCounts `json:"suggestions,omitempty"`
 	// Unread is the threads waiting on the staff this person has not read,
 	// which the panel's badges count.
 	Unread store.ModUnread `json:"unread"`
@@ -286,7 +287,8 @@ func (s *Server) nexaState(ctx context.Context, u *store.User) (*nexaState, erro
 			st.Staff.Reports = rc
 		}
 		if rank >= rankHelper {
-			st.Staff.Bugs = s.bugCountsFor(ctx)
+			st.Staff.Bugs = s.bugCountsFor(ctx, store.BugKindBug)
+			st.Staff.Suggestions = s.bugCountsFor(ctx, store.BugKindSuggestion)
 		}
 	}
 	st.People = s.people(ctx, who...)

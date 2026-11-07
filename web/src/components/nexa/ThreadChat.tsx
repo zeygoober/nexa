@@ -1,4 +1,5 @@
 import { PersonName } from "@/components/common/PersonName";
+import type { BugKind } from "@/api/bugs";
 import { ArrowDown, ChevronUp, CircleCheck, CircleDot, CirclePlus, Clock, FileIcon, History, Lock, LockOpen, RotateCcw, SendHorizontal, ShieldAlert, Smile, Trash2, Type, type LucideIcon } from "lucide-react";
 import { Fragment, Suspense, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ClipboardEvent, type KeyboardEvent, type MouseEvent, type ReactNode } from "react";
 import type { UploadOptions } from "@/api/client";
@@ -82,6 +83,8 @@ interface Props {
   fileKind: PrivateFileKind;
   /** The case's action, which some of its system lines name; a bug report has none. */
   action?: ModAction | undefined;
+  /** A report's kind, whose statuses its system lines name in its own words. */
+  reportKind?: BugKind | undefined;
   /** The notice or the report, as the first message; left out where the page shows it already. */
   opener?: ThreadOpener | undefined;
   /** The start of the conversation, above everything: what it is and who reads it. */
@@ -108,7 +111,7 @@ interface Props {
  * conversation's own, with files, emoji and formatting; once staff close the
  * thread, a lock bar takes its place.
  */
-export function ThreadChat({ lines, people, perspective, fileKind, action, opener, intro, onSend, upload, locked, note, placeholder, dropName, onSeen }: Props) {
+export function ThreadChat({ lines, people, perspective, fileKind, action, reportKind, opener, intro, onSend, upload, locked, note, placeholder, dropName, onSeen }: Props) {
   const scroller = useRef<HTMLDivElement>(null);
   const atBottom = useRef(true);
   const [showJump, setShowJump] = useState(false);
@@ -161,7 +164,7 @@ export function ThreadChat({ lines, people, perspective, fileKind, action, opene
           <div className={s.threadInner}>
             {intro}
             {opener ? <OpenerRow opener={opener} people={people} /> : null}
-            <Lines lines={lines} people={people} perspective={perspective} fileKind={fileKind} action={action} openerAt={opener?.at} />
+            <Lines lines={lines} people={people} perspective={perspective} fileKind={fileKind} action={action} reportKind={reportKind} openerAt={opener?.at} />
           </div>
         </div>
         {showJump ? (
@@ -242,7 +245,7 @@ function OpenerRow({ opener, people }: { opener: ThreadOpener; people: People })
   );
 }
 
-function Lines({ lines, people, perspective, fileKind, action, openerAt }: { lines: ThreadLine[]; people: People; perspective: "member" | "staff"; fileKind: PrivateFileKind; action: ModAction | undefined; openerAt: number | undefined }) {
+function Lines({ lines, people, perspective, fileKind, action, reportKind, openerAt }: { lines: ThreadLine[]; people: People; perspective: "member" | "staff"; fileKind: PrivateFileKind; action: ModAction | undefined; reportKind: BugKind | undefined; openerAt: number | undefined }) {
   return (
     <>
       {lines.map((m, i) => {
@@ -257,7 +260,7 @@ function Lines({ lines, people, perspective, fileKind, action, openerAt }: { lin
                 <span>{formatDateDivider(m.created_at)}</span>
               </div>
             ) : null}
-            {m.kind === "system" ? <SystemRow m={m} people={people} action={action} perspective={perspective} /> : <Row m={m} people={people} perspective={perspective} grouped={grouped} fileKind={fileKind} />}
+            {m.kind === "system" ? <SystemRow m={m} people={people} action={action} perspective={perspective} reportKind={reportKind} /> : <Row m={m} people={people} perspective={perspective} grouped={grouped} fileKind={fileKind} />}
           </Fragment>
         );
       })}
@@ -330,14 +333,14 @@ function Time({ at }: { at: number }) {
   );
 }
 
-function SystemRow({ m, people, action, perspective }: { m: ThreadLine; people: People; action: ModAction | undefined; perspective: "member" | "staff" }) {
+function SystemRow({ m, people, action, perspective, reportKind }: { m: ThreadLine; people: People; action: ModAction | undefined; perspective: "member" | "staff"; reportKind: BugKind | undefined }) {
   return (
     <div className={chat.system} data-event={m.event} data-status={m.event === "status" ? m.body : undefined} data-testid="case-line-system">
       <span className={chat.sysIcon} aria-hidden="true">
         <SystemIcon event={m.event} />
       </span>
       <span>
-        {systemLineText(m, people, action, perspective)}
+        {systemLineText(m, people, action, perspective, reportKind)}
         <span className={chat.time}>{formatTimestamp(m.created_at)}</span>
       </span>
     </div>

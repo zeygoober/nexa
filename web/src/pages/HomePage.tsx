@@ -6,7 +6,7 @@ import { NexaTile, NexaWordmark } from "@/components/common/Brand";
 import { hasSavedSession, useAuth } from "@/stores/auth";
 import { useSettings } from "@/stores/settings";
 import { currentPlatform, isAndroidBrowser } from "@/lib/platform";
-import { CONTACT_EMAIL, GITHUB_URL } from "@/lib/legal";
+import { CONTACT_EMAIL, CONTACT_HREF, GITHUB_URL, OWNER_USERNAME } from "@/lib/legal";
 import { formatBytes } from "@/lib/time";
 import { admin } from "@/api/admin";
 import { android } from "@/api/android";
@@ -524,7 +524,7 @@ export default function HomePage() {
             <Facts items={facts("people", ["data", "moderation", "reports"])} />
             <p className={s.aboutLinks}>
               <Link className={s.small} to="/about">{t("home.people.about")}</Link>
-              <a className={s.small} href={`mailto:${CONTACT_EMAIL}`}>{CONTACT_EMAIL}</a>
+              <a className={s.small} href={CONTACT_HREF}>{CONTACT_EMAIL || `@${OWNER_USERNAME}`}</a>
             </p>
           </Chapter>
 
@@ -553,7 +553,7 @@ export default function HomePage() {
             <li><Link to="/about">{t("legal.aboutTitle")}</Link></li>
             <li><Link to="/terms">{t("legal.termsTitle")}</Link></li>
             <li><Link to="/privacy">{t("legal.privacyTitle")}</Link></li>
-            <li><a href={`mailto:${CONTACT_EMAIL}`}>{t("legal.contactOwner")}</a></li>
+            <li><a href={CONTACT_HREF}>{t("legal.contactOwner")}</a></li>
             <li><Link to="/download">{t("home.nav.download")}</Link></li>
             {signedIn ? null : <li><Link to="/login">{t("home.nav.logIn")}</Link></li>}
           </ul>

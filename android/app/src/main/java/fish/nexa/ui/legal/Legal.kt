@@ -310,12 +310,12 @@ object Legal {
                 Icon("Sparkles", c.textBrand, size = 14.dp)
                 Txt(t("legal.newTitle"), style = Nx.type.bodySmall.copy(fontSize = Nx.type.sp(13.5f), fontWeight = FontWeight(700)), color = c.textBrand)
             }
-            val items = listOf(t("legal.newFileStorage")) + (if (previous < "2026-11-02.1") listOf(t("legal.newReportOutcomes")) else emptyList()) + (if (previous < "2026-11-01.1") listOf(t("legal.newTurnstile")) else emptyList()) + (if (previous < "2026-10-31.1") listOf(t("legal.newCallUsage")) else emptyList()) + (if (previous < "2026-10-28.1") listOf(t("legal.newNSFW")) else emptyList()) + (if (previous < "2026-10-26.1") listOf(t("legal.newPlans")) else emptyList()) + (if (previous < "2026-10-25.1") listOf(t("legal.newPasskeys")) else emptyList()) + (if (previous < "2026-10-20.2") listOf(t("legal.newAddresses")) else emptyList()) + (if (previous < "2026-10-20.1") listOf(t("legal.newCaptcha")) else emptyList()) + if (previous < "2026-10-19") listOf(t("legal.new1"), t("legal.new2"), t("legal.new3"), t("legal.new4"), t("legal.new5")) else emptyList()
+            val items = listOf(t("legal.newOwner")) + (if (previous < "2026-11-06.1") listOf(t("legal.newFileStorage")) else emptyList()) + (if (previous < "2026-11-02.1") listOf(t("legal.newReportOutcomes")) else emptyList()) + (if (previous < "2026-11-01.1") listOf(t("legal.newTurnstile")) else emptyList()) + (if (previous < "2026-10-31.1") listOf(t("legal.newCallUsage")) else emptyList()) + (if (previous < "2026-10-28.1") listOf(t("legal.newNSFW")) else emptyList()) + (if (previous < "2026-10-26.1") listOf(t("legal.newPlans")) else emptyList()) + (if (previous < "2026-10-25.1") listOf(t("legal.newPasskeys")) else emptyList()) + (if (previous < "2026-10-20.2") listOf(t("legal.newAddresses")) else emptyList()) + (if (previous < "2026-10-20.1") listOf(t("legal.newCaptcha")) else emptyList()) + if (previous < "2026-10-19") listOf(t("legal.new1"), t("legal.new2"), t("legal.new3"), t("legal.new4"), t("legal.new5")) else emptyList()
             Bullets(items, ordered = false, size = 14f)
         }
     }
 
-    private val LINKABLE = Regex("""([\w.+-]+@[\w-]+\.[\w.]+)|((?:https?://)?(?:nexa\.fish|mathtest\.lol|chat\.evilion\.xyz)(?:/[\w/-]*)?)""")
+    private val LINKABLE = Regex("""([\w.+-]+@[\w-]+\.[\w.]+)|((?:https?://)?(?:nexa\.pm)(?:/[\w/-]*)?)""")
 
     /** Email addresses and Nexa's own addresses in the documents, tappable. */
     @Composable
@@ -357,13 +357,13 @@ object Legal {
         }
     }
 
-    /** Contact the owner (nora) here: the address, and that a message in the app works too. */
+    /** Contact the owner (zey) here: the address and that a message in the app works too, or, with no address, the owner's @name. */
     @Composable
     fun ContactBlock() {
         val c = Nx.colors
         Column(Modifier.padding(top = 16.dp)) {
-            BasicText(linkify(t("legal.contactHere", "user" to ownerUsername) + " " + contactEmail), style = Nx.type.body.copy(fontSize = Nx.type.sp(15f), lineHeight = Nx.type.sp(24.75f), color = c.text))
-            Txt(t("legal.inApp", "user" to "@$ownerUsername"), style = Nx.type.body.copy(fontSize = Nx.type.sp(15f), lineHeight = Nx.type.sp(24.75f)), color = c.text)
+            BasicText(linkify(t("legal.contactHere", "user" to ownerUsername) + " " + contactEmail.ifEmpty { "@$ownerUsername" }), style = Nx.type.body.copy(fontSize = Nx.type.sp(15f), lineHeight = Nx.type.sp(24.75f), color = c.text))
+            if (contactEmail.isNotEmpty()) Txt(t("legal.inApp", "user" to "@$ownerUsername"), style = Nx.type.body.copy(fontSize = Nx.type.sp(15f), lineHeight = Nx.type.sp(24.75f)), color = c.text)
         }
     }
 

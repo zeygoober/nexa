@@ -167,7 +167,7 @@ func (s *Server) qrView(ctx context.Context, l *qrLogin) (map[string]any, bool) 
 	out := map[string]any{"state": l.state}
 	switch l.state {
 	case qrScanned:
-		// who is about to approve, so the device can say "check your phone, nora"
+		// who is about to approve, so the device can say "check your phone, zey"
 		if u, err := s.Store.UserByID(ctx, l.user); err == nil {
 			out["user"] = u.Public()
 		}

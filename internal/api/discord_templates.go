@@ -256,7 +256,7 @@ func (s *Server) fetchDiscordTemplate(ctx context.Context, code string) (*discor
 	if err != nil {
 		return nil, errDiscordTemplateDown
 	}
-	req.Header.Set("User-Agent", "Nexa (https://nexa.fish, server templates)")
+	req.Header.Set("User-Agent", "Nexa (https://nexa.pm, server templates)")
 	req.Header.Set("Accept", "application/json")
 	res, err := s.discordTemplateHTTPClient().Do(req)
 	if err != nil {

@@ -11,7 +11,7 @@
  */
 
 /** The effective date of the Terms and Privacy Policy in docs/legal (a test holds the two to it). */
-export const LEGAL_EFFECTIVE = "2026-11-06";
+export const LEGAL_EFFECTIVE = "2026-11-07";
 
 /**
  * What an account agrees to: the effective date, and which revision of that
@@ -20,13 +20,21 @@ export const LEGAL_EFFECTIVE = "2026-11-06";
  */
 export const LEGAL_VERSION = `${LEGAL_EFFECTIVE}.1`;
 
-export const CONTACT_EMAIL = "evilionx3@proton.me";
+/**
+ * The owner's address, or "" while there is none: then every contact link
+ * goes to the owner's profile instead (CONTACT_HREF), where a message reaches
+ * them in the app. Android reads both constants from this file.
+ */
+export const CONTACT_EMAIL = "";
 
 /** In-app owner account for contact / reports. */
-export const OWNER_USERNAME = "nora";
+export const OWNER_USERNAME = "zey";
+
+/** Where "Contact Owner" goes: the email when there is one, else the owner's profile link. */
+export const CONTACT_HREF = CONTACT_EMAIL ? `mailto:${CONTACT_EMAIL}` : `/@${OWNER_USERNAME}`;
 
 /** Public source for every Nexa client and the server; also read by Android. */
-export const GITHUB_URL = "https://github.com/terrydavisthe2nd/nexa";
+export const GITHUB_URL = "https://github.com/zeynalka3/nexa";
 
 /** The guides for plugin authors and custom CSS, read on GitHub (docs/plugins.md, docs/custom-css.md). */
 export const PLUGIN_GUIDE_URL = `${GITHUB_URL}/blob/main/docs/plugins.md`;

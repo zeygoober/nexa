@@ -44,7 +44,7 @@ class MediaLinkVectorsTest {
     fun mediaLinks() = runBlocking {
         val now = Vectors["generated"].jsonObject["now"]!!.jsonPrimitive.long
         val asked = Collections.synchronizedList(ArrayList<List<String>>())
-        val links = MediaLinks("https://nexa.fish", this, { batch -> asked += batch; emptyMap() }, { now })
+        val links = MediaLinks("https://nexa.pm", this, { batch -> asked += batch; emptyMap() }, { now })
         val cases = Vectors["media"].jsonArray.map { it.jsonObject }
         Vectors.expectAll("isProxied / proxyDeadline / mediaKey / mediaSrc", cases) { c ->
             val url = c.s("url")!!
@@ -72,19 +72,19 @@ class MediaLinkVectorsTest {
         data class Card(val url: String)
         val requested = Collections.synchronizedList(ArrayList<String>())
         val gate = CompletableDeferred<Unit>()
-        val previews = LinkPreviews(this, "https://nexa.fish/channels/@me", { url: String ->
+        val previews = LinkPreviews(this, "https://nexa.pm/channels/@me", { url: String ->
             requested += url
             if (url.contains("slow")) gate.await()
             if (url.contains("fail")) throw IllegalStateException("no")
             Card(url)
         }, { it.url }, { c, u -> c.copy(url = u) })
         val got = previews.embedsFor(
-            listOf("https://nexa.fish/invite/abc#k=1.key", "https://example.com/a", "https://nexa.fish/note/abcdefghijklmnopq#key", "https://fail.example/x", "https://slow.example/y"),
+            listOf("https://nexa.pm/invite/abc#k=1.key", "https://example.com/a", "https://nexa.pm/note/abcdefghijklmnopq#key", "https://fail.example/x", "https://slow.example/y"),
             waitMs = 300,
         )
-        assertEquals(listOf("https://nexa.fish/invite/abc", "https://example.com/a", "https://fail.example/x", "https://slow.example/y"), requested.toList())
+        assertEquals(listOf("https://nexa.pm/invite/abc", "https://example.com/a", "https://fail.example/x", "https://slow.example/y"), requested.toList())
         // the invite's key goes back on the card; the note link and the failure have none; the slow one missed the wait
-        assertEquals(listOf("https://nexa.fish/invite/abc#k=1.key", "https://example.com/a"), got.map { it.url })
+        assertEquals(listOf("https://nexa.pm/invite/abc#k=1.key", "https://example.com/a"), got.map { it.url })
         gate.complete(Unit)
         delay(50)
         assertEquals(listOf("https://slow.example/y"), previews.embedsFor(listOf("https://slow.example/y"), 300).map { it.url })

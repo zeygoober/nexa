@@ -39,10 +39,10 @@ Integrations, and from their account in Settings, Authorized Apps.
 
 | What | Address |
 | --- | --- |
-| REST API | `https://nexa.fish/api/v10` |
-| Gateway | `wss://nexa.fish/bot-gateway` |
-| Pictures and files | `https://nexa.fish/cdn` |
-| OAuth2 | `https://nexa.fish/oauth2/authorize`, tokens at `https://nexa.fish/api/v10/oauth2/token` |
+| REST API | `https://nexa.pm/api/v10` |
+| Gateway | `wss://nexa.pm/bot-gateway` |
+| Pictures and files | `https://nexa.pm/cdn` |
+| OAuth2 | `https://nexa.pm/oauth2/authorize`, tokens at `https://nexa.pm/api/v10/oauth2/token` |
 
 Another Nexa server answers at its own address in the same places. The
 Developer Portal shows the lines below with its own address filled in.
@@ -53,9 +53,9 @@ Developer Portal shows the lines below with its own address filled in.
 import discord
 import yarl
 
-BASE = "https://nexa.fish"
+BASE = "https://nexa.pm"
 discord.http.Route.BASE = BASE + "/api/v10"
-discord.gateway.DiscordWebSocket.DEFAULT_GATEWAY = yarl.URL("wss://nexa.fish/bot-gateway/")
+discord.gateway.DiscordWebSocket.DEFAULT_GATEWAY = yarl.URL("wss://nexa.pm/bot-gateway/")
 discord.Asset.BASE = BASE + "/cdn"
 ```
 
@@ -66,7 +66,7 @@ const { Client, GatewayIntentBits } = require("discord.js");
 
 const client = new Client({
   intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages],
-  rest: { api: "https://nexa.fish/api", cdn: "https://nexa.fish/cdn" },
+  rest: { api: "https://nexa.pm/api", cdn: "https://nexa.pm/cdn" },
 });
 ```
 
@@ -76,7 +76,7 @@ all discord.js needs.
 ### discordgo
 
 ```go
-const base = "https://nexa.fish"
+const base = "https://nexa.pm"
 
 func pointAtNexa() {
 	api := base + "/api/v" + discordgo.APIVersion + "/"

@@ -1,5 +1,5 @@
 import { openReport } from "@/lib/reporting";
-import { Bug, CodeXml, Download, Flag, LogOut, Smartphone } from "lucide-react";
+import { Bug, CodeXml, Download, Flag, Lightbulb, LogOut, Smartphone } from "lucide-react";
 import { GITHUB_URL } from "@/lib/legal";
 import { Suspense, useEffect, useMemo, useState } from "react";
 import { android } from "@/api/android";
@@ -18,7 +18,7 @@ import s from "./Settings.module.css";
 import { t } from "@/i18n";
 import { atLeast, useMyRank } from "@/lib/staffRank";
 import { confirmLogout } from "@/lib/confirmLogout";
-import { openReportBug } from "@/components/bugs/ReportBugButton";
+import { openReportBug, openSuggest } from "@/components/bugs/ReportBugButton";
 const AccountPage = lazyPage(() => import("./AccountPage"));
 const ProfilePage = lazyPage(() => import("./ProfilePage"));
 const PrivacyPage = lazyPage(() => import("./PrivacyPage"));
@@ -231,6 +231,10 @@ export default function SettingsModal({ onClose, page: initial, packId, modalId,
         <button className={s.navItem} onClick={() => openReportBug("settings")} data-nav="report-bug">
           <NavIcon icon={Bug} />
           <span className={s.navLabel}>{t("bugs.report")}</span>
+        </button>
+        <button className={s.navItem} onClick={() => openSuggest("settings")} data-nav="suggest-feature">
+          <NavIcon icon={Lightbulb} />
+          <span className={s.navLabel}>{t("suggestions.suggest")}</span>
         </button>
         {androidApp ? (
           <button className={s.navItem} onClick={() => window.open("/download", "_blank", "noopener")} data-nav="get-app">

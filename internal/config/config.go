@@ -183,7 +183,7 @@ type Config struct {
 func Load(getenv func(string) string) (Config, error) {
 	c := Config{
 		Listen:              "127.0.0.1:8090",
-		PublicURL:           "https://nexa.fish",
+		PublicURL:           "https://nexa.pm",
 		DataDir:             "./data",
 		WebDist:             "./web/dist",
 		MaxUploadBytes:      104857600,

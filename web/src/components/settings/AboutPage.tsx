@@ -117,20 +117,22 @@ export default function AboutPage() {
       <section className={l.aboutGroup}>
         <h3 data-setting="contact" className={l.aboutLabel}>{t("settings.about.contact")}</h3>
         <div className={l.rows}>
-          <div className={l.row}>
-            <span className={l.rowIcon} aria-hidden="true">
-              <Mail size={18} />
-            </span>
-            <span className={l.rowText}>
-              <span className={l.rowTitle}>{t("settings.about.email")}</span>
-              <span className={l.rowSub}>
-                <a href={`mailto:${CONTACT_EMAIL}`}>{CONTACT_EMAIL}</a>
+          {CONTACT_EMAIL ? (
+            <div className={l.row}>
+              <span className={l.rowIcon} aria-hidden="true">
+                <Mail size={18} />
               </span>
-            </span>
-            <a className={l.rowIcon} href={`mailto:${CONTACT_EMAIL}`} aria-label={t("legal.contactOwner")}>
-              <ExternalLink size={16} />
-            </a>
-          </div>
+              <span className={l.rowText}>
+                <span className={l.rowTitle}>{t("settings.about.email")}</span>
+                <span className={l.rowSub}>
+                  <a href={`mailto:${CONTACT_EMAIL}`}>{CONTACT_EMAIL}</a>
+                </span>
+              </span>
+              <a className={l.rowIcon} href={`mailto:${CONTACT_EMAIL}`} aria-label={t("legal.contactOwner")}>
+                <ExternalLink size={16} />
+              </a>
+            </div>
+          ) : null}
           <div className={l.row}>
             <span className={l.rowIcon} aria-hidden="true">
               <AtSign size={18} />

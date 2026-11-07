@@ -79,7 +79,7 @@ func (r *rest) do(ctx context.Context, method, path string, auth string, body io
 		if contentType != "" {
 			req.Header.Set("Content-Type", contentType)
 		}
-		req.Header.Set("User-Agent", "DiscordBot (https://nexa.fish, 1) Nexa")
+		req.Header.Set("User-Agent", "DiscordBot (https://nexa.pm, 1) Nexa")
 		res, err := r.client.Do(req)
 		if err != nil {
 			return 0, err

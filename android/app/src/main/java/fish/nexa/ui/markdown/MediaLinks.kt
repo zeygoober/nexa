@@ -51,7 +51,7 @@ object PostLinks {
  * loads it. Anything else remote is not loaded at all.
  */
 class MediaLinks(
-    /** The instance's origin ("https://nexa.fish"). */
+    /** The instance's origin ("https://nexa.pm"). */
     private val origin: String,
     private val scope: CoroutineScope,
     /** POST /proxy/refresh with these links: the freshly signed ones by the old address. Throws when it did not get through. */

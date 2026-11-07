@@ -155,7 +155,7 @@ function ModalEntry({ modal }: { modal: ModalState }) {
         {modal?.kind === "memberAction" ? <MemberActionModal onClose={close} serverId={String(modal.props?.["serverId"])} userId={String(modal.props?.["userId"])} action={modal.props?.["action"] as "kick" | "ban" | "timeout" | "roles"} /> : null}
         {modal?.kind === "verifyKey" ? <VerifyKeyModal onClose={close} userId={String(modal.props?.["userId"])} /> : null}
         {modal?.kind === "keyChange" ? <KeyChangeModal onClose={close} /> : null}
-        {modal?.kind === "reportBug" ? <ReportBugModal onClose={close} from={modal.props?.["from"] as BugFrom | undefined} /> : null}
+        {modal?.kind === "reportBug" ? <ReportBugModal onClose={close} from={modal.props?.["from"] as BugFrom | undefined} kind={modal.props?.["kind"] === "suggestion" ? "suggestion" : "bug"} /> : null}
         {modal?.kind === "shareNote" ? <ShareNoteModal onClose={close} noteId={String(modal.props?.["noteId"])} /> : null}
         {modal?.kind === "appForm" ? <AppFormModal onClose={close} form={modal.props?.["form"] as AppForm} appId={String(modal.props?.["appId"])} channelId={String(modal.props?.["channelId"])} interactionId={String(modal.props?.["interactionId"])} /> : null}
       </Suspense>

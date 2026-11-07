@@ -86,7 +86,7 @@ func New(dir string) *Client {
 		API:    "https://openlibrary.org",
 		Covers: "https://covers.openlibrary.org",
 		// Open Library asks heavy users to say who they are
-		Agent:    "Nexa (https://nexa.fish)",
+		Agent:    "Nexa (https://nexa.pm)",
 		Log:      slog.Default(),
 		limit:    rate.NewLimiter(3, 3),
 		searches: map[string]searchHit{},

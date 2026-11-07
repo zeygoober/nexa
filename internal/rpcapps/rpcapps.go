@@ -88,7 +88,7 @@ func New() *Cache {
 		Base:      "https://discord.com/api/v10",
 		CDN:       "https://cdn.discordapp.com",
 		Client:    &http.Client{Timeout: 5 * time.Second},
-		UserAgent: "Nexa (https://nexa.fish, rich presence)",
+		UserAgent: "Nexa (https://nexa.pm, rich presence)",
 		TTL:       24 * time.Hour,
 		FailTTL:   10 * time.Minute,
 		Max:       5000,

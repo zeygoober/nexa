@@ -1,7 +1,7 @@
 NEXA - TERMS OF SERVICE
-Site: nexa.fish (also at mathtest.lol, and formerly chat.evilion.xyz)
-Contact the owner (nora) here: evilionx3@proton.me
-Effective: 2026-11-06
+Site: nexa.pm
+Contact the owner (zey) here: in the app, message @zey
+Effective: 2026-11-07
 
 These Terms are the agreement between you and the owner of Nexa.
 They are short on purpose and written in plain language. The Privacy
@@ -286,8 +286,8 @@ new Terms.
 
 Questions, reports, appeals, or legal process:
 
-  Contact the owner (nora) here: evilionx3@proton.me
-  In the app: message @nora, or reply in your case thread with Nexa
+  Contact the owner (zey) here: in the app, message @zey, or reply in
+  your case thread with Nexa
 
 Legal requests should name the account (username or account ID),
 explain the legal basis, and include contact details for the reply.
@@ -295,6 +295,6 @@ They are answered with exactly what is held, as listed in the Privacy
 Policy. Anything not on that list does not exist to hand over.
 
 The full Terms and Privacy Policy are always available at
-nexa.fish/terms and nexa.fish/privacy.
+nexa.pm/terms and nexa.pm/privacy.
 
 END OF TERMS

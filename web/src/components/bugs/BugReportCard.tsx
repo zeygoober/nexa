@@ -1,16 +1,16 @@
 import { ChevronDown, Play } from "lucide-react";
 import { useId, useState } from "react";
-import type { BugContext, BugFile, BugStatus } from "@/api/bugs";
+import type { BugContext, BugFile, BugKind, BugStatus } from "@/api/bugs";
 import { useBugFileURL } from "@/lib/bugMedia";
 import { bugStatusLabel, bugStatusTone, contextRows, isBugVideo } from "@/lib/bugs";
 import { t } from "@/i18n";
 import s from "./Bugs.module.css";
 
 /** A report's status, as a small coloured label. */
-export function BugStatusChip({ status, className }: { status: BugStatus; className?: string | undefined }) {
+export function BugStatusChip({ status, kind, className }: { status: BugStatus; kind?: BugKind | undefined; className?: string | undefined }) {
   return (
     <span className={[s.status, className ?? ""].join(" ")} data-tone={bugStatusTone(status) || undefined} data-status={status}>
-      {bugStatusLabel(status)}
+      {bugStatusLabel(status, kind)}
     </span>
   );
 }

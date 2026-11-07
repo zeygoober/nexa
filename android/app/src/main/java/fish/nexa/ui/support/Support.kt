@@ -946,7 +946,7 @@ private fun Refunds(inSettings: Boolean) {
                 H2(t("support.refunds.title"))
                 Txt(t("support.refunds.body"), style = Nx.type.body.copy(fontSize = Nx.type.sp(14.5f), lineHeight = Nx.type.sp(21.7f)), color = c.text)
                 Hint(t("support.refunds.cancel"))
-                Hint(t("support.refunds.contact", "email" to fish.nexa.ui.legal.Legal.contactEmail, "username" to fish.nexa.ui.legal.Legal.ownerUsername))
+                Hint(t("support.refunds.contact", "username" to fish.nexa.ui.legal.Legal.ownerUsername))
                 // words that wrap in the narrow column, where a link button would cut them short
                 if (!inSettings) Txt(
                     t("support.termsLink"),

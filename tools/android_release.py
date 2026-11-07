@@ -4,7 +4,7 @@
   python3 tools/android_release.py [--notes "What changed"] [--if-changed]
 
 Builds android/ with Gradle (`:app:assembleRelease`, signed with the release
-key configured locally in android/signing, pointed at https://nexa.fish),
+key configured locally in android/signing, pointed at https://nexa.pm),
 checks every APK it made (package, version, minimum Android, signing
 certificate, and that no test server is baked into it), then copies the
 64-bit, 32-bit and universal builds into downloads/android under names that
@@ -25,7 +25,7 @@ not kept in git: each server builds and publishes its own.
   --skip-build      publish the APKs already in android/app/build/outputs/apk/release
   --from DIR        publish the release APKs in DIR instead (implies --skip-build)
   --to DIR          where to publish (default downloads/android)
-  --server URL      the server the build talks to (default https://nexa.fish)
+  --server URL      the server the build talks to (default https://nexa.pm)
 
 Over the air first: with --if-changed, when only the web content the app copies in
 changed (OTA_SOURCES: translations, What's New, legal text, sounds, seasonal art)
@@ -50,7 +50,7 @@ ROOT = Path(__file__).resolve().parent.parent
 ANDROID = ROOT / "android"
 OUTPUT = ANDROID / "app/build/outputs/apk/release"
 PACKAGE = "fish.nexa"
-SERVER = "https://nexa.fish"
+SERVER = "https://nexa.pm"
 # What is offered: most phones, older 32-bit ones, and the build for anything else.
 ABIS = ("arm64-v8a", "armeabi-v7a", "universal")
 ORDER = {"arm64-v8a": 0, "armeabi-v7a": 1, "x86_64": 2, "universal": 3}

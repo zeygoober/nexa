@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Builds the desktop app for every platform for a test site, and nothing live.
 
-  python3 tools/desktop_dev_build.py [--url https://dev.nexa.fish] [--to data-dev/desktop]
+  python3 tools/desktop_dev_build.py [--url https://dev.nexa.pm] [--to data-dev/desktop]
 
 An installed app ignores environment overrides, so a client for a test site has
 its address fixed when it is built (NEXA_BUILD_URL). It is also a different app:
@@ -36,14 +36,14 @@ def run(*cmd: str, cwd: Path = ROOT, env: dict | None = None) -> None:
 
 def main() -> int:
     ap = argparse.ArgumentParser()
-    ap.add_argument("--url", default="https://dev.nexa.fish")
+    ap.add_argument("--url", default="https://dev.nexa.pm")
     ap.add_argument("--to", default=str(ROOT / "data-dev/desktop"))
     ap.add_argument("--work", default=str(Path.home() / ".cache/nexa-desktop-dev"), help="where the builds are made; about 6 GB")
     args = ap.parse_args()
     to = Path(args.to).resolve()
     if to == (LIVE / "desktop").resolve() or LIVE.resolve() in to.parents or os.environ.get("DESKTOP_DIR") and to == Path(os.environ["DESKTOP_DIR"]).resolve():
         sys.exit(f"{to} is what the live site serves")
-    if args.url.rstrip("/") in ("https://nexa.fish", "https://mathtest.lol"):
+    if args.url.rstrip("/") in ("https://nexa.pm",):
         sys.exit("that is the live site: a test build is never pointed at it")
 
     work = Path(args.work)

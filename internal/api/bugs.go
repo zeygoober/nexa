@@ -109,6 +109,7 @@ func bugLimits() media.PrivateLimits {
 // memberBug is a report as its reporter sees it.
 type memberBug struct {
 	ID          ids.ID                `json:"id"`
+	Kind        string                `json:"kind"`
 	Number      int64                 `json:"number"`
 	Subject     string                `json:"subject"`
 	Description string                `json:"description"`
@@ -139,7 +140,7 @@ func toMemberBug(r *store.BugReport, files []store.BugAttachment, unread int) me
 	if files == nil {
 		files = []store.BugAttachment{}
 	}
-	return memberBug{ID: r.ID, Number: r.Number, Subject: r.Subject, Description: r.Description, Context: r.Context, Status: r.Status,
+	return memberBug{ID: r.ID, Kind: r.Kind, Number: r.Number, Subject: r.Subject, Description: r.Description, Context: r.Context, Status: r.Status,
 		StatusAt: r.StatusAt, StatusBy: r.StatusBy, Awaiting: r.Awaiting, Attachments: files, Unread: unread, LastActivityAt: r.LastActivityAt, CreatedAt: r.CreatedAt}
 }
 
@@ -222,7 +223,7 @@ func (s *Server) emitBug(ctx context.Context, r *store.BugReport, lines ...*stor
 		last = lines[n-1]
 	}
 	if view, err := s.staffBugView(ctx, r, last); err == nil {
-		counts, _ := s.Store.CountBugReports(ctx)
+		counts, _ := s.Store.CountBugReports(ctx, r.Kind)
 		s.emitStaff(ctx, rankHelper, "mod_bug", map[string]any{"report": view, "messages": lines, "people": people, "counts": counts})
 	}
 	// what waits on the staff, and so what each of them has not read, may have changed
@@ -336,6 +337,7 @@ func (s *Server) handleBugCreate(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	me := auth.UserFrom(ctx)
 	var req struct {
+		Kind        string            `json:"kind"`
 		Subject     string            `json:"subject"`
 		Description string            `json:"description"`
 		Context     map[string]string `json:"context"`
@@ -348,13 +350,27 @@ func (s *Server) handleBugCreate(w http.ResponseWriter, r *http.Request) {
 		WriteError(w, err)
 		return
 	}
+	// a suggestion is sent the same way as a bug report; only the words differ
+	kind := req.Kind
+	if kind == "" {
+		kind = store.BugKindBug
+	}
+	if !store.ValidBugKind(kind) {
+		WriteError(w, E(http.StatusBadRequest, "bad_kind", "Send a bug report or a suggestion."))
+		return
+	}
+	suggestion := kind == store.BugKindSuggestion
+	noun := "report"
+	if suggestion {
+		noun = "suggestion"
+	}
 	subject, ok := CleanText(strings.ReplaceAll(req.Subject, "\n", " "), maxBugSubject)
 	if !ok {
 		WriteError(w, E(http.StatusBadRequest, "subject_too_long", "Subjects are at most 120 characters."))
 		return
 	}
 	if len([]rune(subject)) < minBugSubject {
-		WriteError(w, E(http.StatusBadRequest, "subject_required", "Give the report a short subject."))
+		WriteError(w, E(http.StatusBadRequest, "subject_required", "Give the "+noun+" a short subject."))
 		return
 	}
 	description, ok := CleanText(req.Description, maxBugDescription)
@@ -363,11 +379,15 @@ func (s *Server) handleBugCreate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if len([]rune(description)) < minBugDescription {
-		WriteError(w, E(http.StatusBadRequest, "description_required", "Describe what happened in a sentence or two."))
+		msg := "Describe what happened in a sentence or two."
+		if suggestion {
+			msg = "Describe your idea in a sentence or two."
+		}
+		WriteError(w, E(http.StatusBadRequest, "description_required", msg))
 		return
 	}
 	if len(req.Attachments) > maxBugFiles {
-		WriteError(w, E(http.StatusBadRequest, "too_many_files", "A report can have up to 5 files."))
+		WriteError(w, E(http.StatusBadRequest, "too_many_files", "A "+noun+" can have up to 5 files."))
 		return
 	}
 	files := make([]store.BugAttachment, 0, len(req.Attachments))
@@ -400,10 +420,10 @@ func (s *Server) handleBugCreate(w http.ResponseWriter, r *http.Request) {
 	// use up someone's reports for the hour
 	if ok, retry := s.limBug.Allow("bug:" + me.ID.String()); !ok {
 		w.Header().Set("Retry-After", retryAfter(retry))
-		WriteError(w, E(http.StatusTooManyRequests, "rate_limited", "You have sent several reports in a short time. Wait a little, then send this one."))
+		WriteError(w, E(http.StatusTooManyRequests, "rate_limited", "You have sent several "+noun+"s in a short time. Wait a little, then send this one."))
 		return
 	}
-	report := &store.BugReport{UserID: me.ID, ReporterUsername: me.Username, ReporterDisplayName: me.DisplayName, Subject: subject, Description: description, Context: s.cleanBugContext(req.Context)}
+	report := &store.BugReport{Kind: kind, UserID: me.ID, ReporterUsername: me.Username, ReporterDisplayName: me.DisplayName, Subject: subject, Description: description, Context: s.cleanBugContext(req.Context)}
 	if err := s.Store.CreateBugReport(ctx, report, files); err != nil {
 		if errors.Is(err, store.ErrBugAttachment) {
 			WriteError(w, errBugFileGone)
@@ -608,7 +628,12 @@ func (s *Server) handleModBugs(w http.ResponseWriter, r *http.Request) {
 	if !OneOf(sort, "activity", "newest", "oldest") {
 		sort = "activity"
 	}
-	f := store.BugFilter{Status: status, Waiting: q.Get("waiting") == "1", WithFiles: q.Get("files") == "1", Query: q.Get("q"), Sort: sort, BeforeAt: beforeAt, BeforeID: beforeID, Limit: limit}
+	// the Bug Reports and Suggestions tabs each list their own kind
+	kind := q.Get("kind")
+	if !store.ValidBugKind(kind) {
+		kind = store.BugKindBug
+	}
+	f := store.BugFilter{Kind: kind, Status: status, Waiting: q.Get("waiting") == "1", WithFiles: q.Get("files") == "1", Query: q.Get("q"), Sort: sort, BeforeAt: beforeAt, BeforeID: beforeID, Limit: limit}
 	list, err := s.Store.BugReportList(ctx, f)
 	if err != nil {
 		WriteError(w, err)
@@ -634,12 +659,12 @@ func (s *Server) handleModBugs(w http.ResponseWriter, r *http.Request) {
 		views = append(views, toStaffBug(b, files[b.ID], last[b.ID]))
 		who = append(who, bugPeople(b, last[b.ID])...)
 	}
-	counts, err := s.Store.CountBugReports(ctx)
+	counts, err := s.Store.CountBugReports(ctx, kind)
 	if err != nil {
 		WriteError(w, err)
 		return
 	}
-	WriteJSON(w, http.StatusOK, map[string]any{"reports": views, "counts": counts, "people": s.people(ctx, who...), "has_more": len(list) == limit})
+	WriteJSON(w, http.StatusOK, map[string]any{"kind": kind, "reports": views, "counts": counts, "people": s.people(ctx, who...), "has_more": len(list) == limit})
 }
 
 // staffBugFor loads the report a staff route names.
@@ -739,10 +764,11 @@ func (s *Server) handleModBugStatus(w http.ResponseWriter, r *http.Request) {
 	WriteJSON(w, http.StatusOK, map[string]any{"report": view, "messages": lines, "people": s.people(ctx, bugPeople(updated, lines...)...)})
 }
 
-// bugCountsFor is the staff's bug counts on arrival, or nothing when they
-// cannot be read (the panel fetches them again).
-func (s *Server) bugCountsFor(ctx context.Context) *store.BugCounts {
-	c, err := s.Store.CountBugReports(ctx)
+// bugCountsFor is the staff's counts of one kind of report (bug or
+// suggestion) on arrival, or nothing when they cannot be read (the panel
+// fetches them again).
+func (s *Server) bugCountsFor(ctx context.Context, kind string) *store.BugCounts {
+	c, err := s.Store.CountBugReports(ctx, kind)
 	if err != nil {
 		s.Log.Warn("bugs: counts", "err", err)
 		return nil

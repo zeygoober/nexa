@@ -1,4 +1,4 @@
-import { Award, BellRing, Bot, Bug, Flag, FolderOpen, Gamepad2, Megaphone, Phone, ScrollText, Server, Shield, Sticker, Users, type LucideIcon } from "lucide-react";
+import { Award, BellRing, Bot, Bug, Flag, FolderOpen, Gamepad2, Lightbulb, Megaphone, Phone, ScrollText, Server, Shield, Sticker, Users, type LucideIcon } from "lucide-react";
 import { useEffect } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { moderation as modApi } from "@/api/moderation";
@@ -32,6 +32,8 @@ export const STAFF_GROUPS: { id: string; label: () => string; places: StaffPlace
       { id: "reports", label: () => t("reports.title"), icon: Flag, rank: "helper" },
       { id: "cases", label: () => t("moderation.tabs.cases"), icon: FolderOpen, rank: "helper" },
       { id: "bugs", label: () => t("moderation.tabs.bugs"), icon: Bug, rank: "helper" },
+      // web only for now: Android's panel (ui/moderation/Panel.kt) has no Suggestions yet
+      { id: "suggestions", label: () => t("moderation.tabs.suggestions"), icon: Lightbulb, rank: "helper" },
     ],
   },
   {
@@ -97,6 +99,7 @@ export function StaffSidebar() {
     reports: waitingReports ? { n: waitingReports, label: t("reports.waitingCount", { count: waitingReports }) } : undefined,
     cases: unread.cases.length ? { n: unread.cases.length, label: t("moderation.needsReplyCount", { count: unread.cases.length }) } : undefined,
     bugs: unread.bugs.length ? { n: unread.bugs.length, label: t("bugs.staff.waitingCount", { count: unread.bugs.length }) } : undefined,
+    suggestions: unread.suggestions.length ? { n: unread.suggestions.length, label: t("suggestions.staff.waitingCount", { count: unread.suggestions.length }) } : undefined,
     games: gamesWaiting ? { n: gamesWaiting, label: t("moderation.games.waitingCount", { count: gamesWaiting }) } : undefined,
   };
   // picking a place closes the phone drawer, even the page already open

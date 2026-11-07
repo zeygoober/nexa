@@ -1,7 +1,7 @@
 NEXA - PRIVACY POLICY
-Site: nexa.fish (also at mathtest.lol, and formerly chat.evilion.xyz)
-Contact the owner (nora) here: evilionx3@proton.me
-Effective: 2026-11-06
+Site: nexa.pm
+Contact the owner (zey) here: in the app, message @zey
+Effective: 2026-11-07
 
 This policy lists exactly what Nexa holds. It is written against the
 actual database, so if something is not listed here, there is no place
@@ -602,17 +602,15 @@ calls.
 9. WHO IS RESPONSIBLE, AND WHERE YOUR DATA IS
 
 The controller of your personal data, who decides how it is used, is
-the owner of Nexa (nora), in Alaska, United States.
+the owner of Nexa (zey).
 
-  Contact the owner (nora) here: evilionx3@proton.me
+  Contact the owner (zey) here: in the app, message @zey
 
-Nexa's server, and everything it stores, its backup included, is in
-Alaska, United States, except the encrypted files kept in Cloudflare
-R2 (section 6), which are in Cloudflare's western North America
-region. If you use Nexa from the European Union, the
-European Economic Area, the United Kingdom, or Switzerland, what you
-send it goes to the United States, and so does what Cloudflare and
-Discord get (section 6). Cloudflare and Discord are US companies
+Nexa's server, and everything it stores, its backup included, is
+hosted by Contabo in France, in the European Union, except the
+encrypted files kept in Cloudflare R2 (section 6), which are in
+Cloudflare's western North America region. What Cloudflare and
+Discord get (section 6) goes to the United States. Cloudflare and Discord are US companies
 certified under the EU-U.S. Data Privacy Framework, which the European
 Commission has found gives adequate protection, and under its UK
 extension and the Swiss-U.S. framework. Both also use the Commission's
@@ -683,8 +681,7 @@ someone under that age has an account, contact the owner.
 
 13. CONTACT
 
-  Contact the owner (nora) here: evilionx3@proton.me
-  In the app: message @nora
+  Contact the owner (zey) here: in the app, message @zey
 
 For a request about your own data, say which account it is about.
 Legal requests should also give their legal basis. Replies list
