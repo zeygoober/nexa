@@ -129,8 +129,11 @@ func (s *Server) handleRegister(w http.ResponseWriter, r *http.Request) {
 		WriteError(w, E(http.StatusForbidden, "registration_closed", "This server is not accepting new accounts."))
 		return
 	case "invite":
+		// A registration key, once set, is the only way in: a server invite
+		// is a link anyone in that server can make and share, so it lets
+		// people sign up only while no key is set.
 		keyOK := regKey != "" && hmac.Equal([]byte(req.RegistrationKey), []byte(regKey))
-		inviteOK := !keyOK && req.InviteCode != "" && s.InviteCheck != nil && s.InviteCheck(ctx, req.InviteCode)
+		inviteOK := regKey == "" && req.InviteCode != "" && s.InviteCheck != nil && s.InviteCheck(ctx, req.InviteCode)
 		if !keyOK && !inviteOK {
 			WriteError(w, E(http.StatusForbidden, "invite_required", "You need an invite to register here."))
 			return

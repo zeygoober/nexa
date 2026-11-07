@@ -4960,7 +4960,7 @@
   "settings.admin.panelMoved": "Просматривайте все аккаунты, принимайте меры, разбирайте дела, читайте журнал и отправляйте объявления.",
   "settings.admin.refresh": "Обновить",
   "settings.admin.regClosed": "Новых аккаунтов нет.",
-  "settings.admin.regInvite": "Новым аккаунтам нужна ссылка-приглашение сервера или ключ регистрации.",
+  "settings.admin.regInvite": "Для новых аккаунтов нужен ключ регистрации. Если ключ не задан, подойдёт и ссылка-приглашение на сервер.",
   "settings.admin.regOpen": "Любой может создать аккаунт.",
   "settings.admin.registration": "Регистрация",
   "settings.admin.registrationKeyCleared": "Ключ регистрации очищен.",

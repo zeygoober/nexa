@@ -4387,7 +4387,7 @@
   "settings.admin.panelMoved": "浏览所有账号并进行处理、跟进案件、查看日志以及发送公告。",
   "settings.admin.refresh": "刷新",
   "settings.admin.regClosed": "不开放新账号。",
-  "settings.admin.regInvite": "新账号需要服务器邀请链接或注册密钥。",
+  "settings.admin.regInvite": "新账号需要注册密钥。未设置密钥时，服务器邀请链接也可以。",
   "settings.admin.regOpen": "任何人都可以创建账号。",
   "settings.admin.registration": "注册",
   "settings.admin.registrationKeyCleared": "注册密钥已清除。",

@@ -4387,7 +4387,7 @@
   "settings.admin.panelMoved": "すべてのアカウントを閲覧して対応し、ケースを処理し、ログを確認し、お知らせを送信できます。",
   "settings.admin.refresh": "更新",
   "settings.admin.regClosed": "新規アカウントは作れません。",
-  "settings.admin.regInvite": "新規アカウントにはサーバーの招待リンクか登録キーが必要です。",
+  "settings.admin.regInvite": "新しいアカウントには登録キーが必要です。キーが設定されていない場合は、サーバーの招待リンクでも登録できます。",
   "settings.admin.regOpen": "誰でもアカウントを作成できます。",
   "settings.admin.registration": "登録",
   "settings.admin.registrationKeyCleared": "登録キーを消去しました。",

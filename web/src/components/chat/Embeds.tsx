@@ -2,6 +2,7 @@ import { Play, X } from "lucide-react";
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, type MouseEvent, type ReactNode } from "react";
 import type { UnfurlResult } from "@/api/types";
 import { trimUrl } from "@/markdown/parse";
+import { appLink } from "@/lib/appLinks";
 import { FavoriteButton } from "./FavoriteButton";
 import { useSettings } from "@/stores/settings";
 import { useUI } from "@/stores/ui";
@@ -383,6 +384,13 @@ function LinkEmbed({ e }: { e: UnfurlResult }) {
   );
 }
 
+/** Whether a preview is of an invite or profile link the app draws its own card for. */
+function ownCard(e: UnfurlResult): boolean {
+  if (!e || typeof e.url !== "string") return false;
+  const kind = appLink(e.url)?.kind;
+  return kind === "invite" || kind === "profile";
+}
+
 /** One preview, drawn the way its kind is, or null when there is nothing to draw. */
 function embedFor(e: UnfurlResult, imagePreviews: boolean): ReactNode {
   if (!e || typeof e !== "object" || typeof e.url !== "string") return null;
@@ -397,6 +405,8 @@ function embedFor(e: UnfurlResult, imagePreviews: boolean): ReactNode {
   if (e.type === "youtube") return <LinkEmbed e={e} />;
   // drawn by InviteCards and ProfileCards, which also cover links that came without a card
   if (e.type === "invite" || e.type === "profile") return null;
+  // the same, when the server took one of Nexa's own addresses for another site's page
+  if (ownCard(e)) return null;
   if (e.title || e.description || e.player || e.media) return <LinkEmbed e={e} />;
   return null;
 }
@@ -407,7 +417,7 @@ function embedFor(e: UnfurlResult, imagePreviews: boolean): ReactNode {
  */
 export function Embeds({ list, onRemove }: { list: UnfurlResult[]; onRemove?: ((ev: MouseEvent) => void) | undefined }) {
   const imagePreviews = useSettings((st) => st.settings.imagePreviews);
-  if (list.every((e) => e?.type === "invite" || e?.type === "profile")) return null;
+  if (list.every((e) => e?.type === "invite" || e?.type === "profile" || ownCard(e))) return null;
   return (
     <div className={s.embeds}>
       {list.slice(0, 5).map((e, i) => {

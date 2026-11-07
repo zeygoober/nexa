@@ -4680,7 +4680,7 @@
   "settings.admin.panelMoved": "Veja todas as contas, tome medidas sobre elas, resolva os casos, leia o registro e envie anúncios.",
   "settings.admin.refresh": "Atualizar",
   "settings.admin.regClosed": "Nenhuma conta nova.",
-  "settings.admin.regInvite": "Contas novas precisam de um link de convite do servidor ou da chave de cadastro.",
+  "settings.admin.regInvite": "Novas contas precisam da chave de registro. Sem uma chave definida, um link de convite para um servidor também funciona.",
   "settings.admin.regOpen": "Qualquer pessoa pode criar uma conta.",
   "settings.admin.registration": "Cadastro",
   "settings.admin.registrationKeyCleared": "Chave de cadastro limpa.",

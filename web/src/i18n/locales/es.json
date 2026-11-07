@@ -4679,7 +4679,7 @@
   "settings.admin.panelMoved": "Explora todas las cuentas, toma medidas sobre ellas, gestiona los casos, lee el registro y envía anuncios.",
   "settings.admin.refresh": "Actualizar",
   "settings.admin.regClosed": "Sin cuentas nuevas.",
-  "settings.admin.regInvite": "Las cuentas nuevas necesitan un enlace de invitación del servidor o la clave de registro.",
+  "settings.admin.regInvite": "Las cuentas nuevas necesitan la clave de registro. Si no hay ninguna clave, también sirve un enlace de invitación a un servidor.",
   "settings.admin.regOpen": "Cualquiera puede crear una cuenta.",
   "settings.admin.registration": "Registro",
   "settings.admin.registrationKeyCleared": "Clave de registro borrada.",

@@ -490,7 +490,8 @@ serves until SIGINT or SIGTERM.
   `signup_ip_limit`), on top of `limReg`'s ten attempts an hour. A username already taken or held
   (`Store.UsernameFree`) is refused before the allowance is touched. `Store.CreateRegisteredUser` decides the
   first account's Developer flag and the `ADMIN_USERNAME` exception inside the inserting transaction under a
-  shared bootstrap lock, so concurrent sign-ups cannot each become the first administrator. KDF, login and
+  shared bootstrap lock, so concurrent sign-ups cannot each become the first administrator. Under `REGISTRATION=invite` a set registration key is the only way in;
+  a server invite admits a sign-up only while no key is set. KDF, login and
   recovery refuse normalized usernames over 32 bytes before lookup or limiter admission. Visitor limits trust
   only a valid `CF-Connecting-IP` from a loopback proxy, never `X-Forwarded-For`; otherwise the socket peer.
 - Captchas (`captcha.go`; Cloudflare Turnstile, off until a pair of keys is set):

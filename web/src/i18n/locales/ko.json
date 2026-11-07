@@ -4387,7 +4387,7 @@
   "settings.admin.panelMoved": "모든 계정을 살펴보고 조치하며, 케이스를 처리하고, 기록을 읽고, 공지를 보낼 수 있습니다.",
   "settings.admin.refresh": "새로 고침",
   "settings.admin.regClosed": "새 계정을 만들 수 없습니다.",
-  "settings.admin.regInvite": "새 계정에는 서버 초대 링크나 가입 키가 필요합니다.",
+  "settings.admin.regInvite": "새 계정에는 가입 키가 필요합니다. 키가 설정되어 있지 않으면 서버 초대 링크로도 가입할 수 있습니다.",
   "settings.admin.regOpen": "누구나 계정을 만들 수 있습니다.",
   "settings.admin.registration": "가입",
   "settings.admin.registrationKeyCleared": "가입 키를 지웠습니다.",

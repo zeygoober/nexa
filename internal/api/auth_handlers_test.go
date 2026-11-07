@@ -374,13 +374,19 @@ func TestAnInviteLetsInAsManyAccountsAsItHasUses(t *testing.T) {
 	}
 	code := body["code"].(string)
 	srv.Cfg.Registration = "invite"
-	srv.Cfg.RegistrationKey = ""
 	signUp := func(name string) (int, map[string]any) {
 		b := registerBody(name)
 		b["invite_code"] = code
 		res, body := do(t, ts, "POST", "/api/v1/auth/register", "", b)
 		return res.StatusCode, body
 	}
+	// with a registration key set only the key lets anyone in: an invite
+	// link once signed people up past it (2026-11-07)
+	srv.Cfg.RegistrationKey = "sesame"
+	if st, body := signUp("eve"); st != 403 || errCode(body) != "invite_required" {
+		t.Errorf("an invite past a registration key: %d %v", st, body)
+	}
+	srv.Cfg.RegistrationKey = ""
 	st, body := signUp("carol")
 	if st != 201 {
 		t.Fatalf("carol signs up with the invite: %d %v", st, body)

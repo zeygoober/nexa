@@ -4679,7 +4679,7 @@
   "settings.admin.panelMoved": "Parcourez tous les comptes, agissez sur eux, traitez les dossiers, consultez le journal et envoyez des annonces.",
   "settings.admin.refresh": "Actualiser",
   "settings.admin.regClosed": "Aucun nouveau compte.",
-  "settings.admin.regInvite": "Les nouveaux comptes ont besoin d’un lien d’invitation du serveur ou de la clé d’inscription.",
+  "settings.admin.regInvite": "Les nouveaux comptes ont besoin de la clé d'inscription. Sans clé définie, un lien d'invitation à un serveur suffit aussi.",
   "settings.admin.regOpen": "N’importe qui peut créer un compte.",
   "settings.admin.registration": "Inscription",
   "settings.admin.registrationKeyCleared": "Clé d’inscription effacée.",

@@ -5312,7 +5312,7 @@
   "settings.admin.panelMoved": "تصفّح كل الحسابات، واتخذ الإجراءات بحقها، وتابع القضايا، واقرأ السجل، وأرسل الإعلانات.",
   "settings.admin.refresh": "تحديث",
   "settings.admin.regClosed": "لا حسابات جديدة.",
-  "settings.admin.regInvite": "تحتاج الحسابات الجديدة إلى رابط دعوة للخادم أو مفتاح التسجيل.",
+  "settings.admin.regInvite": "تحتاج الحسابات الجديدة إلى مفتاح التسجيل. إذا لم يُعيَّن مفتاح، يكفي رابط دعوة إلى خادم أيضًا.",
   "settings.admin.regOpen": "يستطيع أي شخص إنشاء حساب.",
   "settings.admin.registration": "التسجيل",
   "settings.admin.registrationKeyCleared": "مُسح مفتاح التسجيل.",

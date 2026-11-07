@@ -4587,7 +4587,7 @@
   "settings.admin.panelMoved": "Durchsuche alle Konten, ergreife Maßnahmen, arbeite Fälle ab, lies das Protokoll und sende Ankündigungen.",
   "settings.admin.refresh": "Aktualisieren",
   "settings.admin.regClosed": "Keine neuen Konten.",
-  "settings.admin.regInvite": "Neue Konten brauchen einen Server-Einladungslink oder den Registrierungsschlüssel.",
+  "settings.admin.regInvite": "Neue Konten brauchen den Registrierungsschlüssel. Ist kein Schlüssel festgelegt, reicht auch ein Server-Einladungslink.",
   "settings.admin.regOpen": "Jeder kann ein Konto erstellen.",
   "settings.admin.registration": "Registrierung",
   "settings.admin.registrationKeyCleared": "Registrierungsschlüssel gelöscht.",

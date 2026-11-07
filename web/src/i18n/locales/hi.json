@@ -4587,7 +4587,7 @@
   "settings.admin.panelMoved": "हर खाता देखें, उन पर कार्रवाई करें, मामले निपटाएँ, लॉग पढ़ें और घोषणाएँ भेजें।",
   "settings.admin.refresh": "रीफ़्रेश करें",
   "settings.admin.regClosed": "कोई नया खाता नहीं।",
-  "settings.admin.regInvite": "नए खातों को सर्वर के न्योते का लिंक या रजिस्ट्रेशन कुंजी चाहिए।",
+  "settings.admin.regInvite": "नए खातों के लिए पंजीकरण कुंजी चाहिए। कोई कुंजी सेट न हो, तो सर्वर का आमंत्रण लिंक भी काम करता है।",
   "settings.admin.regOpen": "कोई भी खाता बना सकता है।",
   "settings.admin.registration": "रजिस्ट्रेशन",
   "settings.admin.registrationKeyCleared": "रजिस्ट्रेशन कुंजी हटा दी गई।",

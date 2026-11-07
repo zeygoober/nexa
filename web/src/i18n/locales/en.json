@@ -4181,7 +4181,7 @@
   "settings.admin.overridesConfig": "Chosen here. The config file says “{value}”.",
   "settings.admin.refresh": "Refresh",
   "settings.admin.regClosed": "No new accounts.",
-  "settings.admin.regInvite": "New accounts need a server invite link or the registration key.",
+  "settings.admin.regInvite": "New accounts need the registration key. With no key set, a server invite link works too.",
   "settings.admin.regOpen": "Anyone can create an account.",
   "settings.admin.registration": "Registration",
   "settings.admin.registrationKeyCleared": "Registration key cleared.",

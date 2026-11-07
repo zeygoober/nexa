@@ -4181,7 +4181,7 @@
   "settings.admin.overridesConfig": "Valt här. Konfigurationsfilen säger ”{value}”.",
   "settings.admin.refresh": "Uppdatera",
   "settings.admin.regClosed": "Inga nya konton.",
-  "settings.admin.regInvite": "Nya konton behöver en serverinbjudningslänk eller registreringsnyckeln.",
+  "settings.admin.regInvite": "Nya konton behöver registreringsnyckeln. Om ingen nyckel är satt fungerar även en inbjudningslänk till en server.",
   "settings.admin.regOpen": "Vem som helst kan skapa ett konto.",
   "settings.admin.registration": "Registrering",
   "settings.admin.registrationKeyCleared": "Registreringsnyckeln rensades.",
