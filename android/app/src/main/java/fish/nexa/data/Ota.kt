@@ -26,7 +26,7 @@ import java.util.zip.ZipInputStream
 /**
  * Over-the-air content packs: the files the build copies in from the web
  * (CopyWebAssets: translations, What's New, the Terms and Privacy Policy and
- * their version, sounds, seasonal pictures) updated without a new APK.
+ * their version, sounds, seasonal pictures, badge pictures) updated without a new APK.
  *
  * tools/android_release.py publishes a pack (downloads/android/ota.json and
  * ota-<hash>.zip) when only those files changed since the published APK. A
@@ -51,7 +51,7 @@ object Ota {
     private const val FIRST_CHECK_MS = 15_000L
     private const val EVERY_MS = 60 * 60_000L
     /** The folders a pack may write: what CopyWebAssets copies, minus twemoji (its tables change with Kotlin code). */
-    private val ALLOWED = Regex("^(locales|sounds|seasonal|whatsnew|legal)/[A-Za-z0-9][A-Za-z0-9._-]{0,100}$")
+    private val ALLOWED = Regex("^(locales|sounds|seasonal|badges|whatsnew|legal)/[A-Za-z0-9][A-Za-z0-9._-]{0,100}$")
     private const val MAX_PACK = 64L shl 20
 
     private lateinit var app: Context

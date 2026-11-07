@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24">
+  <defs>
+    <linearGradient id="staffmodp" x1="12" y1="1" x2="12" y2="23" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#b56bff"/><stop offset="1" stop-color="#6a00d6"/>
+    </linearGradient>
+    <linearGradient id="staffmodg" x1="12" y1="1" x2="12" y2="12" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#ffffff" stop-opacity=".55"/><stop offset="1" stop-color="#ffffff" stop-opacity="0"/>
+    </linearGradient>
+    <clipPath id="staffmodc"><path d="M7 1.5h10a5.5 5.5 0 0 1 5.5 5.5v10a5.5 5.5 0 0 1-5.5 5.5H7A5.5 5.5 0 0 1 1.5 17V7A5.5 5.5 0 0 1 7 1.5z"/></clipPath>
+  </defs>
+  <path d="M7 1.5h10a5.5 5.5 0 0 1 5.5 5.5v10a5.5 5.5 0 0 1-5.5 5.5H7A5.5 5.5 0 0 1 1.5 17V7A5.5 5.5 0 0 1 7 1.5z" fill="url(#staffmodp)"/>
+  <g clip-path="url(#staffmodc)"><ellipse cx="12" cy="3.2" rx="13" ry="8.2" fill="url(#staffmodg)"/></g>
+  <path d="M7 1.5h10a5.5 5.5 0 0 1 5.5 5.5v10a5.5 5.5 0 0 1-5.5 5.5H7A5.5 5.5 0 0 1 1.5 17V7A5.5 5.5 0 0 1 7 1.5z" fill="none" stroke="#4a0099" stroke-opacity=".7" stroke-width="1"/>
+  <g transform="translate(4.80 5.35) scale(0.6)" stroke="#2b005c" stroke-opacity=".45" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" fill="none"><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/><path d="m9 12 2 2 4-4"/></g>
+  <g transform="translate(4.80 4.80) scale(0.6)" stroke="#ffffff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" fill="none"><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/><path d="m9 12 2 2 4-4"/></g>
+  
+</svg>

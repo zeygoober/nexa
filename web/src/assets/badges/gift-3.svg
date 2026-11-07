@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24">
+  <defs>
+    <linearGradient id="gift3p" x1="12" y1="1" x2="12" y2="23" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#ffe79a"/><stop offset="1" stop-color="#e0a419"/>
+    </linearGradient>
+    <linearGradient id="gift3g" x1="12" y1="1" x2="12" y2="12" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#ffffff" stop-opacity=".55"/><stop offset="1" stop-color="#ffffff" stop-opacity="0"/>
+    </linearGradient>
+    <clipPath id="gift3c"><path d="M12 1.5a10.5 10.5 0 1 1 0 21a10.5 10.5 0 1 1 0-21z"/></clipPath>
+  </defs>
+  <path d="M12 1.5a10.5 10.5 0 1 1 0 21a10.5 10.5 0 1 1 0-21z" fill="url(#gift3p)"/>
+  <g clip-path="url(#gift3c)"><ellipse cx="12" cy="3.2" rx="13" ry="8.2" fill="url(#gift3g)"/></g>
+  <path d="M12 1.5a10.5 10.5 0 1 1 0 21a10.5 10.5 0 1 1 0-21z" fill="none" stroke="#9c6c05" stroke-opacity=".7" stroke-width="1"/>
+  <g transform="translate(4.80 5.35) scale(0.6)" stroke="#fff3c4" stroke-opacity=".45" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" fill="none"><path d="M12 7v14"/><path d="M20 11v8a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2v-8"/><path d="M7.5 7a1 1 0 0 1 0-5A4.8 8 0 0 1 12 7a4.8 8 0 0 1 4.5-5 1 1 0 0 1 0 5"/><path d="M4 7h16a1 1 0 0 1 1 1v2a1 1 0 0 1 -1 1h-16a1 1 0 0 1 -1 -1v-2a1 1 0 0 1 1 -1Z"/></g>
+  <g transform="translate(4.80 4.80) scale(0.6)" stroke="#5a3b00" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" fill="none"><path d="M12 7v14"/><path d="M20 11v8a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2v-8"/><path d="M7.5 7a1 1 0 0 1 0-5A4.8 8 0 0 1 12 7a4.8 8 0 0 1 4.5-5 1 1 0 0 1 0 5"/><path d="M4 7h16a1 1 0 0 1 1 1v2a1 1 0 0 1 -1 1h-16a1 1 0 0 1 -1 -1v-2a1 1 0 0 1 1 -1Z"/></g>
+  
+</svg>

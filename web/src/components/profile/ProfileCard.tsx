@@ -810,16 +810,15 @@ export function ProfileCard({ userId, variant, onClose, preview, previewWidgets,
               </button>
             </>
           ) : null}
-          <BadgeRow user={user} badges={badges} part="tags" />
+          {design ? (
+            <span className={`${s.spotWrap} ${s.badgePill}`}>
+              <BadgeRow user={user} badges={badges} className={s.badgePill} />
+              <Spot design={design} part="badges" label={t("designer.spot.badges")} />
+            </span>
+          ) : (
+            <BadgeRow user={user} badges={badges} className={s.badgePill} />
+          )}
         </div>
-        {design ? (
-          <span className={s.spotWrap}>
-            <BadgeRow user={user} badges={badges} part="icons" className={s.badges} />
-            <Spot design={design} part="badges" label={t("designer.spot.badges")} />
-          </span>
-        ) : (
-          <BadgeRow user={user} badges={badges} part="icons" className={s.badges} />
-        )}
       </div>
 
       {interactive && !isMe && !bot ? <RelationshipBar user={user} rel={rel} /> : null}

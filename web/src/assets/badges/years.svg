@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24">
+  <defs>
+    <linearGradient id="yearsp" x1="12" y1="1" x2="12" y2="23" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#a9cdf2"/><stop offset="1" stop-color="#4a7fb8"/>
+    </linearGradient>
+    <linearGradient id="yearsg" x1="12" y1="1" x2="12" y2="12" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#ffffff" stop-opacity=".55"/><stop offset="1" stop-color="#ffffff" stop-opacity="0"/>
+    </linearGradient>
+    <clipPath id="yearsc"><path d="M12 1.5a10.5 10.5 0 1 1 0 21a10.5 10.5 0 1 1 0-21z"/></clipPath>
+  </defs>
+  <path d="M12 1.5a10.5 10.5 0 1 1 0 21a10.5 10.5 0 1 1 0-21z" fill="url(#yearsp)"/>
+  <g clip-path="url(#yearsc)"><ellipse cx="12" cy="3.2" rx="13" ry="8.2" fill="url(#yearsg)"/></g>
+  <path d="M12 1.5a10.5 10.5 0 1 1 0 21a10.5 10.5 0 1 1 0-21z" fill="none" stroke="#2f5a88" stroke-opacity=".7" stroke-width="1"/>
+  <g transform="translate(4.80 5.35) scale(0.6)" stroke="#1c3a5c" stroke-opacity=".45" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" fill="none"><path d="M20 21v-8a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8"/><path d="M4 16s.5-1 2-1 2.5 2 4 2 2.5-2 4-2 2.5 2 4 2 2-1 2-1"/><path d="M2 21h20"/><path d="M7 8v3"/><path d="M12 8v3"/><path d="M17 8v3"/><path d="M7 4h.01"/><path d="M12 4h.01"/><path d="M17 4h.01"/></g>
+  <g transform="translate(4.80 4.80) scale(0.6)" stroke="#ffffff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" fill="none"><path d="M20 21v-8a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8"/><path d="M4 16s.5-1 2-1 2.5 2 4 2 2.5-2 4-2 2.5 2 4 2 2-1 2-1"/><path d="M2 21h20"/><path d="M7 8v3"/><path d="M12 8v3"/><path d="M17 8v3"/><path d="M7 4h.01"/><path d="M12 4h.01"/><path d="M17 4h.01"/></g>
+  
+</svg>

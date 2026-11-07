@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24">
+  <defs>
+    <linearGradient id="appdeveloperp" x1="12" y1="1" x2="12" y2="23" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#9cc2ff"/><stop offset="1" stop-color="#3a74e0"/>
+    </linearGradient>
+    <linearGradient id="appdeveloperg" x1="12" y1="1" x2="12" y2="12" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#ffffff" stop-opacity=".55"/><stop offset="1" stop-color="#ffffff" stop-opacity="0"/>
+    </linearGradient>
+    <clipPath id="appdeveloperc"><path d="M7 1.5h10a5.5 5.5 0 0 1 5.5 5.5v10a5.5 5.5 0 0 1-5.5 5.5H7A5.5 5.5 0 0 1 1.5 17V7A5.5 5.5 0 0 1 7 1.5z"/></clipPath>
+  </defs>
+  <path d="M7 1.5h10a5.5 5.5 0 0 1 5.5 5.5v10a5.5 5.5 0 0 1-5.5 5.5H7A5.5 5.5 0 0 1 1.5 17V7A5.5 5.5 0 0 1 7 1.5z" fill="url(#appdeveloperp)"/>
+  <g clip-path="url(#appdeveloperc)"><ellipse cx="12" cy="3.2" rx="13" ry="8.2" fill="url(#appdeveloperg)"/></g>
+  <path d="M7 1.5h10a5.5 5.5 0 0 1 5.5 5.5v10a5.5 5.5 0 0 1-5.5 5.5H7A5.5 5.5 0 0 1 1.5 17V7A5.5 5.5 0 0 1 7 1.5z" fill="none" stroke="#2551a8" stroke-opacity=".7" stroke-width="1"/>
+  <g transform="translate(4.80 5.35) scale(0.6)" stroke="#163470" stroke-opacity=".45" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" fill="none"><path d="M12 8V4H8"/><path d="M6 8h12a2 2 0 0 1 2 2v8a2 2 0 0 1 -2 2h-12a2 2 0 0 1 -2 -2v-8a2 2 0 0 1 2 -2Z"/><path d="M2 14h2"/><path d="M20 14h2"/><path d="M15 13v2"/><path d="M9 13v2"/></g>
+  <g transform="translate(4.80 4.80) scale(0.6)" stroke="#ffffff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" fill="none"><path d="M12 8V4H8"/><path d="M6 8h12a2 2 0 0 1 2 2v8a2 2 0 0 1 -2 2h-12a2 2 0 0 1 -2 -2v-8a2 2 0 0 1 2 -2Z"/><path d="M2 14h2"/><path d="M20 14h2"/><path d="M15 13v2"/><path d="M9 13v2"/></g>
+  
+</svg>

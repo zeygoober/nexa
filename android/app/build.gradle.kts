@@ -27,6 +27,7 @@ abstract class CopyWebAssets : DefaultTask() {
     @get:InputDirectory abstract val sounds: DirectoryProperty
     @get:InputDirectory abstract val sprites: DirectoryProperty
     @get:InputDirectory abstract val seasonal: DirectoryProperty
+    @get:InputDirectory abstract val badges: DirectoryProperty
     @get:InputFile abstract val whatsNew: RegularFileProperty
     @get:InputDirectory abstract val legalDocs: DirectoryProperty
     @get:InputFile abstract val legalVersion: RegularFileProperty
@@ -46,6 +47,8 @@ abstract class CopyWebAssets : DefaultTask() {
         copyDir(sprites.get().asFile, "twemoji") { it.name.endsWith(".webp") || it.name.endsWith(".json") }
         // the pictures seasonal themes sit on the message box (ui/theme/look/Seasonal.kt)
         copyDir(seasonal.get().asFile, "seasonal") { it.name.endsWith(".svg") }
+        // the profile badges' pictures (ui/profile/Badges.kt, written by tools/badge_art.py)
+        copyDir(badges.get().asFile, "badges") { it.name.endsWith(".svg") }
         // What's New is the web's own list, read by the app (ui/WhatsNew.kt), so a release is written once
         out.resolve("whatsnew").mkdirs()
         whatsNew.get().asFile.copyTo(out.resolve("whatsnew/whatsNew.ts"), overwrite = true)
@@ -60,6 +63,7 @@ val copyWebAssets = tasks.register<CopyWebAssets>("copyWebAssets") {
     sounds.set(rootProject.file("../web/public/sounds"))
     sprites.set(rootProject.file("../web/src/assets/twemoji-sprites"))
     seasonal.set(rootProject.file("../web/src/assets/seasonal"))
+    badges.set(rootProject.file("../web/src/assets/badges"))
     whatsNew.set(rootProject.file("../web/src/lib/whatsNew.ts"))
     legalDocs.set(rootProject.file("../docs/legal"))
     legalVersion.set(rootProject.file("../web/src/lib/legal.ts"))

@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24">
+  <defs>
+    <linearGradient id="staffownerp" x1="12" y1="1" x2="12" y2="23" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#b56bff"/><stop offset="1" stop-color="#6a00d6"/>
+    </linearGradient>
+    <linearGradient id="staffownerg" x1="12" y1="1" x2="12" y2="12" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#ffffff" stop-opacity=".55"/><stop offset="1" stop-color="#ffffff" stop-opacity="0"/>
+    </linearGradient>
+    <clipPath id="staffownerc"><path d="M7 1.5h10a5.5 5.5 0 0 1 5.5 5.5v10a5.5 5.5 0 0 1-5.5 5.5H7A5.5 5.5 0 0 1 1.5 17V7A5.5 5.5 0 0 1 7 1.5z"/></clipPath>
+  </defs>
+  <path d="M7 1.5h10a5.5 5.5 0 0 1 5.5 5.5v10a5.5 5.5 0 0 1-5.5 5.5H7A5.5 5.5 0 0 1 1.5 17V7A5.5 5.5 0 0 1 7 1.5z" fill="url(#staffownerp)"/>
+  <g clip-path="url(#staffownerc)"><ellipse cx="12" cy="3.2" rx="13" ry="8.2" fill="url(#staffownerg)"/></g>
+  <path d="M7 1.5h10a5.5 5.5 0 0 1 5.5 5.5v10a5.5 5.5 0 0 1-5.5 5.5H7A5.5 5.5 0 0 1 1.5 17V7A5.5 5.5 0 0 1 7 1.5z" fill="none" stroke="#4a0099" stroke-opacity=".7" stroke-width="1"/>
+  <g transform="translate(4.80 5.35) scale(0.6)" stroke="#2b005c" stroke-opacity=".45" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" fill="none"><path d="M11.562 3.266a.5.5 0 0 1 .876 0L15.39 8.87a1 1 0 0 0 1.516.294L21.183 5.5a.5.5 0 0 1 .798.519l-2.834 10.246a1 1 0 0 1-.956.734H5.81a1 1 0 0 1-.957-.734L2.02 6.02a.5.5 0 0 1 .798-.519l4.276 3.664a1 1 0 0 0 1.516-.294z"/><path d="M5 21h14"/></g>
+  <g transform="translate(4.80 4.80) scale(0.6)" stroke="#ffffff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" fill="none"><path d="M11.562 3.266a.5.5 0 0 1 .876 0L15.39 8.87a1 1 0 0 0 1.516.294L21.183 5.5a.5.5 0 0 1 .798.519l-2.834 10.246a1 1 0 0 1-.956.734H5.81a1 1 0 0 1-.957-.734L2.02 6.02a.5.5 0 0 1 .798-.519l4.276 3.664a1 1 0 0 0 1.516-.294z"/><path d="M5 21h14"/></g>
+  
+</svg>

@@ -28,7 +28,7 @@ not kept in git: each server builds and publishes its own.
   --server URL      the server the build talks to (default https://nexa.pm)
 
 Over the air first: with --if-changed, when only the web content the app copies in
-changed (OTA_SOURCES: translations, What's New, legal text, sounds, seasonal art)
+changed (OTA_SOURCES: translations, What's New, legal text, sounds, seasonal and badge art)
 and the code it was built from did not, no APK is built. The content is zipped
 into ota-<hash>.zip with ota.json beside manifest.json, for the published APK's
 versionCode only, and the app (fish.nexa.data.Ota) takes it up on its next start.
@@ -119,11 +119,11 @@ def sha256(path: Path) -> str:
 # (CopyWebAssets in android/app/build.gradle.kts).
 # Code needs an APK; content can go over the air (OTA_FILES must match fish.nexa.data.Ota's ALLOWED).
 CODE_SOURCES = ("android", "web/src/assets/twemoji-sprites")
-OTA_SOURCES = ("web/src/i18n/locales", "web/public/sounds", "web/src/assets/seasonal", "web/src/lib/whatsNew.ts", "docs/legal", "web/src/lib/legal.ts")
+OTA_SOURCES = ("web/src/i18n/locales", "web/public/sounds", "web/src/assets/seasonal", "web/src/assets/badges", "web/src/lib/whatsNew.ts", "docs/legal", "web/src/lib/legal.ts")
 SOURCES = CODE_SOURCES + OTA_SOURCES
 # (source folder or file, name in the pack, which files): as CopyWebAssets copies them
 OTA_FILES = (("web/src/i18n/locales", "locales", ".json"), ("web/public/sounds", "sounds", ".m4a"),
-             ("web/src/assets/seasonal", "seasonal", ".svg"), ("docs/legal", "legal", ".txt"))
+             ("web/src/assets/seasonal", "seasonal", ".svg"), ("web/src/assets/badges", "badges", ".svg"), ("docs/legal", "legal", ".txt"))
 OTA_SINGLE = (("web/src/lib/whatsNew.ts", "whatsnew/whatsNew.ts"), ("web/src/lib/legal.ts", "legal/legal.ts"))
 
 

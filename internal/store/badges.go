@@ -25,7 +25,8 @@ const (
 	BadgePlan         = "plan"          // Supporter or Pro; drawn from the account's plan
 	BadgeOG           = "og"            // the account was made before OGCutoff
 	BadgeYears        = "years"         // whole years on Nexa, from one
-	BadgeBugHunter    = "bug_hunter"    // staff resolved one of their bug reports
+	BadgeBugHunter    = "bug_hunter"    // staff resolved their bug reports; Level by ReportTiers
+	BadgeIdeas        = "ideas"         // staff resolved their suggestions; Level by ReportTiers
 	BadgeAppDeveloper = "app_developer" // one of their apps' bots is in AppDeveloperServers servers they do not own
 	BadgeGiftGiver    = "gift_giver"    // they paid for a plan someone else got; Level by GiftTiers
 	BadgeContributor  = "contributor"   // given by staff to people whose code Nexa merged
@@ -40,17 +41,22 @@ const OGCutoff int64 = 1793610000000
 // their bots must be in: a test app in their own server does not count.
 const AppDeveloperServers = 5
 
+// ReportTiers are the resolved bug reports (Bug Hunter) or suggestions
+// (Ideas) each of the five tiers needs.
+var ReportTiers = [5]int{1, 3, 10, 25, 50}
+
 // GiftTiers are the paid gifts Gift Giver's bronze, silver and gold need.
 var GiftTiers = [3]int{1, 5, 20}
 
 // defaultBadgeOrder is where a badge goes when its holder has not placed it.
-var defaultBadgeOrder = []string{BadgeStaff, BadgePlan, BadgeOG, BadgeYears, BadgeContributor, BadgeBugHunter, BadgeAppDeveloper, BadgeGiftGiver}
+var defaultBadgeOrder = []string{BadgeStaff, BadgePlan, BadgeOG, BadgeYears, BadgeContributor, BadgeBugHunter, BadgeIdeas, BadgeAppDeveloper, BadgeGiftGiver}
 
 // Badge is one badge on a profile. Staff and plan carry nothing more: the
 // clients draw them from the account itself.
 type Badge struct {
 	ID string `json:"id"`
-	// Level is Gift Giver's tier (1 bronze, 2 silver, 3 gold) or the years on Nexa.
+	// Level is Gift Giver's tier (1 bronze, 2 silver, 3 gold), Bug Hunter's
+	// and Ideas' (1 to 5, by ReportTiers) or the years on Nexa.
 	Level int `json:"level,omitempty"`
 	// Name, Icon (a Lucide icon's name) and Color are an event badge's.
 	Name  string `json:"name,omitempty"`
@@ -148,12 +154,14 @@ func (s *Store) earnedBadges(ctx context.Context, u *User, now time.Time) ([]Bad
 	if granted[BadgeContributor] {
 		out = append(out, Badge{ID: BadgeContributor})
 	}
-	var one int
-	switch err := s.db.R.QueryRowContext(ctx, `SELECT 1 FROM bug_reports WHERE user_id = ? AND status = ? LIMIT 1`, int64(u.ID), BugResolved).Scan(&one); {
-	case err == nil:
-		out = append(out, Badge{ID: BadgeBugHunter})
-	case !errors.Is(err, sql.ErrNoRows):
-		return nil, err
+	for _, k := range []struct{ kind, badge string }{{BugKindBug, BadgeBugHunter}, {BugKindSuggestion, BadgeIdeas}} {
+		var n int
+		if err := s.db.R.QueryRowContext(ctx, `SELECT count(*) FROM bug_reports WHERE user_id = ? AND status = ? AND kind = ?`, int64(u.ID), BugResolved, k.kind).Scan(&n); err != nil {
+			return nil, err
+		}
+		if level := tierOf(n, ReportTiers[:]); level > 0 {
+			out = append(out, Badge{ID: k.badge, Level: level})
+		}
 	}
 	var servers int
 	if err := s.db.R.QueryRowContext(ctx, `SELECT count(DISTINCT m.server_id) FROM applications a JOIN server_members m ON m.user_id = a.id JOIN servers v ON v.id = m.server_id WHERE a.owner_id = ? AND v.owner_id != ?`, int64(u.ID), int64(u.ID)).Scan(&servers); err != nil {
@@ -194,10 +202,13 @@ func (s *Store) earnedBadges(ctx context.Context, u *User, now time.Time) ([]Bad
 	return out, nil
 }
 
-func giftLevel(gifts int) int {
+func giftLevel(gifts int) int { return tierOf(gifts, GiftTiers[:]) }
+
+// tierOf is the highest tier whose need n meets, 0 for none.
+func tierOf(n int, tiers []int) int {
 	level := 0
-	for i, need := range GiftTiers {
-		if gifts >= need {
+	for i, need := range tiers {
+		if n >= need {
 			level = i + 1
 		}
 	}

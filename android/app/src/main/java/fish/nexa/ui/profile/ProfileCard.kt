@@ -417,31 +417,7 @@ private fun ProfileTop(
 // ---------------------------------------------------------------------------
 // Who they are
 
-/** A member of Nexa's staff's rank: its mark and name on a pill tinted with the accent. */
-@Composable
-internal fun StaffBadge(userId: String, flags: Long) {
-    val c = Nx.colors
-    val rank = fish.nexa.data.StaffRanks.of(userId, flags) ?: return
-    val icon = rank.icon
-    val label = rank.label
-    val tip = rank.tip
-    val shape = RoundedCornerShape(999.dp)
-    Row(
-        Modifier
-            .height(20.dp)
-            .ring(shape, c.brand.copy(alpha = 0.3f))
-            .background(c.brand.copy(alpha = 0.16f), shape)
-            .semantics { contentDescription = "$label. $tip" }
-            .padding(horizontal = 7.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(3.dp),
-    ) {
-        Icon(icon, c.textBrand, size = 12.dp)
-        Txt(label, style = Nx.type.hint.copy(fontSize = Nx.type.sp(11f), fontWeight = FontWeight(700)), color = c.textBrand, maxLines = 1)
-    }
-}
-
-/** Their name (a nickname you gave first), their tag, the note button; then username, pronouns and staff badge. */
+/** Their name (a nickname you gave first), their tag, the note button; then username, pronouns and badges. */
 @Composable
 private fun Identity(user: PublicUser, rel: Relationship?, full: Boolean, theme: ProfileTheme.Theme?, onName: (() -> Unit)?, onNote: (() -> Unit)?, noteLabel: String, design: ProfileDesign? = null, badges: List<fish.nexa.data.Badges.Badge>? = null) {
     val c = Nx.colors
@@ -517,13 +493,11 @@ private fun Identity(user: PublicUser, rel: Relationship?, full: Boolean, theme:
                 Txt("·", style = line, color = c.textMuted)
                 GhostInline(design, line)
             }
-            // the staff rank and plan tags stay on this line, in their holder's order
-            BadgeTags(user.id, user.flags, user.plan, shownBadges)
-        }
-        // the icon badges, under the username line
-        if ((shownBadges ?: emptyList()).any { !it.hidden && it.id != "staff" && it.id != "plan" }) {
-            Spotted(design, ProfilePart.BADGES, t("designer.spot.badges"), Modifier.padding(top = 8.dp)) {
-                BadgeRow(user.id, user.flags, user.plan, shownBadges)
+            // every badge, in one pill on this line, in its holder's order
+            if ((shownBadges ?: Badges.fallback(user.id, user.flags, user.plan)).any { !it.hidden && Badges.look(it, user.id, user.flags, user.plan) != null }) {
+                Spotted(design, ProfilePart.BADGES, t("designer.spot.badges")) {
+                    BadgeRow(user.id, user.flags, user.plan, shownBadges)
+                }
             }
         }
     }

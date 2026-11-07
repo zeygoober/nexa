@@ -141,6 +141,8 @@
 .noteBtn:hover { color: var(--text-strong); background: var(--bg-hover); }
 .user { display: flex; align-items: center; flex-wrap: wrap; gap: 4px 6px; margin-top: 4px; font-size: 14px; line-height: 20px; color: var(--text-subtle); }
 .user > span:not([aria-hidden]) { min-width: 0; max-width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+/* the badges' pill wraps inside itself and keeps its focus rings */
+.user > .badgePill { overflow: visible; white-space: normal; }
 .card[data-variant="modal"] .user { font-size: 15.5px; line-height: 22px; }
 .sep { color: var(--text-muted); }
 /* words like the rest of the line, with the text cursor they have */
@@ -429,5 +431,3 @@
 .card[data-design] .side, .card[data-design] .tabPanel { overflow: visible; }
 .card[data-variant="popout"][data-design] { max-height: none; overflow: visible; }
 
-/* the profile's badges, under the username line */
-.badges { margin-top: 8px; }

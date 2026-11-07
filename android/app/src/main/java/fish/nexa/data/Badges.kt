@@ -17,14 +17,14 @@ import kotlinx.serialization.json.put
 /**
  * Profile badges (web lib/badges.ts, internal/store/badges.go). The server
  * works out which an account holds and puts them in its order; this names
- * them, and keeps this account's own list for the profile designer. Staff
- * rank and plan keep their own badges.
+ * and pictures them, staff rank and plan included, and keeps this account's
+ * own list for the profile designer.
  */
 object Badges {
     const val CONTRIBUTOR = "contributor"
     const val EVENT_PREFIX = "event:"
 
-    /** One badge: [level] is Gift Giver's tier or the years on Nexa; [name], [icon] and [color] are an event badge's. */
+    /** One badge: [level] is Bug Hunter's, Ideas' or Gift Giver's tier, or the years on Nexa; [name], [icon] and [color] are an event badge's. */
     data class Badge(
         val id: String,
         val level: Int = 0,
@@ -62,27 +62,41 @@ object Badges {
         )
     }
 
-    /** How a badge looks: its tone's name, its icon (a Lucide name), its words and what it means. Null for staff and plan, and ids this app does not know. */
-    data class Look(val tone: String, val icon: String, val label: String, val tip: String, val color: Int? = null)
+    /**
+     * How a badge looks (web badgeLook): its picture's name under badges/ (written by
+     * tools/badge_art.py, copied from the web and carried over the air), or for an
+     * event badge staff made, its Lucide [icon] on a disc in [color]; its name and what it means.
+     */
+    data class Look(val art: String?, val label: String, val tip: String, val icon: String? = null, val color: Int? = null) {
+        /** What pressing it says, as the web's tooltip. */
+        val said get() = if (tip.isEmpty()) label else "$label: $tip"
+    }
 
     private val GIFT_TONES = listOf("bronze", "silver", "gold")
 
-    fun look(b: Badge): Look? = when (b.id) {
-        "og" -> Look("og", "star", t("badges.og"), t("badges.ogTip"))
-        "years" -> b.level.coerceAtLeast(1).let { n -> Look("years", "calendar-heart", t("badges.years", "count" to n), t("badges.yearsTip", "count" to n)) }
-        "bug_hunter" -> Look("bug", "bug", t("badges.bugHunter"), t("badges.bugHunterTip"))
-        "app_developer" -> Look("dev", "bot", t("badges.appDeveloper"), t("badges.appDeveloperTip"))
-        "gift_giver" -> GIFT_TONES[b.level.coerceIn(1, 3) - 1].let { tone -> Look(tone, "gift", t("badges.giftGiver"), t("badges.giftGiverTip.$tone")) }
-        CONTRIBUTOR -> Look("contributor", "wrench", t("badges.contributor"), t("badges.contributorTip"))
-        else -> if (b.isEvent && b.name != null) Look("event", b.icon ?: "award", b.name, "", b.color) else null
+    /** The look of a badge; null for ids this app does not know, and for staff or a plan the account no longer has. */
+    fun look(b: Badge, userId: String, flags: Long, plan: String): Look? = when (b.id) {
+        "staff" -> StaffRanks.of(userId, flags)?.let { Look("staff-${it.key}", it.label, it.tip) }
+        "plan" -> when (plan) {
+            "pro" -> Look("plan-pro", t("support.plan.pro"), t("support.badge.proTip"))
+            "supporter" -> Look("plan-supporter", t("support.plan.supporter"), t("support.badge.supporterTip"))
+            else -> null
+        }
+        "og" -> Look("og", t("badges.og"), t("badges.ogTip"))
+        "years" -> b.level.coerceAtLeast(1).let { n -> Look("years", t("badges.years", "count" to n), t("badges.yearsTip", "count" to n)) }
+        "bug_hunter" -> b.level.coerceIn(1, 5).let { n -> Look("bug-$n", t("badges.bug.l$n"), t("badges.bugTip.l$n")) }
+        "ideas" -> b.level.coerceIn(1, 5).let { n -> Look("ideas-$n", t("badges.ideas.l$n"), t("badges.ideasTip.l$n")) }
+        "app_developer" -> Look("app-developer", t("badges.appDeveloper"), t("badges.appDeveloperTip"))
+        "gift_giver" -> b.level.coerceIn(1, 3).let { n -> Look("gift-$n", t("badges.giftGiver"), t("badges.giftGiverTip.${GIFT_TONES[n - 1]}")) }
+        CONTRIBUTOR -> Look("contributor", t("badges.contributor"), t("badges.contributorTip"))
+        // a badge staff made says only its own name: what it is for is theirs to put in it
+        else -> if (b.isEvent && b.name != null) Look(null, b.name, "", b.icon ?: "award", b.color) else null
     }
 
     /** A badge's name in a list (the designer, the staff panel), staff and plan included. */
-    fun name(b: Badge, userId: String, flags: Long, plan: String): String = when (b.id) {
-        "staff" -> StaffRanks.of(userId, flags)?.label ?: t("badges.staff")
-        "plan" -> if (plan == "pro") t("support.plan.pro") else t("support.plan.supporter")
-        else -> look(b)?.label ?: b.id
-    }
+    fun name(b: Badge, userId: String, flags: Long, plan: String): String =
+        if (b.id == "staff" && StaffRanks.of(userId, flags) == null) t("badges.staff")
+        else look(b, userId, flags, plan)?.label ?: b.id
 
     /** What a profile shows before its list arrives: the staff rank and the plan. */
     fun fallback(userId: String, flags: Long, plan: String): List<Badge> = buildList {

@@ -197,7 +197,7 @@ func (s *Server) handleAssetLinks(w http.ResponseWriter, r *http.Request) {
 }
 
 // Over-the-air content packs (fish.nexa.data.Ota): the web files the app
-// copies in (translations, What's New, legal text, sounds, seasonal art),
+// copies in (translations, What's New, legal text, sounds, seasonal and badge art),
 // zipped by tools/android_release.py when nothing else changed since the
 // published APK, and described by ota.json beside manifest.json. A pack names
 // the one versionCode it was made for; the app ignores any other.

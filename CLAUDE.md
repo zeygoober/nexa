@@ -83,7 +83,8 @@ Passing unit tests do not replace looking at the screens.
 
 Ship Android changes over the air whenever possible, and push a new APK only when OTA cannot carry the change.
 OTA content packs (`fish.nexa.data.Ota`) carry everything the build copies from the web except Twemoji:
-translations, What's New, the Terms, Privacy Policy and their version, sounds and seasonal pictures. Anything
+translations, What's New, the Terms, Privacy Policy and their version, sounds, seasonal pictures and badge
+pictures. Anything
 else (Kotlin, Android resources, Gradle, native code, Twemoji) needs an APK; Android cannot load new compiled
 code into the installed app. So prefer fixes that live in that content, keep Android reading such content
 through `Ota.open`, `Ota.uri` or `Ota.setDataSource` (never `assets` directly), and do not mix content into a
@@ -979,10 +980,15 @@ it:
 
 ### Profile badges (`store/badges.go`, `api/badge_handlers.go`)
 
-Badge ids: `staff` (never hideable), `plan`, `og` (account made before `OGCutoff`), `years`, `bug_hunter`,
-`app_developer` (`AppDeveloperServers`), `gift_giver` (`GiftTiers`), and the two staff give by hand in
+Badge ids: `staff` (never hideable), `plan`, `og` (account made before `OGCutoff`), `years`, `bug_hunter`
+and `ideas` (bug reports and suggestions staff resolved, five levels at `ReportTiers`), `app_developer`
+(`AppDeveloperServers`), `gift_giver` (three levels, `GiftTiers`), and the two staff give by hand in
 `user_badges`: `contributor` and `event:<badge_defs id>`. Earned badges are worked out when asked for, never
-stored; bots, Nexa's accounts and deleted accounts have none. `/users/@me/badges` stays open to muted and
+stored; bots, Nexa's accounts and deleted accounts have none. Every badge, staff ranks and plans included, is a
+full-colour SVG in `web/src/assets/badges/` written by `tools/badge_art.py` (Android copies the same files and
+takes them over the air); an event badge is its Lucide icon in white on a disc in its colour. A profile draws
+all its badges in one pill on the username line, each saying its name and meaning (a tooltip, a toast on
+Android). `/users/@me/badges` stays open to muted and
 banned accounts. Web `lib/badges.ts`, `components/badges/Badges.tsx`, `moderation/BadgesTab.tsx`; Android
 `data/Badges`, `ui/profile/Badges.kt`, `ui/moderation/BadgeTab.kt`. The event icon list must name icons both
 lucide-react and Android's `lucide.json` have.
@@ -1632,7 +1638,7 @@ talks to the server as deployed, so it never depends on unreleased server change
 - OTA content packs (`data/Ota.kt`, server `androidOTAPack` in `api/android_handlers.go`):
   `GET /api/v1/android/ota` describes `ota.json` beside `manifest.json` in `ANDROID_DIR`, offered only while
   its `version_code` equals the published APK's. The app checks size and SHA-256, unpacks only
-  `locales|sounds|seasonal|whatsnew|legal/<flat name>` into `noBackupFilesDir/ota`, and takes it up at the
+  `locales|sounds|seasonal|badges|whatsnew|legal/<flat name>` into `noBackupFilesDir/ota`, and takes it up at the
   next process start (`Ota.init` in `NexaApp` before anything reads assets); a pack made for another
   versionCode is ignored and dropped after an APK update. To test it, serve a scratch `ANDROID_DIR` whose
   manifest says versionCode 3 (what a debug build carries) with a pack for 3.
@@ -1640,8 +1646,8 @@ talks to the server as deployed, so it never depends on unreleased server change
   `ToastSlot`, settings layers push pages on a phone and their pages have no fade of their own, and the pinned
   member list slides in only when pinned. Values that start an animation are fixed in `remember`, not set from
   an effect.
-- `copyWebAssets` copies the web's locales, sounds, emoji sprites, `whatsNew.ts`, seasonal pictures and legal
-  documents into the app; `assets/lucide.json`, `assets/emoji/` and `assets/licenses.json` come from
+- `copyWebAssets` copies the web's locales, sounds, emoji sprites, `whatsNew.ts`, seasonal and badge pictures
+  and legal documents into the app; `assets/lucide.json`, `assets/emoji/` and `assets/licenses.json` come from
   `android/tools`. Ported logic (markdown, search, themes, the formatting editor, webhook messages, crypto,
   metadata scrubbing, the notes CRDT) is tested against vectors from the web's own code
   (`app/src/test/resources/web-*-vectors.json*`, mostly made by `android/tools/*_vectors.ts`; each file's
@@ -1667,7 +1673,7 @@ talks to the server as deployed, so it never depends on unreleased server change
 - Releases: `android_release.py`, `desktop_release.py`, `mac_package.py`, `publish_desktop.py`, `desktop_dev_build.py`
   (test builds, publishing nothing), `licenses.py`
   (license texts in `licenses/`).
-- Assets: `twemoji_font.py`, `twemoji_font_check.py`, `twemoji_sprites.py`, `trace_wordmark.py`,
+- Assets: `badge_art.py` (the badge pictures), `twemoji_font.py`, `twemoji_font_check.py`, `twemoji_sprites.py`, `trace_wordmark.py`,
   `home_shots.py`, `home_gifs.py`; `android/tools/name_fonts.py`. `requirements.txt` needs Brotli 1.2.1 or
   newer for the WOFF tooling.
 - Video: `trailer.py` films raw footage with a real-size macOS pointer. `advert.py` films a seeded world,
