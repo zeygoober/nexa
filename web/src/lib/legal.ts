@@ -34,7 +34,7 @@ export const OWNER_USERNAME = "zey";
 export const CONTACT_HREF = CONTACT_EMAIL ? `mailto:${CONTACT_EMAIL}` : `/@${OWNER_USERNAME}`;
 
 /** Public source for every Nexa client and the server; also read by Android. */
-export const GITHUB_URL = "https://github.com/zeynalka3/nexa";
+export const GITHUB_URL = "https://github.com/zeygoober/nexa";
 
 /** The guides for plugin authors and custom CSS, read on GitHub (docs/plugins.md, docs/custom-css.md). */
 export const PLUGIN_GUIDE_URL = `${GITHUB_URL}/blob/main/docs/plugins.md`;

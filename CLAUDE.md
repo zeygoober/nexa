@@ -6,7 +6,7 @@ each part is built.
 Nexa is the end-to-end encrypted chat app at https://nexa.pm, run by its owner zey (`@zey`, the
 `ADMIN_USERNAME` account). It is a relaunch of terrydavisthe2nd/nexa (git remote `upstream`; nexa.fish,
 mathtest.lol and chat.evilion.xyz were that project's addresses and are not ours), published as
-zeynalka3/nexa (remote `origin`). History before 2026-11-07 is upstream's. This repository is all of it: the Go server (`cmd/`,
+zeygoober/nexa (remote `origin`). History before 2026-11-07 is upstream's. This repository is all of it: the Go server (`cmd/`,
 `internal/`), the React + TypeScript web app (`web/`), the Electron desktop app that runs the web app
 (`desktop/`) and the native Android app (`android/`, Kotlin + Jetpack Compose). README.md is the public
 overview and `ENCRYPTION.md` the public encryption explanation. The original design spec is
