@@ -124,6 +124,49 @@ data class StaffBug(
 @Serializable
 data class ModPresence(val status: String = "offline", val activities: List<Activity>? = null)
 
+/** One address an account was seen at (the owner's Account Details). */
+@Serializable
+data class ModAccountAddress(
+    val ip: String = "",
+    @SerialName("first_seen_at") val firstSeenAt: Long = 0,
+    @SerialName("last_seen_at") val lastSeenAt: Long = 0,
+)
+
+/** A device signed in to an account. */
+@Serializable
+data class ModAccountSession(
+    @SerialName("user_agent") val userAgent: String = "",
+    val ip: String = "",
+    @SerialName("created_at") val createdAt: Long = 0,
+    @SerialName("last_seen_at") val lastSeenAt: Long = 0,
+)
+
+@Serializable
+data class ModAccountSubscription(
+    val plan: String = "",
+    val period: String = "",
+    val status: String = "",
+    @SerialName("period_end") val periodEnd: Long = 0,
+    @SerialName("cancel_at_end") val cancelAtEnd: Boolean = false,
+)
+
+/** What only the owner can read about an account; asking for it writes a line in the log. */
+@Serializable
+data class ModAccount(
+    @SerialName("created_at") val createdAt: Long = 0,
+    val plan: String = "",
+    val addresses: List<ModAccountAddress> = emptyList(),
+    val sessions: List<ModAccountSession> = emptyList(),
+    val subscription: ModAccountSubscription? = null,
+)
+
+/** The owner's answer to joining a server from the panel. */
+@Serializable
+data class ModJoined(val server: fish.nexa.net.ServerView, val users: List<fish.nexa.net.PublicUser> = emptyList())
+
+@Serializable
+private data class ModGiftLinks(val links: List<fish.nexa.net.GiftLink> = emptyList())
+
 /** An account that shares an address with another (an alt account, or someone on the same network). */
 @Serializable
 data class ModAlt(
@@ -654,6 +697,25 @@ object Moderation {
         })
 
     /** Lets a server the staff hid from Discover show up there again. */
+    /** Writes a line in the log, so it is asked for only when the sheet opens. */
+    suspend fun account(id: String): ModAccount = wireJson.decodeFromJsonElement(ModAccount.serializer(), Nexa.api.get("/moderation/users/$id/account"))
+
+    /** The owner joins a server as an ordinary member, visibly and logged. */
+    suspend fun joinServer(id: String): ModJoined {
+        val joined = wireJson.decodeFromJsonElement(ModJoined.serializer(), Nexa.api.request("POST", "/moderation/servers/$id/join"))
+        Nexa.session.putServer(joined.server, joined.users)
+        return joined
+    }
+
+    suspend fun giftLinks(): List<fish.nexa.net.GiftLink> = wireJson.decodeFromJsonElement(ModGiftLinks.serializer(), Nexa.api.get("/moderation/gift-links")).links
+
+    suspend fun createGiftLink(plan: String, period: String): fish.nexa.net.GiftLink =
+        wireJson.decodeFromJsonElement(fish.nexa.net.GiftLink.serializer(), Nexa.api.request("POST", "/moderation/gift-links", buildJsonObject { put("plan", plan); put("period", period) }))
+
+    suspend fun revokeGiftLink(code: String) {
+        Nexa.api.request("DELETE", "/moderation/gift-links/$code")
+    }
+
     suspend fun showOnDiscover(id: String) {
         Nexa.api.request("DELETE", "/moderation/servers/$id/discovery-hold")
     }

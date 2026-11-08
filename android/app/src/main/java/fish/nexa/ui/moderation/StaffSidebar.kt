@@ -59,6 +59,7 @@ val STAFF_GROUPS: List<Pair<String, List<StaffPlace>>> = listOf(
         StaffPlace("badges", "moderation.tabs.badges", "Award", StaffRank.ADMIN),
         StaffPlace("games", "moderation.tabs.games", "Gamepad2", StaffRank.ADMIN),
         StaffPlace("calls", "moderation.tabs.calls", "Phone", StaffRank.ADMIN),
+        StaffPlace("gifts", "moderation.tabs.gifts", "Gift", StaffRank.OWNER),
     ),
 )
 

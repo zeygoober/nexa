@@ -21,6 +21,7 @@ export { CallsTab } from "@/components/moderation/CallsTab";
 export { CasesTab } from "@/components/moderation/CaseWorkspace";
 export { ExpressionsTab } from "@/components/moderation/ExpressionsTab";
 export { LogsTab } from "@/components/moderation/LogsTab";
+export { GiftLinksTab } from "@/components/moderation/GiftLinksTab";
 export { PackPage } from "@/components/moderation/PackPage";
 export { PersonPage } from "@/components/moderation/PersonPage";
 export { ServerPage } from "@/components/moderation/ServerPage";

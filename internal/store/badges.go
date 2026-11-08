@@ -91,7 +91,7 @@ type BadgeDef struct {
 }
 
 // BadgeShapes are the shapes an event badge can take.
-var BadgeShapes = map[string]bool{"circle": true, "rounded": true, "shield": true, "hexagon": true}
+var BadgeShapes = map[string]bool{"circle": true, "rounded": true, "shield": true, "hexagon": true, "star": true, "diamond": true, "seal": true, "ribbon": true}
 
 // badge is how this badge sits on a profile.
 func (d *BadgeDef) badge() Badge {
@@ -266,7 +266,7 @@ func (s *Store) naturalLevels(ctx context.Context, u *User, now time.Time) (map[
 		out[BadgeAppDeveloper] = 1
 	}
 	var gifts int
-	if err := s.db.R.QueryRowContext(ctx, `SELECT count(*) FROM plan_gifts WHERE from_id = ? AND to_id != ?`, int64(u.ID), int64(u.ID)).Scan(&gifts); err != nil {
+	if err := s.db.R.QueryRowContext(ctx, `SELECT count(*) FROM plan_gifts WHERE from_id = ? AND to_id != ? AND session_id NOT LIKE '`+ownerGiftClaim+`%'`, int64(u.ID), int64(u.ID)).Scan(&gifts); err != nil {
 		return nil, err
 	}
 	if level := giftLevel(gifts); level > 0 {
@@ -553,7 +553,7 @@ func (s *Store) BadgeHolders(ctx context.Context, badge string, offset, limit in
 			held[id] = h
 		}
 	case badge == BadgeGiftGiver:
-		err = collect(`SELECT u.id, count(*) FROM plan_gifts g JOIN users u ON u.id = g.from_id WHERE g.to_id != g.from_id`+people+` GROUP BY u.id`, notPeople)
+		err = collect(`SELECT u.id, count(*) FROM plan_gifts g JOIN users u ON u.id = g.from_id WHERE g.to_id != g.from_id AND g.session_id NOT LIKE '`+ownerGiftClaim+`%'`+people+` GROUP BY u.id`, notPeople)
 		asTier(GiftTiers[:])
 	case IsGrantableBadge(badge):
 		err = collect(`SELECT u.id, 0 FROM user_badges g JOIN users u ON u.id = g.user_id WHERE g.badge = ?`+people, badge, notPeople)

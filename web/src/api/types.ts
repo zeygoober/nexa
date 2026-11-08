@@ -39,7 +39,7 @@ export interface Badge {
   hidden?: boolean;
 }
 
-export type BadgeShape = "circle" | "rounded" | "shield" | "hexagon";
+export type BadgeShape = "circle" | "rounded" | "shield" | "hexagon" | "star" | "diamond" | "seal" | "ribbon";
 
 /** A badge staff made for an event, with how many hold it. */
 export interface BadgeDef {
@@ -424,7 +424,7 @@ export const MEMBER_QUARANTINED = 1;
 
 /** How someone joined a server, for those who see its invites. */
 export interface MemberJoin {
-  join_method: "invite" | "discovery" | "tag" | "owner" | "";
+  join_method: "invite" | "discovery" | "tag" | "owner" | "staff" | "";
   join_code: string;
   invited_by: Snowflake | null;
 }

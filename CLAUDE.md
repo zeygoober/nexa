@@ -876,7 +876,7 @@ it:
   belong to is on screen.
 - Staff ranks (`api/staff.go`, web `lib/staffRank.ts`, Android `data/StaffRanks.kt`) are public user flags,
   each holding everything below it; the owner's rule (2026-11-04) is that each rank's powers fit its job, and
-  that no rank gives rights in other people's servers or group chats. Helper (1024): support and triage: the
+  that no rank gives rights in other people's servers or group chats (the one exception is the owner's panel join, below). Helper (1024): support and triage: the
   report queue (claim, notes, dismiss; never Action Taken), bug reports, and reading people, cases and the
   log; acts on nobody. Mod (512): takes reported content down, mutes and bans for at most 30 days
   (`modMaxDuration`; never permanent, never shortening a longer one), replies in cases and lifts, closes and
@@ -884,7 +884,7 @@ it:
   anyone's cases, server and Discover takedowns and pack relisting, alt accounts, call usage, apps,
   announcements, badges, bulk moderation, disabling sign-in and deleting accounts of people who are not staff.
   Developer (1, the first account, or `ADMIN_USERNAME` while nobody has been one): the instance's settings,
-  stats and crash reports. Owner, the oldest Developer (`InstanceOwnerID`): the legal report, and the only one
+  stats and crash reports. Owner, the oldest Developer (`InstanceOwnerID`): the legal report, the owner's tools below, and the only one
   who gives and takes ranks (`PATCH /admin/users/{id}` with `rank`) or disables and deletes staff. Anyone
   holding a rank cannot be moderated. Routes state their least rank with `s.staff(rank, h)`, as does
   `emitStaff`. The apps ask `can(rank, capability)` (web `STAFF_CAN`, Android `StaffCan`), kept equal to the
@@ -894,13 +894,24 @@ it:
   three), and staff delete other people's messages only through a report's Take Action. Until 2026-11-04
   Developers held every permission in every server they were in, private channels and their keys included;
   keys handed out then stay with them until those channels' keys rotate.
+- The owner's tools (`api/moderation_owner.go`, the owner's decision 2026-11-08; `ownerTools` on web, `StaffCan.OWNER_TOOLS` on
+  Android), each written to `mod_log`, and each described in the Privacy Policy's section 3n, the Terms and `ENCRYPTION.md`, so
+  they stay true together: Account Details on a person's page (`GET /moderation/users/{id}/account`: addresses with first and
+  last seen, sessions, plan, subscription; logged as `account_view` before anything is read, so the apps ask only when the
+  dialog opens, web `AccountDetailsModal.tsx`, Android `openAccountDetails`); Join Server on a server's page (`POST
+  /moderation/servers/{id}/join`, `Store.JoinFromPanel`, join method `staff`, logged as `owner_join`): an ordinary visible member,
+  who gets keys through the usual `keys_needed`, so a new member's view and no more; the server's ban still holds, paused
+  invites do not, and DMs and group chats cannot be joined; Gift Links (`/moderation/gift-links`, the panel's `gifts` place, web
+  `GiftLinksTab.tsx`, Android `ui/moderation/GiftLinks.kt`): free links in `gift_links` claimed at the usual `/gift/<code>`, whose
+  `session_id` starts `owner:` (`ownerGiftPrefix`) and whose `plan_gifts` row starts `owner-link:` (`ownerGiftClaim`), which keeps
+  them out of the Your Links list and out of the Gift Giver badge. Nexa collects no email address, so there is none to show.
 - Staff actions (`moderation_*` files) are logged in `mod_log`; an action on an account comes with a case
   (`mod_cases`) whose thread the member sees. Bulk moderation sends the same per-account action for each
   account in turn, so each gets its own case.
 - Alt accounts: `user_ips` keeps every address an account signed in or was active from (`Store.RecordUserIP`;
   deleted 180 days after last use by the maintenance loop, and with the account).
   `GET /moderation/users/{id}/alts` lists alts with how many addresses they share, never the addresses; only
-  the legal report prints addresses. The Privacy Policy's section 3e describes it.
+  the legal report and the owner's Account Details print addresses. The Privacy Policy's section 3e describes it.
 - Bug reports and suggestions (`/api/v1/bugs`), client crash reports (`/api/v1/client-errors`), and the instance settings
   (registration mode and key, which override `chatd.env` until cleared).
 - Suggestions (added 2026-11-07) are bug reports with `bug_reports.kind = 'suggestion'` (migration 0054;
@@ -991,7 +1002,7 @@ badges come with the account and cannot be overridden. Every badge has a holders
 (`/moderation/badges/{badge}/holders`, web `moderation/BadgeHoldersModal.tsx`, Android `openHoldersSheet`), Admin and
 up; a person's page sets them all at once (web `GrantBadgesModal.tsx`, Android `openGiveBadgesSheet`). A staff-made
 badge has a description (its tooltip and toast, at most 120 characters), one or two colours, a white or dark glyph, a
-shape (circle, rounded, shield, hexagon) and any Lucide icon or an uploaded picture (public blob of kind `badge`). Every badge, staff ranks and plans included, is a
+shape (circle, rounded, shield, hexagon, star, diamond, seal, ribbon; `store.BadgeShapes`, web `SHAPE_PATHS` and `SHAPE_ICONS`, Android the same in `ui/profile/Badges.kt`) and any Lucide icon or an uploaded picture (public blob of kind `badge`). Every badge, staff ranks and plans included, is a
 full-colour SVG in `web/src/assets/badges/` written by `tools/badge_art.py` (Android copies the same files and
 takes them over the air); an event badge is drawn from its look on both clients. A profile draws
 all its badges in one pill on the username line, each saying its name and meaning (a tooltip, a toast on
@@ -1381,7 +1392,7 @@ MIT copyright line in `LICENSE` stays as it is. `lib/legal.ts` also holds `LEGAL
 them from the file. A change to what the documents say bumps `LEGAL_EFFECTIVE`, which asks every account to
 agree again, and adds a `legal.new*` line (English in every locale) at the top of `LegalChanges` (web
 `LegalContent.tsx`, Android `Legal.kt`), with the older lines kept behind their version checks. 2026-11-07
-added `legal.newOwner`: zey, nexa.pm, and the server in France. The homepage names open source in its
+added `legal.newOwner`: zey, nexa.pm, and the server in France; 2026-11-08 added `legal.newOwnerAccess`: the owner's tools. The homepage names open source in its
 introduction and as the first of its five promises and links GitHub; Settings has a GitHub shortcut on every
 platform; the About page and Settings, About explain the MIT license and invite contributions. README.md uses
 the synthetic `web/public/home/app.png`, which holds no personal conversations.

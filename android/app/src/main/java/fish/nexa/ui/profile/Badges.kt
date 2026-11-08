@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
@@ -83,7 +84,8 @@ fun BadgePill(badge: Badges.Badge, userId: String, flags: Long, plan: String, st
                     )
                 } else {
                     val icon = look.icon ?: "award"
-                    Icon(if (fish.nexa.ui.Lucide.exists(icon)) icon else "award", if (look.dark) DARK_GLYPH else Color.White, size = size * 0.62f, stroke = 2.25f)
+                    val (share, below) = SHAPE_ICONS[look.shape] ?: (0.62f to 0f)
+                    Icon(if (fish.nexa.ui.Lucide.exists(icon)) icon else "award", if (look.dark) DARK_GLYPH else Color.White, Modifier.offset(y = size * below), size = size * share, stroke = 2.25f)
                 }
             }
         }
@@ -104,6 +106,18 @@ private fun opaque(rgb: Int) = Color(0xFF000000 or (rgb.toLong() and 0xFFFFFF))
 private val SHAPE_PATHS = mapOf(
     "shield" to "M12 0.6 L22.2 4.2 Q22.6 16.6 12 23.4 Q1.4 16.6 1.8 4.2 Z",
     "hexagon" to "M12 0.4 L22.3 6.2 L22.3 17.8 L12 23.6 L1.7 17.8 L1.7 6.2 Z",
+    "star" to "M 11.24 1.25 Q 12 -0.05 12.76 1.25 L 16.17 7.11 L 22.8 8.55 Q 24.27 8.86 23.27 9.98 L 18.75 15.04 L 19.43 21.79 Q 19.58 23.29 18.21 22.68 L 12 19.95 L 5.79 22.68 Q 4.42 23.29 4.57 21.79 L 5.25 15.04 L 0.73 9.98 Q -0.27 8.86 1.2 8.55 L 7.83 7.11 Z",
+    "diamond" to "M 10.73 1.47 Q 12 0.2 13.27 1.47 L 22.53 10.73 Q 23.8 12 22.53 13.27 L 13.27 22.53 Q 12 23.8 10.73 22.53 L 1.47 13.27 Q 0.2 12 1.47 10.73 Z",
+    "seal" to "M 22.5 12 Q 24.85 15.44 21.09 17.25 Q 21.4 21.4 17.25 21.09 Q 15.44 24.85 12 22.5 Q 8.56 24.85 6.75 21.09 Q 2.6 21.4 2.91 17.25 Q -0.85 15.44 1.5 12 Q -0.85 8.56 2.91 6.75 Q 2.6 2.6 6.75 2.91 Q 8.56 -0.85 12 1.5 Q 15.44 -0.85 17.25 2.91 Q 21.4 2.6 21.09 6.75 Q 24.85 8.56 22.5 12 Z",
+    "ribbon" to "M 5.2 0.6 L 18.8 0.6 Q 21 0.6 21 2.8 L 21 22.4 Q 21 23.8 19.8 23.1 L 12 18.6 L 4.2 23.1 Q 3 23.8 3 22.4 L 3 2.8 Q 3 0.6 5.2 0.6 Z",
+)
+
+/** How big a shape's icon is, as a share of the badge, and how far below the middle it sits (web SHAPE_ICONS). */
+private val SHAPE_ICONS = mapOf(
+    "star" to (0.46f to 0.03f),
+    "diamond" to (0.5f to 0f),
+    "seal" to (0.58f to 0f),
+    "ribbon" to (0.52f to -0.1f),
 )
 
 private val shapes = HashMap<String, Shape>()

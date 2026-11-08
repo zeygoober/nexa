@@ -177,6 +177,8 @@ fun PersonPage(userId: String, caseId: String?) {
                 NxButton(t("staff.rankModal.menu"), { openRankSheet(user) { load() } }, kind = ButtonKind.GHOST, size = ButtonSize.TOUCH, icon = "ShieldCheck")
             if (fish.nexa.data.StaffRanks.can(mine, fish.nexa.data.StaffCan.RUN_NEXA) && !deleted && user.adminFlags and 64L == 0L)
                 NxButton(t("badges.staff.giveMenu"), { openGiveBadgesSheet(user) }, kind = ButtonKind.GHOST, size = ButtonSize.TOUCH, icon = "Award")
+            if (fish.nexa.data.StaffRanks.can(mine, fish.nexa.data.StaffCan.OWNER_TOOLS))
+                NxButton(t("moderation.account.menu"), { openAccountDetails(user) }, kind = ButtonKind.GHOST, size = ButtonSize.TOUCH, icon = "Fingerprint")
             NxButton(t("moderation.menu.copyId"), {
                 val cm = Nexa.app.getSystemService(android.content.ClipboardManager::class.java)
                 cm?.setPrimaryClip(android.content.ClipData.newPlainText("id", user.id))

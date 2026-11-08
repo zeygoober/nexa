@@ -1,6 +1,6 @@
 import { useReportNavigation } from "@/lib/reportNavigation";
 import { PersonName } from "@/components/common/PersonName";
-import { Award, Ban, ChevronLeft, Copy, Flag, LockOpen, MessageSquareOff, ShieldCheck, Trash2, UserRound } from "lucide-react";
+import { Award, Ban, ChevronLeft, Copy, Fingerprint, Flag, LockOpen, MessageSquareOff, ShieldCheck, Trash2, UserRound } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useParams } from "react-router-dom";
 import { moderation as modApi, type ModAction, type ModMembership, type ModUser, type People, type StaffCase, type ModPack } from "@/api/moderation";
@@ -17,6 +17,7 @@ import { usePresence } from "@/stores/presence";
 import { useUI } from "@/stores/ui";
 import { t } from "@/i18n";
 import { CaseList, StaffCasePane } from "./CaseWorkspace";
+import { AccountDetailsModal } from "./AccountDetailsModal";
 import { AltAccountsModal, AltBadge } from "./AltAccounts";
 import { ModerateModal, type ModeratePreset } from "./ModerateModal";
 import { modStatus, RankPill, StatusSummary } from "./ModStatus";
@@ -36,7 +37,8 @@ export interface ModerateIntent {
  * One person, for the staff, on one page: Mute and Ban (or lifting them) as
  * buttons, their profile as everyone sees it with a way to take down any part
  * of it, and every case about them beside it. A case opens in place. Never
- * anything they said in a conversation: the panel has no way to see it.
+ * anything they said in a conversation: the panel has no way to see it. The
+ * owner alone can open Account Details.
  */
 export function PersonPage() {
   const { userId = "", caseId } = useParams();
@@ -54,6 +56,7 @@ export function PersonPage() {
   const [altsOpen, setAltsOpen] = useState(false);
   const [ranking, setRanking] = useState(false);
   const [badging, setBadging] = useState(false);
+  const [detailsOpen, setDetailsOpen] = useState(false);
   const mine = useMyRank();
   const live = usePresence((p) => p.byUser[userId]);
   const load = useCallback(async () => {
@@ -197,6 +200,12 @@ export function PersonPage() {
             <ShieldCheck size={15} aria-hidden="true" /> {t("staff.rankModal.menu")}
           </Button>
         ) : null}
+        {/* opened by hand, since each look at it goes in the log */}
+        {can(mine, "ownerTools") ? (
+          <Button size="sm" variant="ghost" onClick={() => setDetailsOpen(true)} data-testid="user-account">
+            <Fingerprint size={15} aria-hidden="true" /> {t("moderation.account.menu")}
+          </Button>
+        ) : null}
         {/* admins give Contributor and custom badges by hand; bots hold none */}
         {can(mine, "runNexa") && !deleted && !isBot({ flags: user.admin_flags }) ? (
           <Button size="sm" variant="ghost" onClick={() => setBadging(true)} data-testid="user-badges">
@@ -232,6 +241,7 @@ export function PersonPage() {
       />
       {ranking ? <RankModal user={user} current={rank} onClose={() => setRanking(false)} onDone={() => void load()} /> : null}
       {badging ? <GrantBadgesModal user={user} onClose={() => setBadging(false)} /> : null}
+      {detailsOpen ? <AccountDetailsModal user={user} onClose={() => setDetailsOpen(false)} /> : null}
       {altsOpen ? <AltAccountsModal user={user} onClose={() => setAltsOpen(false)} /> : null}
       {moderating ? (
         <ModerateModal

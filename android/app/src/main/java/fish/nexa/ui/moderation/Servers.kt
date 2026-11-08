@@ -93,6 +93,26 @@ private fun discoverState(server: ModServer): String = when {
     else -> t("moderation.servers.discoveryNotListed")
 }
 
+/** The owner's way in: as an ordinary member everyone sees, after saying so (web ServerPage). */
+@Composable
+private fun JoinFromPanel(server: ModServer) {
+    val member = Nexa.servers.byId.collectAsState().value.containsKey(server.id)
+    fun firstChannel(list: Collection<fish.nexa.net.Channel>) = list.filter { it.serverId == server.id && (it.isText || it.isAnnouncement) }.minByOrNull { it.position }
+    NxButton(t(if (member) "moderation.servers.joinOpen" else "moderation.servers.join"), {
+        if (member) fish.nexa.ui.nav.Nav.go(fish.nexa.ui.nav.Route.Server(server.id, firstChannel(Nexa.channels.byId.value.values)?.id))
+        else fish.nexa.ui.shell.confirm(t("moderation.servers.joinTitle", "name" to server.name), t("moderation.servers.joinBody"), t("moderation.servers.join"), danger = false) {
+            try {
+                val joined = Moderation.joinServer(server.id)
+                Nexa.ui.toast(t("moderation.servers.joined", "name" to server.name), "success")
+                fish.nexa.ui.nav.Nav.go(fish.nexa.ui.nav.Route.Server(server.id, firstChannel(joined.server.channels)?.id))
+            } catch (e: Exception) {
+                if (e is kotlinx.coroutines.CancellationException) throw e
+                Nexa.ui.toast(describeError(e, t("moderation.failed")), "error")
+            }
+        }
+    }, kind = ButtonKind.SECONDARY, size = ButtonSize.TOUCH, icon = "LogIn")
+}
+
 /** A server the staff hid from Discover is shown again, after asking; it goes in the log, with no case. */
 private fun showOnDiscover(server: ModServer, done: () -> Unit) {
     fish.nexa.ui.shell.confirm(t("moderation.servers.discoveryShowTitle", "name" to server.name), t("moderation.servers.discoveryShowBody"), t("moderation.servers.discoveryShow"), danger = false) {
@@ -336,7 +356,10 @@ fun StaffServerPage(serverId: String) {
             leading = { ServerIcon(server.id, server.iconId, server.name, 48.dp) },
             title = server.name,
             sub = listOf(t("moderation.servers.members", "count" to server.memberCount), t("moderation.servers.channels", "count" to server.channelCount), t("moderation.casesCount", "count" to d.cases.size)).joinToString(" · "),
-            actions = { NxButton(t("moderation.moderate"), { openModerateServer(server, null) { load() } }, size = ButtonSize.TOUCH, icon = "Gavel", enabled = serverBlocked.isEmpty()) },
+            actions = {
+                if (fish.nexa.data.StaffRanks.can(fish.nexa.data.StaffCan.OWNER_TOOLS)) JoinFromPanel(server)
+                NxButton(t("moderation.moderate"), { openModerateServer(server, null) { load() } }, size = ButtonSize.TOUCH, icon = "Gavel", enabled = serverBlocked.isEmpty())
+            },
         )
         Box(Modifier.weight(1f).fillMaxWidth()) {
             LazyColumn(Modifier.fillMaxSize(), contentPadding = PanelPad, verticalArrangement = Arrangement.spacedBy(16.dp)) {

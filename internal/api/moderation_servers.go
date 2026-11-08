@@ -13,7 +13,7 @@ import (
 // Servers in the moderation panel: the staff see what each server shows
 // everyone (its icon, banner, name and description), who owns it and how many
 // are in it, and take back what breaks the rules. What is said inside a server
-// is never shown here. Taking something back opens a case for the server's
+// is never shown here (the owner can join one as a member, moderation_owner.go). Taking something back opens a case for the server's
 // owner, who reads why in their Nexa conversation and can answer there.
 
 func (s *Server) modServerRoutes(mux *http.ServeMux) {

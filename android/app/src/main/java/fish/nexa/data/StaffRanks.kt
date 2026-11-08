@@ -70,6 +70,7 @@ enum class StaffCan(val least: StaffRank) {
     CLOSE_ACCOUNTS(StaffRank.ADMIN),
     INSTANCE(StaffRank.DEVELOPER),
     RANKS(StaffRank.OWNER),
+    OWNER_TOOLS(StaffRank.OWNER),
 }
 
 object StaffRanks {

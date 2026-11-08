@@ -286,8 +286,8 @@ fun BadgesTab() {
                     NxTextField(description, { description = it.take(MAX_DESCRIPTION + 8) }, label = t("badges.staff.description"), placeholder = t("badges.staff.descriptionPlaceholder"), hint = "$descLength/$MAX_DESCRIPTION", capitalize = true)
                     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         FieldLabel(t("badges.staff.shape"))
-                        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                            for (s in Badges.SHAPES) ShapeCard(s, shape == s, Modifier.weight(1f)) { shape = s }
+                        for (row in Badges.SHAPES.chunked(4)) Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                            for (s in row) ShapeCard(s, shape == s, Modifier.weight(1f)) { shape = s }
                         }
                     }
                     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {

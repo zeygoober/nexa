@@ -124,6 +124,14 @@ export function actionLabel(action: string): string {
       return t("moderation.action.adminRevoke");
     case "rank_change":
       return t("staff.log.rankChange");
+    case "account_view":
+      return t("moderation.log.accountView");
+    case "owner_join":
+      return t("moderation.log.ownerJoin");
+    case "gift_link_create":
+      return t("moderation.log.giftCreate");
+    case "gift_link_revoke":
+      return t("moderation.log.giftRevoke");
     case "badge_change":
       return t("badges.log.change");
     case "badge_create":
@@ -393,7 +401,13 @@ export function logDetail(e: ModLogEntry): string {
       return name ? `“${name}”` : "";
     }
     case "discovery_restore":
+    case "owner_join":
       return d.server_name ? `“${d.server_name}”` : "";
+    case "gift_link_create":
+    case "gift_link_revoke": {
+      const g = e.details as { plan?: string; days?: number };
+      return g.plan ? t((g.days ?? 0) >= 365 ? "support.giftLink.yearOf" : "support.giftLink.monthOf", { plan: t(g.plan === "pro" ? "support.plan.pro" : "support.plan.supporter") }) : "";
+    }
     case "delete":
       return d.counts ? t("moderation.log.deleteCounts", { messages: d.counts.messages, servers: d.counts.owned_servers }) : "";
     case "announcement":
@@ -446,7 +460,7 @@ export const LOG_GROUPS: Record<string, string[]> = {
   punishments: ["message_remove", "avatar_remove", "field_reset", "server_reset", "expression_takedown", "mute", "ban", "delete", "account_delete_profile"],
   lifts: ["unmute", "unban", "expression_relist", "discovery_restore"],
   announcements: ["announcement", "announcement_delete"],
-  access: ["rank_change", "admin_grant", "admin_revoke", "account_disable", "account_enable"],
+  access: ["rank_change", "admin_grant", "admin_revoke", "account_disable", "account_enable", "account_view", "owner_join", "gift_link_create", "gift_link_revoke"],
   badges: ["badge_change", "badge_create", "badge_edit", "badge_delete"],
   games: ["game_list", "game_reject", "game_forget"],
 };

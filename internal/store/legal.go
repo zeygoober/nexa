@@ -497,6 +497,14 @@ func (s *Store) legalMFA(ctx context.Context, rec *AccountRecord, uid int64) err
 	return nil
 }
 
+// SignIns is an account's sessions and the addresses it has been seen at, for
+// the owner's Account Details.
+func (s *Store) SignIns(ctx context.Context, uid ids.ID) ([]LegalSession, []LegalAddress, error) {
+	var rec AccountRecord
+	err := s.legalSessions(ctx, &rec, int64(uid))
+	return rec.Sessions, rec.Addresses, err
+}
+
 func (s *Store) legalSessions(ctx context.Context, rec *AccountRecord, uid int64) error {
 	rows, err := s.db.R.QueryContext(ctx, `SELECT id, user_agent, ip, created_at, last_seen_at FROM sessions WHERE user_id = ? ORDER BY created_at`, uid)
 	if err != nil {

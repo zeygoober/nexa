@@ -46,8 +46,9 @@
   height: 100%;
   overflow: visible;
 }
-.mark > svg:not(.shape) {
+.markIcon {
   position: relative;
+  display: grid;
 }
 
 /* in a list: the picture, then its name */

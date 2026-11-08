@@ -77,7 +77,7 @@ object Badges {
     }
 
     /** The outlines an event badge can take (web BADGE_SHAPES). */
-    val SHAPES = listOf("circle", "rounded", "shield", "hexagon")
+    val SHAPES = listOf("circle", "rounded", "shield", "hexagon", "star", "diamond", "seal", "ribbon")
 
     /** The badges staff can give or take against what an account earned, with their top level (store.OverridableBadges). */
     val OVERRIDABLE = linkedMapOf("og" to 1, "years" to 50, "bug_hunter" to 5, "ideas" to 5, "app_developer" to 1, "gift_giver" to 3)

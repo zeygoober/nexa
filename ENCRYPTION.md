@@ -239,6 +239,20 @@ Implementation: [bot access documentation](docs/bots.md#what-your-bot-can-read),
 [sender-created bot copies](web/src/lib/botCopies.ts) and
 [server bot decryption](internal/api/bot_crypto.go).
 
+## The owner joining a server
+
+The instance owner can join any server from the moderation panel, private ones
+included, unless that server has banned them. This is an ordinary join and adds
+no cryptographic backdoor: the join is announced in the server, they appear in
+its member list, the moderation log records it, and the owner's device gets the
+server's keys the same way any new member's does, from a member's device that
+holds them. Once joined, the owner can read what a new member can read, including
+earlier messages. Channels with their own keys that a new member cannot see stay
+closed. Direct messages and group chats cannot be joined this way.
+
+Implementation: [panel join](internal/api/moderation_owner.go) and
+[how a new member gets keys](internal/api/key_handlers.go).
+
 ## Checking identities and understanding server trust
 
 Clients remember identity public keys when first seen and flag later changes.

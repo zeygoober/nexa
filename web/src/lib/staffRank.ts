@@ -12,7 +12,9 @@
  *   actions, disabling sign-in and deleting accounts.
  * - Developer: the instance's settings, stats and crash reports. No rights in
  *   other people's servers or group chats.
- * - Owner: the oldest Developer, the only one who gives and takes ranks.
+ * - Owner: the oldest Developer, the only one who gives and takes ranks, sees
+ *   an account's addresses and sessions, joins servers from the panel (visibly
+ *   and logged) and makes gift links without paying.
  *
  * A rank is a public flag bit, so it is read from anyone's flags. What each
  * rank may do is `can(rank, capability)`, from STAFF_CAN.
@@ -75,6 +77,8 @@ export const STAFF_CAN = {
   instance: "developer",
   /** Giving and taking ranks, and acting on staff. */
   ranks: "owner",
+  /** An account's addresses and sessions, joining any server from the panel, and gift links nobody paid for. */
+  ownerTools: "owner",
 } as const satisfies Record<string, StaffRank>;
 export type StaffCapability = keyof typeof STAFF_CAN;
 

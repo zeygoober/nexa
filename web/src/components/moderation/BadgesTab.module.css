@@ -411,3 +411,90 @@
 .ladderTitle {
   margin-top: 14px;
 }
+
+/* Account Details: three short facts, then a list of records */
+.facts {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  margin: 0 0 8px;
+  padding: 12px;
+  border-radius: var(--radius-md);
+  background: var(--bg-input);
+}
+.facts dt {
+  font-size: 12px;
+  font-weight: 650;
+  color: var(--text-muted);
+}
+.facts dd {
+  display: flex;
+  flex-direction: column;
+  margin: 2px 0 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-strong);
+  overflow-wrap: anywhere;
+}
+.facts small {
+  font-size: 12.5px;
+  font-weight: 400;
+  color: var(--text-muted);
+}
+@media (max-width: 767px) {
+  .facts {
+    grid-template-columns: 1fr;
+  }
+}
+.records {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  /* The dialog's body spaces its children 18px apart, too far from a list's own title */
+  margin: -12px 0 0;
+  padding: 0;
+  list-style: none;
+}
+.records li {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 8px 8px 12px;
+  border-radius: var(--radius-md);
+  background: var(--bg-input);
+}
+.recordText {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+  font-size: 12.5px;
+  color: var(--text-muted);
+}
+.recordText strong {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-strong);
+}
+.recordText code {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  color: var(--text-normal);
+  overflow-wrap: anywhere;
+}
+/* a row on the Gift Links page: a link waiting, or a tick once claimed */
+.giftMark {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 999px;
+  color: var(--text-brand);
+  background: color-mix(in srgb, var(--brand) 14%, transparent);
+}
+.giftMark[data-claimed] {
+  color: var(--text-muted);
+  background: var(--bg-input);
+}

@@ -1,7 +1,7 @@
 NEXA - PRIVACY POLICY
 Site: nexa.pm
 Contact the owner (zey) here: in the app, message @zey
-Effective: 2026-11-07
+Effective: 2026-11-08
 
 This policy lists exactly what Nexa holds. It is written against the
 actual database, so if something is not listed here, there is no place
@@ -12,11 +12,17 @@ under data protection law, including the GDPR (sections 9 to 11).
 1. THE SHORT VERSION
 
 - Your messages, files, notes, and calls are encrypted end to end.
-  Nobody who runs Nexa can read them, and nobody monitors what you do
-  in a chat. The exceptions are messages that programs post through a
-  server's webhooks, and apps: what an app posts, and what reaches an
-  app that you or a server's manager added (section 3j). The app marks
-  both.
+  Nobody who runs Nexa can read them from outside a conversation, and
+  nobody monitors what you do in a chat. The exceptions are messages
+  that programs post through a server's webhooks, and apps: what an
+  app posts, and what reaches an app that you or a server's manager
+  added (section 3j). The app marks both.
+- The owner can join any server from the moderation panel, private
+  ones included. It is an ordinary, visible join: everyone in the
+  server sees it, the owner is listed among its members, and the
+  moderation log records it. As a member, the owner can read what a
+  new member can read there, earlier messages included. Direct
+  messages and group chats cannot be joined this way (section 3n).
 - What the owner and staff can see is your public profile, what
   servers show everyone, public images, the delivery details the
   server needs (who sent what, where, and when), bug reports you send,
@@ -25,7 +31,9 @@ under data protection law, including the GDPR (sections 9 to 11).
 - For security, Nexa keeps the IP addresses each account signs in and
   is active from (section 3e). Staff use them only to find accounts
   that share an address, such as a second account made to get around
-  a ban. The moderation panel never shows the addresses themselves.
+  a ban, and never see the addresses themselves. The owner can see
+  them on an account's page, and each look is written to the
+  moderation log (section 3n).
 - Nexa uses a few outside services, listed in section 6 with what
   each one gets. Cloudflare carries all traffic to and from Nexa,
   keeps the encrypted files people send, runs the captcha, and relays
@@ -44,7 +52,7 @@ under data protection law, including the GDPR (sections 9 to 11).
 - You can export your data, correct it, or delete your account
   yourself, and you can object or complain (section 11).
 
-2. WHAT IS ENCRYPTED (NOBODY WHO RUNS NEXA CAN READ IT)
+2. WHAT IS ENCRYPTED (THE SERVER CANNOT READ IT)
 
 - Message text and edits. Stored only as ciphertext. The exceptions
   are a message a program posts through a server's webhook, or an app
@@ -73,10 +81,12 @@ under data protection law, including the GDPR (sections 9 to 11).
   that passkey can produce, which never reaches the server).
   Conversation keys sit on the server only sealed separately to
   each member. Nobody who runs Nexa holds a key that can open any of
-  this, except the keys of apps (section 3j). There is no spare key,
-  no master key, and no escrow.
+  this, except the keys of apps (section 3j) and the keys of a server
+  the owner has joined as a member (section 3n). There is no spare
+  key, no master key, and no escrow.
 
-Apart from the apps people choose to add (section 3j), there is no
+Apart from the apps people choose to add (section 3j) and the owner
+joining a server as a visible member (section 3n), there is no
 setting or admin action that decrypts content already sent, and
 nothing in the software that hands over future content in readable
 form.
@@ -145,9 +155,9 @@ e) Sessions, account addresses and guest entries (the only places an
      moderation panel shows staff which other accounts have used the
      same addresses (marked "Alt Accounts", with how many addresses
      they share), so they can spot accounts made to get around a mute
-     or a ban. The panel never shows the addresses themselves; the
-     owner produces them only to answer a valid legal order (Terms
-     section 5). Several people on one network (a home, a school, a
+     or a ban. Staff never see the addresses themselves. The owner
+     can, on an account's page (section 3n), and produces them to
+     answer a valid legal order (Terms section 5). Several people on one network (a home, a school, a
      VPN) can share an address, so staff treat a match as something to
      look into, not proof. An address is deleted 180 days after your
      account last used it, and all of them are deleted with your
@@ -290,7 +300,8 @@ j) Apps (not end-to-end encrypted, added only by people who choose
      maker turned it on, who is online and what they are doing.
 
 k) Plans (only if you buy one or are given one; not end-to-end
-   encrypted, and not shown in the staff panel): which plan you have,
+   encrypted, and not shown in the staff panel, apart from what the
+   owner can open, section 3n): which plan you have,
    monthly or yearly, its state as Stripe last reported it (such as
    active, past due or cancelled), when it renews or ends, and the IDs
    Stripe gives your customer record and your subscription, so the app
@@ -348,6 +359,29 @@ m) Performance reports (not end-to-end encrypted, added up, nothing
    in Settings, Privacy, Send performance reports; your devices then
    stop measuring and sending.
 
+n) What only the owner can do, each written to the moderation log:
+   - Account details: on an account's page, the owner can open the IP
+     addresses it has used with when each was first and last seen,
+     the devices signed in to it and the address each last used, when
+     it was made, its plan, and its payment subscription's status and
+     end date. Staff of any other rank cannot, and every time the
+     owner opens this the moderation log records it.
+   - Joining a server: the owner can join any server from the
+     moderation panel, private ones included, unless that server has
+     banned the owner's account. It is an ordinary join: everyone in
+     the server sees it, the owner is listed among its members with
+     the moderation panel as how they came in, and the moderation log
+     records it. From then on the owner's app is given that server's
+     keys the way any new member's is, so the owner can read what a
+     new member can read there, earlier messages included. Channels
+     closed to a new member, with their own keys, stay closed. The
+     server's managers can remove or ban the owner like any member,
+     and its keys rotate when they do.
+   - Direct messages and group chats cannot be joined this way, and
+     their contents stay out of reach.
+   - Gift links: the owner can make links that give a plan for free.
+     Who claimed one is kept with the link (section 3k).
+
 4. WHAT IS NEVER COLLECTED
 
 No email address. No phone number. No legal name, birth date, age, or
@@ -374,11 +408,11 @@ drafts live only inside your encrypted settings.
   decrypts them, and the communities and channels you share with
   them.
 - The owner and the staff they appoint see sections 3a to 3j, and
-  admins and up see 3l. The performance totals (3h, 3m) are read by
+  admins and up see 3l. Only the owner sees 3n. The performance totals (3h, 3m) are read by
   the owner on the server itself, and name nobody. Staff use a moderation panel that shows
   public profiles, what servers show everyone, when accounts were last
   active, which accounts have used the same IP addresses (never the
-  addresses), how much call traffic each account used, moderation
+  addresses, which only the owner sees, section 3n), how much call traffic each account used, moderation
   cases and their threads, the log, announcements, bug reports and
   safety reports.
   For a reported message, staff can read its complete content and files,

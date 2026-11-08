@@ -170,6 +170,7 @@ fun joinMethodLabel(method: String?): String = when (method) {
     "tag" -> t("members.method.tag")
     "vanity" -> t("members.method.vanity")
     "owner" -> t("members.method.owner")
+    "staff" -> t("members.method.staff")
     else -> t("members.method.unknown")
 }
 

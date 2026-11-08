@@ -1,7 +1,7 @@
 import { lazy, Suspense, useId } from "react";
 import type { Badge, PublicUser } from "@/api/types";
 import { Tooltip } from "@/components/common/Tooltip";
-import { badgeLook, fallbackBadges, hexColour, SHAPE_PATHS, type BadgeLook } from "@/lib/badges";
+import { badgeLook, fallbackBadges, hexColour, SHAPE_ICONS, SHAPE_PATHS, type BadgeLook } from "@/lib/badges";
 import s from "./Badges.module.css";
 
 const EventIcon = lazy(() => import("./EventIcon"));
@@ -13,9 +13,9 @@ const DARK_GLYPH = "#1b1724";
 
 /** One outline in the 24 by 24 box every badge is drawn in. */
 function Outline({ shape, ...rest }: { shape: BadgeLook["shape"] } & React.SVGProps<SVGPathElement & SVGCircleElement & SVGRectElement>) {
-  if (shape === "shield" || shape === "hexagon") return <path d={SHAPE_PATHS[shape]} {...rest} />;
+  if (!shape || shape === "circle") return <circle cx={12} cy={12} r={11.5} {...rest} />;
   if (shape === "rounded") return <rect x={0.5} y={0.5} width={23} height={23} rx={6.5} {...rest} />;
-  return <circle cx={12} cy={12} r={11.5} {...rest} />;
+  return <path d={SHAPE_PATHS[shape]} {...rest} />;
 }
 
 /**
@@ -28,6 +28,7 @@ export function BadgeMark({ look, size = 20 }: { look: BadgeLook; size?: number 
   const id = useId().replace(/:/g, "");
   const from = look.color !== undefined ? hexColour(look.color) : "var(--brand)";
   const to = look.color2 !== undefined ? hexColour(look.color2) : from;
+  const fit = (look.shape && SHAPE_ICONS[look.shape]) || { size: 0.62, y: 0 };
   return (
     <span className={s.mark} style={{ width: size, height: size, color: look.glyph === "dark" ? DARK_GLYPH : "#fff" }}>
       <svg className={s.shape} viewBox="0 0 24 24" aria-hidden="true">
@@ -56,7 +57,9 @@ export function BadgeMark({ look, size = 20 }: { look: BadgeLook; size?: number 
       </svg>
       {!look.image && (
         <Suspense fallback={null}>
-          <EventIcon name={look.iconName} size={Math.round(size * 0.62)} />
+          <span className={s.markIcon} style={{ transform: fit.y ? `translateY(${(fit.y * size).toFixed(1)}px)` : undefined }}>
+            <EventIcon name={look.iconName} size={Math.round(size * fit.size)} />
+          </span>
         </Suspense>
       )}
     </span>

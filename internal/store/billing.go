@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"errors"
+	"strings"
 
 	"evilion.xyz/chat/internal/db"
 	"evilion.xyz/chat/internal/ids"
@@ -304,6 +305,53 @@ func scanGiftLink(r rowScanner) (*GiftLink, error) {
 	return &g, nil
 }
 
+// ownerGiftPrefix marks a link the owner made in the panel: nobody paid for it,
+// so what it gives is no gift of the account that made it (the Gift Giver badge
+// counts sessions without ownerGiftClaim).
+const (
+	ownerGiftPrefix = "owner:"
+	ownerGiftClaim  = "owner-link:"
+)
+
+// AddOwnerGiftLink makes a gift link without a payment.
+func (s *Store) AddOwnerGiftLink(ctx context.Context, from ids.ID, plan string, days int) (string, error) {
+	return s.AddGiftLink(ctx, ownerGiftPrefix+randomCode(giftLinkCodeLen), from, plan, days)
+}
+
+// OwnerGiftLinks lists the links made without a payment, newest first.
+func (s *Store) OwnerGiftLinks(ctx context.Context) ([]GiftLink, error) {
+	return s.giftLinks(ctx, `g.session_id LIKE ?`, ownerGiftPrefix+"%")
+}
+
+// RevokeOwnerGiftLink deletes an unclaimed link made without a payment and
+// answers what it held. A claimed one is ErrGiftClaimed; a link someone paid
+// for is ErrNotFound, since taking it back would take their money.
+func (s *Store) RevokeOwnerGiftLink(ctx context.Context, code string) (*GiftLink, error) {
+	var g *GiftLink
+	err := s.Tx(ctx, func(tx *db.Tx) error {
+		var session string
+		var plan string
+		var days int
+		var claimed int64
+		err := tx.QueryRowContext(ctx, `SELECT session_id, plan, days, claimed_at FROM gift_links WHERE code = ?`, code).Scan(&session, &plan, &days, &claimed)
+		if errors.Is(err, sql.ErrNoRows) || (err == nil && !strings.HasPrefix(session, ownerGiftPrefix)) {
+			return ErrNotFound
+		}
+		if err != nil {
+			return err
+		}
+		if claimed > 0 {
+			return ErrGiftClaimed
+		}
+		if _, err := tx.ExecContext(ctx, `DELETE FROM gift_links WHERE code = ? AND claimed_at = 0`, code); err != nil {
+			return err
+		}
+		g = &GiftLink{Code: code, Plan: plan, Days: days}
+		return nil
+	})
+	return g, err
+}
+
 // GiftLinkByCode reads a gift link.
 func (s *Store) GiftLinkByCode(ctx context.Context, code string) (*GiftLink, error) {
 	g, err := scanGiftLink(s.db.R.QueryRowContext(ctx, `SELECT `+giftLinkCols+` WHERE g.code = ?`, code))
@@ -315,7 +363,11 @@ func (s *Store) GiftLinkByCode(ctx context.Context, code string) (*GiftLink, err
 
 // GiftLinksFrom lists the gift links an account bought, newest first.
 func (s *Store) GiftLinksFrom(ctx context.Context, uid ids.ID) ([]GiftLink, error) {
-	rows, err := s.db.R.QueryContext(ctx, `SELECT `+giftLinkCols+` WHERE g.from_id = ? ORDER BY g.created_at DESC LIMIT 100`, int64(uid))
+	return s.giftLinks(ctx, `g.from_id = ? AND g.session_id NOT LIKE '`+ownerGiftPrefix+`%'`, int64(uid))
+}
+
+func (s *Store) giftLinks(ctx context.Context, where string, arg any) ([]GiftLink, error) {
+	rows, err := s.db.R.QueryContext(ctx, `SELECT `+giftLinkCols+` WHERE `+where+` ORDER BY g.created_at DESC LIMIT 100`, arg)
 	if err != nil {
 		return nil, err
 	}
@@ -339,7 +391,8 @@ func (s *Store) ClaimGiftLink(ctx context.Context, code string, uid ids.ID) (g *
 		var plan string
 		var days int
 		var at int64
-		if err := tx.QueryRowContext(ctx, `SELECT from_id, plan, days, claimed_at FROM gift_links WHERE code = ?`, code).Scan(&from, &plan, &days, &at); err != nil {
+		var session string
+		if err := tx.QueryRowContext(ctx, `SELECT from_id, plan, days, claimed_at, session_id FROM gift_links WHERE code = ?`, code).Scan(&from, &plan, &days, &at, &session); err != nil {
 			if errors.Is(err, sql.ErrNoRows) {
 				return ErrNotFound
 			}
@@ -353,7 +406,11 @@ func (s *Store) ClaimGiftLink(ctx context.Context, code string, uid ids.ID) (g *
 			return ErrGiftClaimed
 		}
 		g = &GiftLink{Code: code, FromID: ids.ID(from), Plan: plan, Days: days}
-		changed, unboosted, err = addGiftTx(ctx, tx, "link:"+code, ids.ID(from), uid, plan, days)
+		given := "link:" + code
+		if strings.HasPrefix(session, ownerGiftPrefix) {
+			given = ownerGiftClaim + code
+		}
+		changed, unboosted, err = addGiftTx(ctx, tx, given, ids.ID(from), uid, plan, days)
 		return err
 	})
 	return g, changed, unboosted, err

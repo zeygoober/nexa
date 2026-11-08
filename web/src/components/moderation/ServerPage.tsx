@@ -2,7 +2,7 @@ import { useReportNavigation } from "@/lib/reportNavigation";
 import { can, useMyRank } from "@/lib/staffRank";
 import { PersonName } from "@/components/common/PersonName";
 import { useMediaAnimation } from "@/lib/mediaAnimation";
-import { CalendarDays, ChevronLeft, ChevronRight, Compass, Copy, Eraser, Eye, FolderOpen, Gavel, Hash, ImageOff, Smile, Users } from "lucide-react";
+import { CalendarDays, ChevronLeft, ChevronRight, Compass, Copy, Eraser, Eye, FolderOpen, Gavel, Hash, ImageOff, LogIn, Smile, Users } from "lucide-react";
 import { useCallback, useEffect, useState, type ReactNode } from "react";
 import { useParams } from "react-router-dom";
 import { moderation as modApi, type ModPack, type ModServer, type People, type ServerField, type StaffCase } from "@/api/moderation";
@@ -18,6 +18,7 @@ import { describeError } from "@/lib/errors";
 import { actionIcon, actionLabel, expressionSummary, fieldLabel, fullDate, personName, previewText, severity } from "@/lib/moderation";
 import { formatRelative, formatShortDate } from "@/lib/time";
 import { useModEvents, useModeration } from "@/stores/moderation";
+import { useServers } from "@/stores/servers";
 import { useUI } from "@/stores/ui";
 import { t } from "@/i18n";
 import { ExpressionPic, PackRows } from "./ExpressionsTab";
@@ -32,7 +33,8 @@ import x from "./Expressions.module.css";
 /**
  * One server, for the staff: what it shows everyone from outside, with a way
  * to take down any part of it, who owns it, and the cases about it. What is
- * said inside it is never shown: the panel has no way to see it.
+ * said inside it is never shown: the panel has no way to see it. The owner can
+ * join it, as a member everyone sees.
  */
 export function ServerPage() {
   const mine = useMyRank();
@@ -52,6 +54,22 @@ export function ServerPage() {
   const [packs, setPacks] = useState<ModPack[]>([]);
   const [picked, setPicked] = useState<string[]>([]);
   const [takingEmoji, setTakingEmoji] = useState(false);
+  const member = useServers((st) => !!st.byId[serverId]);
+  const join = () =>
+    openModal("confirm", {
+      title: t("moderation.servers.joinTitle", { name: server?.name ?? "" }),
+      body: t("moderation.servers.joinBody"),
+      confirmLabel: t("moderation.servers.join"),
+      onConfirm: async () => {
+        try {
+          await modApi.joinServer(serverId);
+          toast(t("moderation.servers.joined", { name: server?.name ?? "" }), "success");
+          nav(`/channels/${serverId}`);
+        } catch (err) {
+          toast(describeError(err, t("moderation.failed")), "error");
+        }
+      },
+    });
 
   const load = useCallback(async () => {
     try {
@@ -169,6 +187,11 @@ export function ServerPage() {
           </div>
         </div>
         <div className={m.userActions}>
+          {can(mine, "ownerTools") ? (
+            <Button size="sm" variant="secondary" onClick={member ? () => nav(`/channels/${serverId}`) : join} data-testid="server-join">
+              <LogIn size={15} aria-hidden="true" /> {member ? t("moderation.servers.joinOpen") : t("moderation.servers.join")}
+            </Button>
+          ) : null}
           <Button size="sm" onClick={() => setModerating([])} disabled={!!serverBlocked} title={serverBlocked || undefined} data-testid="server-moderate">
             <Gavel size={15} aria-hidden="true" /> {t("moderation.moderate")}
           </Button>

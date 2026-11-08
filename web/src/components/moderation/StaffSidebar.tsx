@@ -1,4 +1,4 @@
-import { Award, BellRing, Bot, Bug, Flag, FolderOpen, Gamepad2, Lightbulb, Megaphone, Phone, ScrollText, Server, Shield, Sticker, Users, type LucideIcon } from "lucide-react";
+import { Award, BellRing, Bot, Bug, Flag, FolderOpen, Gamepad2, Gift, Lightbulb, Megaphone, Phone, ScrollText, Server, Shield, Sticker, Users, type LucideIcon } from "lucide-react";
 import { useEffect } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { moderation as modApi } from "@/api/moderation";
@@ -59,6 +59,7 @@ export const STAFF_GROUPS: { id: string; label: () => string; places: StaffPlace
       { id: "badges", label: () => t("moderation.tabs.badges"), icon: Award, rank: "admin" },
       { id: "games", label: () => t("moderation.tabs.games"), icon: Gamepad2, rank: "admin" },
       { id: "calls", label: () => t("moderation.tabs.calls"), icon: Phone, rank: "admin" },
+      { id: "gifts", label: () => t("moderation.tabs.gifts"), icon: Gift, rank: "owner" },
     ],
   },
 ];

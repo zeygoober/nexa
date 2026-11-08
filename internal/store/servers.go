@@ -526,6 +526,24 @@ func (s *Store) Join(ctx context.Context, serverID, uid ids.ID, how JoinInfo) (*
 	return m, err
 }
 
+// JoinFromPanel adds the owner of the instance to a server without an invite,
+// writing the join to the moderation log in the same transaction, so there is
+// no such join without its line.
+func (s *Store) JoinFromPanel(ctx context.Context, serverID, uid ids.ID, log *ModLogEntry) (*Member, error) {
+	var m *Member
+	err := s.Tx(ctx, func(tx *db.Tx) error {
+		var err error
+		if m, err = addMember(ctx, tx, serverID, uid, JoinInfo{Method: "staff"}); err != nil {
+			return err
+		}
+		return appendModLogTx(ctx, tx, log)
+	})
+	if err == nil {
+		s.serverChanged(serverID)
+	}
+	return m, err
+}
+
 // ErrJoinsPaused is returned when a server has paused its invites.
 var ErrJoinsPaused = errors.New("joins paused")
 
@@ -566,7 +584,7 @@ func (s *Store) JoinByInvite(ctx context.Context, serverID, uid ids.ID, code str
 // written a moment earlier always holds.
 func addMember(ctx context.Context, tx *db.Tx, serverID, uid ids.ID, how JoinInfo) (*Member, error) {
 	now := nowMs()
-	if how.Method != "owner" {
+	if how.Method != "owner" && how.Method != "staff" {
 		var paused sql.NullInt64
 		if err := tx.QueryRowContext(ctx, `SELECT invites_paused_until FROM servers WHERE id = ?`, int64(serverID)).Scan(&paused); err != nil {
 			if errors.Is(err, sql.ErrNoRows) {

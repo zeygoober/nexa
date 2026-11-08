@@ -9,6 +9,7 @@ import type { ReportReceipt } from "./reports";
  * itself — and the app says so wherever one is written.
  */
 import { api, type UploadOptions } from "./client";
+import type { GiftLink } from "./types";
 import type { BugCounts, BugMessage, MemberBug } from "./bugs";
 import type { Activity, BadgeDef, BadgeHolder, BadgeShape, Emoji, PublicUser, ServerTag, Snowflake, StickerPack } from "./types";
 
@@ -538,6 +539,15 @@ export const nexa = {
   },
 };
 
+/** What only the owner can read about an account (GET /moderation/users/{id}/account). */
+export interface ModAccount {
+  created_at: number;
+  plan: string;
+  subscription: { plan: string; period: string; status: string; period_end: number; cancel_at_end: boolean } | null;
+  addresses: { ip: string; first_seen_at: number; last_seen_at: number }[];
+  sessions: { user_agent: string; ip: string; created_at: number; last_seen_at: number }[];
+}
+
 export const moderation = {
   summary(): Promise<{ counts: CaseCounts; bugs?: BugCounts | null; suggestions?: BugCounts | null; reports?: Record<string, number>; unread?: ModUnread; owner_id: Snowflake; nexa_id: Snowflake; staff_ids: Snowflake[]; people: People }> {
     return api.request("GET", "/moderation/summary");
@@ -597,6 +607,22 @@ export const moderation = {
     return uploadCaseFile("/moderation/cases/attachments", file, name, opts);
   },
   /** The accounts seen at the same addresses as this one, the most shared first. */
+  /** The owner's: reading this writes a line in the log. */
+  account(id: Snowflake): Promise<ModAccount> {
+    return api.request("GET", `/moderation/users/${id}/account`);
+  },
+  joinServer(id: Snowflake): Promise<{ server: { id: Snowflake }; users: unknown[] }> {
+    return api.request("POST", `/moderation/servers/${id}/join`, {});
+  },
+  giftLinks(): Promise<{ links: GiftLink[] }> {
+    return api.request("GET", "/moderation/gift-links");
+  },
+  createGiftLink(plan: string, period: string): Promise<GiftLink> {
+    return api.request("POST", "/moderation/gift-links", { plan, period });
+  },
+  revokeGiftLink(code: string): Promise<void> {
+    return api.request("DELETE", `/moderation/gift-links/${code}`);
+  },
   alts(id: Snowflake): Promise<{ alts: ModAlt[] }> {
     return api.request("GET", `/moderation/users/${id}/alts`);
   },

@@ -55,6 +55,11 @@ const (
 	LogGameList    = "game_list"
 	LogGameReject  = "game_reject"
 	LogGameForget  = "game_forget"
+	// What only the owner does (api/moderation_owner.go).
+	LogAccountView    = "account_view"
+	LogOwnerJoin      = "owner_join"
+	LogGiftLinkCreate = "gift_link_create"
+	LogGiftLinkRevoke = "gift_link_revoke"
 )
 
 // The restrictions a case can put in force.

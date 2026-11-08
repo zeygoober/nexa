@@ -33,7 +33,7 @@ sealed interface Route {
         val tab: String get() = parts.firstOrNull()?.takeIf { it in TABS } ?: "reports"
 
         companion object {
-            val TABS = listOf("reports", "discovery", "users", "bots", "servers", "expressions", "calls", "cases", "bugs", "logs", "announcements", "badges", "games")
+            val TABS = listOf("reports", "discovery", "users", "bots", "servers", "expressions", "calls", "cases", "bugs", "logs", "announcements", "badges", "games", "gifts")
         }
     }
     /** `/channels/@me/support`: Nexa's plans, and gifts. */
