@@ -26,6 +26,12 @@ export interface Release {
 /** Newest first. */
 export const RELEASES: Release[] = [
   {
+    id: "2026-11-08.2",
+    items: [
+      { icon: Award, title: "whatsNew.r202611082.badgesTitle", body: "whatsNew.r202611082.badgesBody" },
+    ],
+  },
+  {
     id: "2026-11-08",
     items: [
       { icon: Award, title: "whatsNew.r20261108.badgesTitle", body: "whatsNew.r20261108.badgesBody" },

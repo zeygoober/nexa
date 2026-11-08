@@ -24,7 +24,11 @@ object Badges {
     const val CONTRIBUTOR = "contributor"
     const val EVENT_PREFIX = "event:"
 
-    /** One badge: [level] is Bug Hunter's, Ideas' or Gift Giver's tier, or the years on Nexa; [name], [icon] and [color] are an event badge's. */
+    /**
+     * One badge: [level] is Bug Hunter's, Ideas' or Gift Giver's tier, or the years on Nexa.
+     * The rest are an event badge's: its name, what it means (its tooltip), its Lucide [icon]
+     * on a [shape] in [color] (to [color2], a gradient), drawn [dark] or white, or its uploaded [image].
+     */
     data class Badge(
         val id: String,
         val level: Int = 0,
@@ -32,6 +36,11 @@ object Badges {
         val icon: String? = null,
         val color: Int? = null,
         val hidden: Boolean = false,
+        val description: String? = null,
+        val color2: Int? = null,
+        val dark: Boolean = false,
+        val shape: String = "circle",
+        val image: String? = null,
     ) {
         val isEvent get() = id.startsWith(EVENT_PREFIX)
     }
@@ -59,15 +68,37 @@ object Badges {
             icon = s("icon"),
             color = i("color"),
             hidden = (o["hidden"] as? JsonPrimitive)?.booleanOrNull == true,
+            description = s("description"),
+            color2 = i("color2"),
+            dark = s("glyph") == "dark",
+            shape = s("shape")?.takeIf { it in SHAPES } ?: "circle",
+            image = s("image"),
         )
     }
+
+    /** The outlines an event badge can take (web BADGE_SHAPES). */
+    val SHAPES = listOf("circle", "rounded", "shield", "hexagon")
+
+    /** The badges staff can give or take against what an account earned, with their top level (store.OverridableBadges). */
+    val OVERRIDABLE = linkedMapOf("og" to 1, "years" to 50, "bug_hunter" to 5, "ideas" to 5, "app_developer" to 1, "gift_giver" to 3)
 
     /**
      * How a badge looks (web badgeLook): its picture's name under badges/ (written by
      * tools/badge_art.py, copied from the web and carried over the air), or for an
-     * event badge staff made, its Lucide [icon] on a disc in [color]; its name and what it means.
+     * event badge staff made, its Lucide [icon] on its [shape] in [color] (to [color2]), or its
+     * uploaded [image]; its name and what it means.
      */
-    data class Look(val art: String?, val label: String, val tip: String, val icon: String? = null, val color: Int? = null) {
+    data class Look(
+        val art: String?,
+        val label: String,
+        val tip: String,
+        val icon: String? = null,
+        val color: Int? = null,
+        val color2: Int? = null,
+        val dark: Boolean = false,
+        val shape: String = "circle",
+        val image: String? = null,
+    ) {
         /** What pressing it says, as the web's tooltip. */
         val said get() = if (tip.isEmpty()) label else "$label: $tip"
     }
@@ -89,8 +120,8 @@ object Badges {
         "app_developer" -> Look("app-developer", t("badges.appDeveloper"), t("badges.appDeveloperTip"))
         "gift_giver" -> b.level.coerceIn(1, 3).let { n -> Look("gift-$n", t("badges.giftGiver"), t("badges.giftGiverTip.${GIFT_TONES[n - 1]}")) }
         CONTRIBUTOR -> Look("contributor", t("badges.contributor"), t("badges.contributorTip"))
-        // a badge staff made says only its own name: what it is for is theirs to put in it
-        else -> if (b.isEvent && b.name != null) Look(null, b.name, "", b.icon ?: "award", b.color) else null
+        // a badge staff made says what they wrote for it
+        else -> if (b.isEvent && b.name != null) Look(null, b.name, b.description ?: "", b.icon ?: "award", b.color, b.color2, b.dark, b.shape, b.image) else null
     }
 
     /** A badge's name in a list (the designer, the staff panel), staff and plan included. */
@@ -144,12 +175,35 @@ object Badges {
 
     // ---- staff ----
 
-    /** An event badge staff made, with how many hold it. */
-    data class Def(val id: String, val name: String, val icon: String, val color: Int, val holders: Int)
+    /** An event badge staff made, with how many hold it; [color2] -1 for one colour, [imageId] "0" for none. */
+    data class Def(
+        val id: String,
+        val name: String,
+        val icon: String,
+        val color: Int,
+        val holders: Int,
+        val description: String = "",
+        val color2: Int = -1,
+        val dark: Boolean = false,
+        val shape: String = "circle",
+        val imageId: String = "0",
+    ) {
+        /** As a badge someone holds, for drawing it in the panel (web defBadge). */
+        val badge get() = Badge(
+            id = EVENT_PREFIX + id, name = name, icon = icon, color = color, description = description,
+            color2 = color2.takeIf { it >= 0 }, dark = dark, shape = shape,
+            image = imageId.takeIf { it != "0" && it.isNotEmpty() }?.let { "/media/badge/$it" },
+        )
+    }
 
     fun parseDef(o: JsonObject): Def? {
         fun s(k: String) = (o[k] as? JsonPrimitive)?.contentOrNull
-        return Def(s("id") ?: return null, s("name") ?: "", s("icon") ?: "award", (o["color"] as? JsonPrimitive)?.intOrNull ?: 0, (o["holders"] as? JsonPrimitive)?.intOrNull ?: 0)
+        fun i(k: String) = (o[k] as? JsonPrimitive)?.intOrNull
+        return Def(
+            s("id") ?: return null, s("name") ?: "", s("icon") ?: "award", i("color") ?: 0, i("holders") ?: 0,
+            description = s("description") ?: "", color2 = i("color2") ?: -1, dark = s("glyph") == "dark",
+            shape = s("shape")?.takeIf { it in SHAPES } ?: "circle", imageId = s("image_id") ?: "0",
+        )
     }
 
     /** The event badges, and how many hold Contributor. */
@@ -159,27 +213,84 @@ object Badges {
         return list to ((res["contributors"] as? JsonPrimitive)?.intOrNull ?: 0)
     }
 
-    private fun defBody(name: String, icon: String, color: Int) = buildJsonObject {
-        put("name", name)
-        put("icon", icon)
-        put("color", color)
+    private fun defBody(d: Def) = buildJsonObject {
+        put("name", d.name)
+        put("description", d.description)
+        put("icon", d.icon)
+        put("color", d.color)
+        put("color2", d.color2)
+        put("glyph", if (d.dark) "dark" else "light")
+        put("shape", d.shape)
+        put("image_id", d.imageId)
     }
 
-    suspend fun createDef(name: String, icon: String, color: Int): Def? =
-        parseDef(Nexa.api.request("POST", "/moderation/badges", defBody(name, icon, color)) as JsonObject)
+    suspend fun createDef(d: Def): Def? =
+        parseDef(Nexa.api.request("POST", "/moderation/badges", defBody(d)) as JsonObject)
 
-    suspend fun editDef(id: String, name: String, icon: String, color: Int): Def? =
-        parseDef(Nexa.api.request("PATCH", "/moderation/badges/$id", defBody(name, icon, color)) as JsonObject)
+    suspend fun editDef(d: Def): Def? =
+        parseDef(Nexa.api.request("PATCH", "/moderation/badges/${d.id}", defBody(d)) as JsonObject)
 
     suspend fun deleteDef(id: String) {
         Nexa.api.request("DELETE", "/moderation/badges/$id")
     }
 
-    /** The badges staff gave someone: "contributor" and "event:<id>". */
-    suspend fun granted(userId: String): List<String> =
-        ((Nexa.api.get("/moderation/users/$userId/badges") as JsonObject)["granted"] as? JsonArray)?.mapNotNull { (it as? JsonPrimitive)?.contentOrNull } ?: emptyList()
+    /** Uploads a picture for an event badge, cut square on the server at [crop] ("?x=..&y=..&w=..&h=.." or ""); answers its id. */
+    suspend fun uploadImage(bytes: ByteArray, type: String, crop: String): String? =
+        ((fish.nexa.ui.server.ServerApi.upload("POST", "/moderation/badges/image$crop", bytes, type) as? JsonObject)?.get("id") as? JsonPrimitive)?.contentOrNull
 
-    suspend fun setGranted(userId: String, badges: List<String>) {
-        Nexa.api.request("PUT", "/moderation/users/$userId/badges", buildJsonObject { put("badges", JsonArray(badges.map { JsonPrimitive(it) })) })
+    /** Someone holding a badge: [source] "earned", "given" or "account"; [overridden] when staff set it by hand. */
+    data class Holder(val userId: String, val level: Int, val source: String, val overridden: Boolean, val user: JsonObject?) {
+        private fun u(k: String) = (user?.get(k) as? JsonPrimitive)?.contentOrNull
+        val username get() = u("username")
+        val displayName get() = u("display_name")?.takeIf { it.isNotBlank() } ?: u("username") ?: userId
+        val avatarId get() = u("avatar_id")
+    }
+
+    data class Holders(val holders: List<Holder>, val taken: List<Holder>, val total: Int)
+
+    private fun parseHolders(el: JsonElement?) = (el as? JsonArray)?.mapNotNull { e ->
+        val o = e as? JsonObject ?: return@mapNotNull null
+        Holder(
+            (o["user_id"] as? JsonPrimitive)?.contentOrNull ?: return@mapNotNull null,
+            (o["level"] as? JsonPrimitive)?.intOrNull ?: 0,
+            (o["source"] as? JsonPrimitive)?.contentOrNull ?: "earned",
+            (o["overridden"] as? JsonPrimitive)?.booleanOrNull == true,
+            o["user"] as? JsonObject,
+        )
+    } ?: emptyList()
+
+    /** Who holds a badge ("og", "contributor", "event:<id>", ...), and who staff took it from. */
+    suspend fun holders(badge: String, offset: Int, limit: Int): Holders {
+        val o = Nexa.api.get("/moderation/badges/${java.net.URLEncoder.encode(badge, "UTF-8")}/holders?offset=$offset&limit=$limit") as JsonObject
+        return Holders(parseHolders(o["holders"]), parseHolders(o["taken"]), (o["total"] as? JsonPrimitive)?.intOrNull ?: 0)
+    }
+
+    /** Gives a badge (at a level, for tiered ones), takes it ("take"), or lets an earned one follow the account again ("auto"). */
+    suspend fun setHolder(badge: String, userId: String, state: String, level: Int = 1) {
+        Nexa.api.request("PUT", "/moderation/badges/${java.net.URLEncoder.encode(badge, "UTF-8")}/holders/$userId", buildJsonObject {
+            put("state", state)
+            put("level", level)
+        })
+    }
+
+    /** Someone's badges as staff set them: given by hand, earned ones set by hand (0 taken, else the level given), and what they earned (0 none). */
+    data class UserBadges(val granted: List<String>, val overrides: Map<String, Int>, val earned: Map<String, Int>)
+
+    private fun intMap(el: JsonElement?) = (el as? JsonObject)?.mapNotNull { (k, v) -> (v as? JsonPrimitive)?.intOrNull?.let { k to it } }?.toMap() ?: emptyMap()
+
+    suspend fun userBadges(userId: String): UserBadges {
+        val o = Nexa.api.get("/moderation/users/$userId/badges") as JsonObject
+        return UserBadges(
+            (o["granted"] as? JsonArray)?.mapNotNull { (it as? JsonPrimitive)?.contentOrNull } ?: emptyList(),
+            intMap(o["overrides"]),
+            intMap(o["earned"]),
+        )
+    }
+
+    suspend fun setGranted(userId: String, badges: List<String>, overrides: Map<String, Int>? = null) {
+        Nexa.api.request("PUT", "/moderation/users/$userId/badges", buildJsonObject {
+            put("badges", JsonArray(badges.map { JsonPrimitive(it) }))
+            if (overrides != null) put("overrides", JsonObject(overrides.mapValues { JsonPrimitive(it.value) }))
+        })
     }
 }

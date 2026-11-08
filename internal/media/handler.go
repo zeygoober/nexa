@@ -11,7 +11,7 @@ import (
 )
 
 // PublicKinds are the blob kinds anyone may fetch by id.
-var PublicKinds = map[string]bool{"avatar": true, "banner": true, "icon": true, "emoji": true, "sticker": true, "tag": true, "widget": true, "typing": true}
+var PublicKinds = map[string]bool{"avatar": true, "banner": true, "icon": true, "emoji": true, "sticker": true, "tag": true, "widget": true, "typing": true, "badge": true}
 
 // ServePublic writes a public blob with immutable caching. The kind in the
 // URL must match the stored kind so an attachment can never be fetched here.

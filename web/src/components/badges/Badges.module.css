@@ -1,7 +1,7 @@
 /* Profile badges: every badge is a small picture (assets/badges), and a
    profile's badges sit together in one rounded pill on the username line,
    which wraps when the line runs out of room. An event badge staff made is a
-   disc in its own colour, --tone, with its icon in white. */
+   outline (BadgeMark) in its own colour or gradient, with its icon or picture. */
 .pill {
   display: inline-flex;
   flex-wrap: wrap;
@@ -28,20 +28,26 @@
   outline-offset: 1px;
 }
 
-.event {
-  --tone: var(--brand);
-  display: grid;
-  place-items: center;
-  border-radius: 50%;
-  color: #fff;
-  background:
-    linear-gradient(180deg, rgb(255 255 255 / 0.32), transparent 55%),
-    var(--tone);
-  box-shadow: inset 0 0 0 1px rgb(0 0 0 / 0.22);
+.badge:has(> .mark) {
+  border-radius: 0;
 }
-.event > svg {
-  width: 62%;
-  height: 62%;
+
+/* an event badge staff made: its outline drawn in a 24 box, its icon on top */
+.mark {
+  position: relative;
+  display: grid;
+  flex: none;
+  place-items: center;
+}
+.shape {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+.mark > svg:not(.shape) {
+  position: relative;
 }
 
 /* in a list: the picture, then its name */

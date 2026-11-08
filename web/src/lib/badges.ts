@@ -1,4 +1,4 @@
-import type { Badge, PublicUser } from "@/api/types";
+import type { Badge, BadgeDef, BadgeShape, PublicUser } from "@/api/types";
 import { t } from "@/i18n";
 import { rankName, rankOf, rankTip } from "@/lib/staffRank";
 
@@ -35,9 +35,14 @@ const art = (name: string) => ART[`../assets/badges/${name}.svg`];
 /** How a badge looks: its picture (or, for an event badge, its icon and colour), its name and what it means. */
 export interface BadgeLook {
   art?: string;
-  /** An event badge's Lucide icon by name, loaded when shown, on a disc in [color]. */
+  /** An event badge's Lucide icon by name, loaded when shown, on a [shape] in [color] (to [color2], a gradient). */
   iconName?: string;
   color?: number;
+  color2?: number;
+  glyph?: "dark";
+  shape?: BadgeShape;
+  /** An event badge's uploaded picture, in place of the icon. */
+  image?: string;
   label: string;
   tip: string;
 }
@@ -84,8 +89,8 @@ export function badgeLook(b: Badge, user: Who): BadgeLook | null {
     case CONTRIBUTOR:
       return { art: art("contributor"), label: t("badges.contributor"), tip: t("badges.contributorTip") };
     default:
-      if (isEventBadge(b.id) && b.name) // a badge staff made says only its own name: what it is for is theirs to put in it
-      return { iconName: b.icon, color: b.color, label: b.name, tip: "" };
+      // a badge staff made says what they wrote for it
+      if (isEventBadge(b.id) && b.name) return { iconName: b.icon, color: b.color, color2: b.color2, glyph: b.glyph, shape: b.shape, image: b.image, label: b.name, tip: b.description ?? "" };
       return null;
   }
 }
@@ -108,3 +113,28 @@ export function fallbackBadges(user: Who): Badge[] {
 
 /** A colour number as CSS. */
 export const hexColour = (c: number) => `#${(c & 0xffffff).toString(16).padStart(6, "0")}`;
+
+/** The badges staff can give or take against what an account earned, with their top level (store.OverridableBadges). */
+export const OVERRIDABLE: Record<string, number> = { og: 1, years: 50, bug_hunter: 5, ideas: 5, app_developer: 1, gift_giver: 3 };
+
+/** The outlines an event badge can take, as the Badges tab offers them. */
+export const BADGE_SHAPES: BadgeShape[] = ["circle", "rounded", "shield", "hexagon"];
+
+/** An event badge staff made, as a badge someone holds (for drawing it in the panel). */
+export function defBadge(d: Pick<BadgeDef, "id" | "name" | "description" | "icon" | "color" | "color2" | "glyph" | "shape" | "image_id">): Badge {
+  const b: Badge = { id: EVENT_PREFIX + d.id, name: d.name, description: d.description, icon: d.icon, color: d.color };
+  if (d.color2 >= 0) b.color2 = d.color2;
+  if (d.glyph === "dark") b.glyph = "dark";
+  if (d.shape && d.shape !== "circle") b.shape = d.shape;
+  if (d.image_id && d.image_id !== "0") b.image = `/media/badge/${d.image_id}`;
+  return b;
+}
+
+/**
+ * The outline of each shape in a 24 by 24 box (Android ui/profile/Badges.kt
+ * draws the same points), so a badge reads alike at 20 px and at 64.
+ */
+export const SHAPE_PATHS: Record<Exclude<BadgeShape, "circle" | "rounded">, string> = {
+  shield: "M12 0.6 L22.2 4.2 Q22.6 16.6 12 23.4 Q1.4 16.6 1.8 4.2 Z",
+  hexagon: "M12 0.4 L22.3 6.2 L22.3 17.8 L12 23.6 L1.7 17.8 L1.7 6.2 Z",
+};

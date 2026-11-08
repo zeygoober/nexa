@@ -10,7 +10,30 @@ import type { ReportReceipt } from "./reports";
  */
 import { api, type UploadOptions } from "./client";
 import type { BugCounts, BugMessage, MemberBug } from "./bugs";
-import type { Activity, BadgeDef, Emoji, PublicUser, ServerTag, Snowflake, StickerPack } from "./types";
+import type { Activity, BadgeDef, BadgeHolder, BadgeShape, Emoji, PublicUser, ServerTag, Snowflake, StickerPack } from "./types";
+
+/** What staff set on an event badge they make or change. */
+export interface BadgeDefBody {
+  name: string;
+  description: string;
+  icon: string;
+  color: number;
+  /** -1 for one colour. */
+  color2: number;
+  glyph: "light" | "dark";
+  shape: BadgeShape;
+  /** "0" for no picture. */
+  image_id: Snowflake;
+}
+
+/** A person's badges as staff set them (internal/api/badge_handlers.go writeUserBadges). */
+export interface UserBadges {
+  granted: string[];
+  /** Earned badges staff set by hand: 0 taken away, above 0 given at that level. */
+  overrides?: Record<string, number>;
+  /** What the account earned of each, by itself (0 for nothing). */
+  earned?: Record<string, number>;
+}
 
 export type ModAction = "message_remove" | "avatar_remove" | "field_reset" | "mute" | "ban" | "delete" | "server_reset" | "expression_takedown";
 export type ResetField = "username" | "display_name" | "about_me" | "pronouns" | "status" | "nicknames" | "server_profiles" | "typing_style" | "name_style" | "widgets" | "server_tag";
@@ -640,21 +663,34 @@ export const moderation = {
   badges(): Promise<{ badges: BadgeDef[]; contributors: number }> {
     return api.request("GET", "/moderation/badges");
   },
-  createBadge(b: { name: string; icon: string; color: number }): Promise<BadgeDef> {
+  createBadge(b: BadgeDefBody): Promise<BadgeDef> {
     return api.request("POST", "/moderation/badges", b);
   },
-  editBadge(id: Snowflake, b: { name: string; icon: string; color: number }): Promise<BadgeDef> {
+  editBadge(id: Snowflake, b: BadgeDefBody): Promise<BadgeDef> {
     return api.request("PATCH", `/moderation/badges/${id}`, b);
   },
   deleteBadge(id: Snowflake): Promise<void> {
     return api.request("DELETE", `/moderation/badges/${id}`);
   },
-  /** The badges staff gave someone: "contributor" and "event:<id>". */
-  userBadges(id: Snowflake): Promise<{ granted: string[] }> {
+  /** A picture for an event badge, cut square on the server; nothing holds it until a badge is saved with it. */
+  uploadBadgeImage(file: Blob, crop?: { x: number; y: number; w: number; h: number } | null): Promise<{ id: Snowflake; image: string; animated: boolean }> {
+    const q = crop ? `?x=${Math.round(crop.x)}&y=${Math.round(crop.y)}&w=${Math.round(crop.w)}&h=${Math.round(crop.h)}` : "";
+    return api.upload(`/moderation/badges/image${q}`, file, { method: "POST", headers: { "Content-Type": file.type || "application/octet-stream" } });
+  },
+  /** Who holds a badge ("og", "contributor", "event:<id>", ...), and who staff took it from. */
+  badgeHolders(badge: string, offset = 0, limit = 50): Promise<{ holders: BadgeHolder[]; taken: BadgeHolder[]; total: number }> {
+    return api.request("GET", `/moderation/badges/${encodeURIComponent(badge)}/holders?offset=${offset}&limit=${limit}`);
+  },
+  /** Gives a badge (at a level, for tiered ones), takes it, or lets an earned one follow the account again. */
+  setBadgeHolder(badge: string, userId: Snowflake, state: "give" | "take" | "auto", level = 1): Promise<void> {
+    return api.request("PUT", `/moderation/badges/${encodeURIComponent(badge)}/holders/${userId}`, { state, level });
+  },
+  /** The badges staff gave someone ("contributor" and "event:<id>"), how they set the earned ones (0 taken, else the level given), and what was earned. */
+  userBadges(id: Snowflake): Promise<UserBadges> {
     return api.request("GET", `/moderation/users/${id}/badges`);
   },
-  setUserBadges(id: Snowflake, badges: string[]): Promise<{ granted: string[] }> {
-    return api.request("PUT", `/moderation/users/${id}/badges`, { badges });
+  setUserBadges(id: Snowflake, badges: string[], overrides?: Record<string, number>): Promise<UserBadges> {
+    return api.request("PUT", `/moderation/users/${id}/badges`, overrides ? { badges, overrides } : { badges });
   },
   /** Gives or takes a staff rank ("" for none; the owner alone), or disables or restores sign-in, with an optional reason for the log. */
   access(id: Snowflake, body: { rank?: "developer" | "admin" | "mod" | "helper" | ""; disabled?: boolean; reason?: string }): Promise<{ flags: number }> {

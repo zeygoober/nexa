@@ -18,6 +18,12 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Matrix
+import androidx.compose.ui.graphics.Shape
+import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.graphics.vector.PathParser
+import androidx.compose.foundation.shape.GenericShape
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
@@ -34,7 +40,8 @@ import fish.nexa.ui.theme.ring
 /**
  * One badge (components/badges/Badges.tsx BadgePill): its picture (badges/,
  * written by tools/badge_art.py and read through Ota), or for an event badge
- * staff made, its icon in white on a disc in the colour they chose. Pressing
+ * staff made, its icon (white or dark) or uploaded picture on its shape in the
+ * colour, or gradient, they chose. Pressing
  * one says its name and meaning, as the web's tooltip does; [still] draws it
  * with nothing to press, and [named] puts the name beside it, for lists (the
  * designer, the staff panel).
@@ -53,19 +60,31 @@ fun BadgePill(badge: Badges.Badge, userId: String, flags: Long, plan: String, st
                 Modifier.size(size).clip(RoundedCornerShape(size * 0.3f)).then(press),
             )
         } else {
-            val tone = look.color?.let { Color(0xFF000000 or (it.toLong() and 0xFFFFFF)) } ?: c.brand
+            val tone = look.color?.let(::opaque) ?: c.brand
+            val shape = badgeShape(look.shape)
+            val fill = look.color2?.let { Brush.verticalGradient(listOf(tone, opaque(it))) } ?: SolidColor(tone)
             Box(
                 Modifier
                     .size(size)
-                    .clip(CircleShape)
-                    .background(tone)
-                    .background(Brush.verticalGradient(0f to Color.White.copy(alpha = 0.32f), 0.55f to Color.Transparent))
-                    .ring(CircleShape, Color.Black.copy(alpha = 0.22f))
+                    .clip(shape)
+                    .background(fill)
+                    .then(
+                        if (look.image != null) Modifier
+                        else Modifier.background(Brush.verticalGradient(0f to Color.White.copy(alpha = 0.32f), 0.55f to Color.Transparent)),
+                    )
+                    .ring(shape, Color.Black.copy(alpha = 0.22f))
                     .then(press),
                 contentAlignment = Alignment.Center,
             ) {
-                val icon = look.icon ?: "award"
-                Icon(if (fish.nexa.ui.Lucide.exists(icon)) icon else "award", Color.White, size = size * 0.62f, stroke = 2.25f)
+                if (look.image != null) {
+                    coil3.compose.AsyncImage(
+                        fish.nexa.media.Media.absolute(look.image), null,
+                        Modifier.matchParentSize(), contentScale = ContentScale.Crop,
+                    )
+                } else {
+                    val icon = look.icon ?: "award"
+                    Icon(if (fish.nexa.ui.Lucide.exists(icon)) icon else "award", if (look.dark) DARK_GLYPH else Color.White, size = size * 0.62f, stroke = 2.25f)
+                }
             }
         }
     }
@@ -73,6 +92,35 @@ fun BadgePill(badge: Badges.Badge, userId: String, flags: Long, plan: String, st
     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
         mark()
         Txt(look.label, style = Nx.type.bodySmall.copy(fontSize = Nx.type.sp(13.5f), fontWeight = FontWeight(650)), color = c.textStrong, maxLines = 1)
+    }
+}
+
+/** The dark glyph, for light colours a white icon would vanish on (web DARK_GLYPH). */
+private val DARK_GLYPH = Color(0xFF1B1724)
+
+private fun opaque(rgb: Int) = Color(0xFF000000 or (rgb.toLong() and 0xFFFFFF))
+
+/** The outlines in a 24 by 24 box, the same points as the web's SHAPE_PATHS. */
+private val SHAPE_PATHS = mapOf(
+    "shield" to "M12 0.6 L22.2 4.2 Q22.6 16.6 12 23.4 Q1.4 16.6 1.8 4.2 Z",
+    "hexagon" to "M12 0.4 L22.3 6.2 L22.3 17.8 L12 23.6 L1.7 17.8 L1.7 6.2 Z",
+)
+
+private val shapes = HashMap<String, Shape>()
+
+/** An event badge's outline: a disc, a rounded square (30% corners) or one of [SHAPE_PATHS] scaled to the size. */
+fun badgeShape(name: String): Shape = shapes.getOrPut(name) {
+    val d = SHAPE_PATHS[name]
+    when {
+        name == "rounded" -> RoundedCornerShape(27)
+        d == null -> CircleShape
+        else -> {
+            val path = PathParser().parsePathString(d).toPath()
+            GenericShape { sz, _ ->
+                addPath(path)
+                transform(Matrix().apply { scale(sz.width / 24f, sz.height / 24f) })
+            }
+        }
     }
 }
 

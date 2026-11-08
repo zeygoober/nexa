@@ -594,7 +594,7 @@ serves until SIGINT or SIGTERM.
   `application_guild_installs`, `application_user_installs`, `oauth_codes`, `oauth_tokens` (gone with its
   refresh token, 90 days unused), `interactions` and `ephemeral_messages` (15 minutes), `ephemeral_files`,
   `interaction_files` (a day), `bot_copies`, `roles.managed_by`), badges (`badge_defs`, `user_badges`,
-  `badge_prefs`), the instance (`instance_settings`).
+  `badge_overrides`, `badge_prefs`), the instance (`instance_settings`).
 - Channel types: `dm`, `group_dm`, `subchat`, `text`, `voice`, `category`, `announcement`, `forum`, `media`,
   `link`, `thread`, `private_thread`. `store.IsForum` is forum or media (posts only), `store.HoldsNoMessages`
   is category or link (no messages, invites, read states, mentions or own key). A channel's `key_conv_id`
@@ -646,7 +646,7 @@ it:
 ### Media and uploads (`internal/media`)
 
 - Blobs are content-addressed under `DATA_DIR/media` (table `blobs`). Public kinds (`avatar`, `banner`,
-  `icon`, `emoji`, `sticker`, `tag`, `widget`, `typing`) are served immutable at `/media/{kind}/{id}` (the
+  `icon`, `emoji`, `sticker`, `tag`, `widget`, `typing`, `badge`) are served immutable at `/media/{kind}/{id}` (the
   kind must match the stored one; a picture staff blocked is served to nobody), with sized variants made once;
   `?still=1` gives the first frame. JPEG crops and variants apply all eight Exif orientations first
   (`orientation.go`, Android `media/PhotoOrientation`), and sized avatar, banner and icon URLs carry `&v=3` to
@@ -984,13 +984,20 @@ Badge ids: `staff` (never hideable), `plan`, `og` (account made before `OGCutoff
 and `ideas` (bug reports and suggestions staff resolved, five levels at `ReportTiers`), `app_developer`
 (`AppDeveloperServers`), `gift_giver` (three levels, `GiftTiers`), and the two staff give by hand in
 `user_badges`: `contributor` and `event:<badge_defs id>`. Earned badges are worked out when asked for, never
-stored; bots, Nexa's accounts and deleted accounts have none. Every badge, staff ranks and plans included, is a
+stored; bots, Nexa's accounts and deleted accounts have none. Staff can override an earned badge (`og`, `years`,
+`bug_hunter`, `ideas`, `app_developer`, `gift_giver`) for one account in `badge_overrides` (migration 0055): no row
+follows the account, level 0 takes it away, above 0 gives it at that tier, and it holds until cleared. Rank and plan
+badges come with the account and cannot be overridden. Every badge has a holders list, with give and take where staff can set it
+(`/moderation/badges/{badge}/holders`, web `moderation/BadgeHoldersModal.tsx`, Android `openHoldersSheet`), Admin and
+up; a person's page sets them all at once (web `GrantBadgesModal.tsx`, Android `openGiveBadgesSheet`). A staff-made
+badge has a description (its tooltip and toast, at most 120 characters), one or two colours, a white or dark glyph, a
+shape (circle, rounded, shield, hexagon) and any Lucide icon or an uploaded picture (public blob of kind `badge`). Every badge, staff ranks and plans included, is a
 full-colour SVG in `web/src/assets/badges/` written by `tools/badge_art.py` (Android copies the same files and
-takes them over the air); an event badge is its Lucide icon in white on a disc in its colour. A profile draws
+takes them over the air); an event badge is drawn from its look on both clients. A profile draws
 all its badges in one pill on the username line, each saying its name and meaning (a tooltip, a toast on
 Android). `/users/@me/badges` stays open to muted and
 banned accounts. Web `lib/badges.ts`, `components/badges/Badges.tsx`, `moderation/BadgesTab.tsx`; Android
-`data/Badges`, `ui/profile/Badges.kt`, `ui/moderation/BadgeTab.kt`. The event icon list must name icons both
+`data/Badges`, `ui/profile/Badges.kt`, `ui/moderation/BadgeTab.kt`. The event icon list and every icon the search offers must be ones both
 lucide-react and Android's `lucide.json` have.
 
 ### Profile widgets (`api/widgets.go`, web `lib/widgets.ts`, Android `ui/profile/Widgets.kt`)

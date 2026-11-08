@@ -54,6 +54,9 @@ object Lucide {
 
     fun exists(name: String) = resolve(name) != null
 
+    /** Every icon's file name, for a search over them all. */
+    fun names(): Set<String> = icons.keys
+
     /** [filled] paints the shapes in too, as lucide-react's fill="currentColor" does (a solid play mark, a starred star). */
     fun vector(name: String, stroke: Float = 2f, filled: Boolean = false): ImageVector? {
         val file = resolve(name) ?: return null

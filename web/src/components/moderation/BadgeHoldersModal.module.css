@@ -1,0 +1,199 @@
+/* Who holds a badge: Give To on top, then the holders, then who it was taken from. */
+.body {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  min-width: 0;
+}
+
+.head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.count {
+  margin-left: auto;
+  flex: none;
+  color: var(--text-muted);
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+}
+
+.note,
+.hint {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.hint {
+  margin-bottom: 8px;
+}
+
+.title {
+  margin: 0 0 8px;
+  color: var(--text-muted);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.give {
+  padding: 12px;
+  border-radius: var(--radius-md);
+  background: var(--bg-input);
+  box-shadow: inset 0 0 0 1px var(--border-subtle);
+}
+
+.giveRow {
+  display: flex;
+  gap: 8px;
+  min-width: 0;
+}
+
+.search {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.level {
+  flex: none;
+  width: 132px;
+}
+
+.found {
+  list-style: none;
+  margin: 8px 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.foundRow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  padding: 6px 8px;
+  border-radius: var(--radius-sm);
+}
+
+.foundRow:hover {
+  background: var(--bg-hover);
+}
+
+.list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+  padding: 8px;
+  border-radius: var(--radius-sm);
+}
+
+.row:hover {
+  background: var(--bg-hover);
+}
+
+.who {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.name {
+  overflow: hidden;
+  color: var(--text-strong);
+  font-size: 14px;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 8px;
+  min-width: 0;
+  color: var(--text-muted);
+  font-size: 12px;
+}
+
+.handle {
+  overflow: hidden;
+  min-width: 0;
+  color: var(--text-muted);
+  font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.foundRow > .handle {
+  flex: 0 1 auto;
+}
+
+.chip {
+  padding: 1px 7px;
+  border-radius: var(--radius-pill);
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-muted);
+  background: var(--bg-surface);
+  box-shadow: inset 0 0 0 1px var(--border-subtle);
+}
+
+.chip[data-source="given"] {
+  color: var(--text-brand);
+  background: color-mix(in srgb, var(--brand) 14%, transparent);
+  box-shadow: none;
+}
+
+.chip[data-source="taken"] {
+  color: var(--text-danger);
+  background: color-mix(in srgb, var(--danger) 14%, transparent);
+  box-shadow: none;
+}
+
+.actions {
+  display: flex;
+  flex: none;
+  gap: 6px;
+}
+
+.none {
+  margin: 0;
+  padding: 8px;
+  color: var(--text-muted);
+  font-size: 13px;
+}
+
+.more {
+  margin-top: 8px;
+}
+
+/* at phone width the person's handle gives way, and the actions keep their size */
+@media (max-width: 520px) {
+  .foundRow > .handle {
+    display: none;
+  }
+  .level {
+    width: 112px;
+  }
+}

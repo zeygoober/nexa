@@ -22,23 +22,51 @@ export interface Badge {
   id: string;
   /** Gift Giver's tier (1 bronze, 2 silver, 3 gold), or the years on Nexa. */
   level?: number;
-  /** An event badge's name, Lucide icon and colour. */
+  /** An event badge's name, what it is for (its tooltip), Lucide icon and colour. */
   name?: string;
+  description?: string;
   icon?: string;
   color?: number;
+  /** An event badge's second colour, when it is a gradient. */
+  color2?: number;
+  /** "dark" when its icon is drawn dark; otherwise white. */
+  glyph?: "dark";
+  /** Its outline; missing means a circle. */
+  shape?: BadgeShape;
+  /** A picture staff uploaded in place of the icon ("/media/badge/<id>"). */
+  image?: string;
   /** Only in the person's own list: they hid it from their profile. */
   hidden?: boolean;
 }
+
+export type BadgeShape = "circle" | "rounded" | "shield" | "hexagon";
 
 /** A badge staff made for an event, with how many hold it. */
 export interface BadgeDef {
   id: Snowflake;
   name: string;
+  description: string;
   icon: string;
   color: number;
+  /** -1 for one colour. */
+  color2: number;
+  glyph: "light" | "dark";
+  shape: BadgeShape;
+  /** The uploaded picture's blob, "0" or missing for none. */
+  image_id?: Snowflake;
   created_by: Snowflake;
   created_at: number;
   holders: number;
+}
+
+/** Someone holding a badge, or kept from one: "earned" by their own doing, "given" by staff, or "account" (staff rank, plan). */
+export interface BadgeHolder {
+  user_id: Snowflake;
+  level: number;
+  source: "earned" | "given" | "account";
+  /** Staff set it by hand, against what the account earned. */
+  overridden: boolean;
+  user?: PublicUser;
 }
 
 export interface PublicUser {

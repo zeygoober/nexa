@@ -1,17 +1,52 @@
 /* The Badges tab: the badge being made, shown as it will look above its form,
    then the icons and colours to pick from; beside it every badge staff give. */
-.previewRow {
-  display: flex;
+/* the badge being made, large on a glow of its own colour, with what its tooltip will say */
+.stage {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
   align-items: center;
-  justify-content: center;
-  min-height: 56px;
+  gap: 14px;
+  padding: 16px;
   border-radius: var(--radius-md);
-  background: color-mix(in oklab, var(--bg-base) 60%, transparent);
+  background:
+    radial-gradient(120px 90px at 48px 50%, color-mix(in srgb, var(--glow) 22%, transparent), transparent),
+    var(--bg-input);
   box-shadow: inset 0 0 0 1px var(--border-subtle);
 }
-/* the pill a little larger here, so its colour and icon can be judged */
-.previewRow > * {
-  transform: scale(1.35);
+.stageMark {
+  display: block;
+  width: 64px;
+  height: 64px;
+}
+.stageText {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+.stageName {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--text-strong);
+  overflow-wrap: anywhere;
+}
+.stageDesc {
+  font-size: 13px;
+  line-height: 1.4;
+  color: var(--text-normal);
+  overflow-wrap: anywhere;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.stageDesc[data-empty] {
+  color: var(--text-muted);
+  font-style: italic;
+}
+/* as it will sit in a profile's pill */
+.stageSmall {
+  align-self: start;
 }
 .label {
   display: block;
@@ -22,8 +57,157 @@
 }
 .icons {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(38px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(36px, 1fr));
   gap: 4px;
+  max-height: 168px;
+  overflow-y: auto;
+  padding: 4px;
+  border-radius: var(--radius-md);
+  background: var(--bg-input);
+  overscroll-behavior: contain;
+}
+.iconsNone {
+  grid-column: 1 / -1;
+  margin: 0;
+  padding: 18px 8px;
+  text-align: center;
+  font-size: 13px;
+  color: var(--text-muted);
+}
+.search {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 34px;
+  margin-bottom: 8px;
+  padding: 0 10px;
+  border-radius: var(--radius-sm);
+  background: var(--bg-input);
+  color: var(--text-muted);
+  box-shadow: inset 0 0 0 1px var(--border-subtle);
+}
+.search:focus-within {
+  box-shadow: inset 0 0 0 1px var(--focus-ring);
+}
+.search input {
+  flex: 1;
+  min-width: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  font-size: 14px;
+  color: var(--text-normal);
+  outline: none;
+}
+.search button {
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 999px;
+  color: var(--text-muted);
+}
+.search button:hover {
+  background: var(--bg-hover);
+  color: var(--text-strong);
+}
+/* shapes: four cards, each its outline over its name */
+.shapes {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 6px;
+}
+.shape {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 8px 4px 6px;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-muted);
+  background: var(--bg-input);
+  box-shadow: inset 0 0 0 1px var(--border-subtle);
+}
+.shape:hover {
+  color: var(--text-strong);
+  background: var(--bg-hover);
+}
+.shape[data-on] {
+  color: var(--text-brand);
+  background: color-mix(in srgb, var(--brand) 14%, var(--bg-input));
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--brand) 45%, transparent);
+}
+.shape:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+.shapeGlyph {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linejoin: round;
+}
+/* two segmented switches side by side, wrapping on a narrow panel */
+.pair {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px 20px;
+}
+.segment {
+  display: inline-flex;
+  padding: 2px;
+  border-radius: var(--radius-sm);
+  background: var(--bg-input);
+}
+.segmentItem {
+  min-height: 28px;
+  padding: 0 12px;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+.segmentItem:hover {
+  color: var(--text-strong);
+}
+.segmentItem[aria-checked="true"] {
+  background: var(--bg-raised);
+  color: var(--text-strong);
+  box-shadow: var(--shadow-low);
+}
+.picture {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+.pictureThumb,
+.pictureEmpty {
+  flex: none;
+  width: 56px;
+  height: 56px;
+  border-radius: 12px;
+  object-fit: cover;
+}
+.pictureEmpty {
+  display: grid;
+  place-items: center;
+  color: var(--text-muted);
+  background: var(--bg-input);
+  outline: 1px dashed var(--border);
+  outline-offset: -1px;
+}
+.pictureText {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+  min-width: 0;
+}
+.pictureHint {
+  font-size: 12.5px;
+  color: var(--text-muted);
 }
 .icon {
   display: flex;
@@ -106,20 +290,63 @@
 .row[data-editing] {
   box-shadow: inset 0 1px 0 var(--edge-light), 0 0 0 2px var(--focus-ring);
 }
-.meta {
+.lists {
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+  min-width: 0;
+}
+.listTitle {
+  margin: 0 0 4px 2px;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+.listHint {
+  margin: 0 0 10px 2px;
+  font-size: 13px;
+  color: var(--text-muted);
+}
+.listTitle + .rows {
+  margin-top: 8px;
+}
+.desc {
   flex: 1;
   min-width: 0;
   font-size: 13px;
   color: var(--text-muted);
+  overflow-wrap: anywhere;
 }
-.note {
-  flex-basis: 100%;
-  font-size: 12.5px;
-  color: var(--text-muted);
+/* at phone width a row's words go under the badge and its buttons, not in a sliver between them */
+@media (max-width: 767px) {
+  .desc {
+    order: 3;
+    flex-basis: 100%;
+  }
+  .row {
+    column-gap: 6px;
+  }
+  .row .tools {
+    gap: 0;
+  }
+}
+.namedRow {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+.rowName {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-strong);
 }
 .tools {
   display: flex;
+  align-items: center;
   gap: 2px;
+  margin-left: auto;
 }
 .empty {
   padding: 14px;
@@ -142,4 +369,45 @@
 .tick[data-on] {
   background: var(--brand);
   box-shadow: none;
+}
+/* an earned badge in the give dialog: what it is and what the account earned, then how staff set it */
+.override {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px 14px;
+  padding: 10px 12px;
+  border-radius: var(--radius-md);
+  background: var(--bg-input);
+  box-shadow: inset 0 0 0 1px var(--border-subtle);
+}
+.override[data-state="give"] {
+  box-shadow: inset 0 0 0 2px var(--brand);
+}
+.override[data-state="take"] {
+  box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--danger) 70%, transparent);
+}
+.overrideText {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+  flex: 1 1 160px;
+  min-width: 0;
+}
+.overrideControls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-left: auto;
+}
+.override .segment {
+  background: var(--bg-surface);
+}
+.overrideLevel {
+  width: 116px;
+}
+.ladderTitle {
+  margin-top: 14px;
 }
