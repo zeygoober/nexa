@@ -999,3 +999,39 @@ func TestModerationAltAccounts(t *testing.T) {
 		t.Errorf("detail alt_count %v", n)
 	}
 }
+
+// A name staff took down must not come free when the account goes, and a
+// one-character name takes a gift, once.
+func TestModeratedNamesStayTakenAndShortNamesTakeAGift(t *testing.T) {
+	srv, ts := newTestServer(t)
+	ctx := t.Context()
+	modTok, _ := register(t, ts, "owner")
+	_, vicID := register(t, ts, "vandal")
+	mustAct(t, ts, modTok, vicID, map[string]any{"action": "delete", "reason": "illegal content", "confirm": "vandal"})
+	if free, err := srv.Store.UsernameFree(ctx, "vandal"); err != nil || free {
+		t.Fatalf("the name of an account staff deleted is free again: %v %v", free, err)
+	}
+
+	tok, id := register(t, ts, "shorty")
+	name := map[string]any{"username": "x"}
+	if res, body := do(t, ts, "PATCH", "/api/v1/users/@me", tok, name); errCode(body) != "short_name_gift" {
+		t.Fatalf("no gift: %d %v", res.StatusCode, body)
+	}
+	_, made := do(t, ts, "POST", "/api/v1/moderation/gift-links", modTok, map[string]any{"plan": store.GiftShortName})
+	code, _ := made["code"].(string)
+	if code == "" {
+		t.Fatalf("make the link: %v", made)
+	}
+	if res, body := do(t, ts, "POST", "/api/v1/gifts/"+code+"/claim", tok, nil); res.StatusCode != 200 {
+		t.Fatalf("claim: %d %v", res.StatusCode, body)
+	}
+	if res, body := do(t, ts, "PATCH", "/api/v1/users/@me", tok, name); res.StatusCode != 200 || body["username"] != "x" || body["short_name_credits"].(float64) != 0 {
+		t.Fatalf("use the gift: %d %v", res.StatusCode, body)
+	}
+	if res, body := do(t, ts, "PATCH", "/api/v1/users/@me", tok, map[string]any{"username": "y"}); errCode(body) != "short_name_gift" {
+		t.Fatalf("a second name from one gift: %d %v", res.StatusCode, body)
+	}
+	if _, err := srv.Store.UserByID(ctx, modID(id)); err != nil {
+		t.Fatal(err)
+	}
+}

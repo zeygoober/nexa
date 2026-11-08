@@ -234,7 +234,8 @@ private fun buildRows(
         closeRun()
         val hook = hookKey(cm)
         val start = !groups(prev, m.authorId, at, m.type, m.replyToId, hook, thread = m.thread != null)
-        val mentioned = m.authorId != meId && mentionsMe(m, meId)
+        // your own @everyone is marked as everyone else sees it; any other mention of yourself is not news
+        val mentioned = if (m.authorId == meId) m.mentionEveryone else mentionsMe(m, meId)
         out += ListRow.Msg(MsgItem(id, cm, groupStart = start, mentionsMe = mentioned))
         prev = Prev(m.authorId, at, m.type == "system_call", hook)
         if (spot == NoticeSpot.After(id)) placeNotice()
@@ -379,7 +380,8 @@ fun MessageList(channel: Channel, modifier: Modifier = Modifier) {
     // fill ids before history loads, without changing newest when it finishes.
     LaunchedEffect(atBottom, visible, newest, state.loaded, state.hasNewer, mark?.lastReadId, mark?.mentions) {
         if (!atBottom || !visible || !state.loaded || state.hasNewer) return@LaunchedEffect
-        val id = newest ?: return@LaunchedEffect
+        // with nothing to show the channel's own newest stands in, or it could never be read
+        val id = newest ?: Nexa.channels.get(channelId)?.lastMessageId ?: return@LaunchedEffect
         val read = mark?.lastReadId
         if (read != null && Ids.compare(read, id) >= 0 && (mark.mentions == 0)) return@LaunchedEffect
         delay(250)

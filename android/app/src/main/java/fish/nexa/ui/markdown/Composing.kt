@@ -165,8 +165,8 @@ object Mentions {
             // the longest run a username can be, then without the dots that end a sentence
             var end = at
             while (end < seg.length && end - at < 32 && seg[end].let { it in 'a'..'z' || it in 'A'..'Z' || it in '0'..'9' || it == '_' || it == '.' }) end++
-            var typed = if (end - at >= 2) seg.substring(at, end) else ""
-            while (typed.length >= 2) {
+            var typed = if (end - at >= 1) seg.substring(at, end) else ""
+            while (typed.length >= 1) {
                 val u = byUsername[Js.lower(typed)]
                 if (u != null && ends(Js.at(seg, at + typed.length))) return Candidate(u.id, u.username, Js.lower(typed), 0)
                 if (!typed.endsWith(".")) break

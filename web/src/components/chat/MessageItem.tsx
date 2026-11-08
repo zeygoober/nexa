@@ -260,7 +260,8 @@ export const MessageItem = memo(function MessageItem({ msg, groupStart, pending,
   useServers((st) => (serverId ? st.byId[serverId]?.me?.role_ids : undefined));
   // someone blocked does not ping, even in a run of theirs opened to read
   const authorBlocked = useRelationships((r) => r.byUser[msg.author_id]?.type === "blocked");
-  const mentioned = !!me && msg.author_id !== me.id && !authorBlocked && mentionsMe(msg, me.id);
+  // your own @everyone is marked as everyone else sees it; any other mention of yourself is not news
+  const mentioned = !!me && !authorBlocked && (msg.author_id === me.id ? !!msg.mention_everyone : mentionsMe(msg, me.id));
 
   const openMenu = useCallback((x: number, y: number, image?: ImageTarget | null, anchor?: ContextMenuState["anchor"]) => {
     setMenuOpen(true);

@@ -409,6 +409,7 @@ export function logDetail(e: ModLogEntry): string {
     case "gift_link_create":
     case "gift_link_revoke": {
       const g = e.details as { plan?: string; days?: number };
+      if (g.plan === "short_name") return t("support.giftLink.shortName");
       return g.plan ? t((g.days ?? 0) >= 365 ? "support.giftLink.yearOf" : "support.giftLink.monthOf", { plan: t(g.plan === "pro" ? "support.plan.pro" : "support.plan.supporter") }) : "";
     }
     case "delete":

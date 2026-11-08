@@ -14,7 +14,7 @@ import s from "./ProfileCards.module.css";
 function cardLinks(nodes: unknown, embeds: UnfurlResult[] | null | undefined): ProfileLinkRef[] {
   const out = profileLinksIn(nodes);
   for (const e of embeds ?? []) {
-    if (!e || e.type !== "profile" || typeof e.username !== "string" || !/^[a-z0-9_.]{2,32}$/.test(e.username)) continue;
+    if (!e || e.type !== "profile" || typeof e.username !== "string" || !/^[a-z0-9_.]{1,32}$/.test(e.username)) continue;
     if (!out.some((l) => l.username === e.username) && out.length < MAX_PROFILE_CARDS) out.push({ username: e.username, url: e.url });
   }
   return out;

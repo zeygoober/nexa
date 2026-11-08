@@ -625,8 +625,11 @@ private fun nameOf(u: PublicUser) = u.displayName.ifEmpty { u.username }
 /** The address of a gift link, as it is shared. */
 fun giftLinkUrl(code: String): String = fish.nexa.ui.markdown.AppLinks.shareOrigin(Nexa.api.baseUrl).trimEnd('/') + "/gift/" + code
 
+/** The plan column of a link that gives a one-character username. */
+const val SHORT_NAME_GIFT = "short_name"
+
 /** How long a gift lasts, as its title says it ("A Month of Pro"). */
-fun giftTitle(plan: String, days: Int): String = t(if (days >= 365) "support.giftLink.yearOf" else "support.giftLink.monthOf", "plan" to planName(plan))
+fun giftTitle(plan: String, days: Int): String = if (plan == SHORT_NAME_GIFT) t("support.giftLink.shortName") else t(if (days >= 365) "support.giftLink.yearOf" else "support.giftLink.monthOf", "plan" to planName(plan))
 
 /** The gift links this account bought: copy one to send it, and who has claimed which. */
 @Composable
@@ -687,7 +690,7 @@ fun openGiftLink(code: String) {
                 Txt(if (g.claimedByMe) t("support.giftLink.yoursNow") else title, style = Nx.type.title.copy(fontSize = Nx.type.sp(22f)), color = c.textStrong, align = TextAlign.Center)
                 Txt(
                     when {
-                        g.claimedByMe -> t("support.giftLink.yoursNowBody", "gift" to title)
+                        g.claimedByMe -> if (g.plan == SHORT_NAME_GIFT) t("support.giftLink.shortNameBody") else t("support.giftLink.yoursNowBody", "gift" to title)
                         g.mine -> if (g.claimed) t("support.giftLink.mineClaimed") else t("support.giftLink.mine")
                         g.claimed -> t("support.giftLink.taken")
                         else -> t("support.giftLink.fromName", "name" to g.fromName.ifEmpty { t("support.giftLink.someone") })
@@ -695,6 +698,7 @@ fun openGiftLink(code: String) {
                     style = Nx.type.body, color = c.textMuted, align = TextAlign.Center,
                 )
                 when {
+                    g.claimedByMe && g.plan == SHORT_NAME_GIFT -> NxButton(t("support.giftLink.chooseName"), { close(); fish.nexa.ui.settings.Settings.open("account") }, size = ButtonSize.LG, block = true)
                     g.claimedByMe -> NxButton(t("support.giftLink.seePlan"), { close(); Nav.go(Route.Support) }, size = ButtonSize.LG, block = true)
                     g.mine && !g.claimed -> NxButton(t("support.giftLink.copy"), { copyGiftLink(g.code) }, size = ButtonSize.LG, block = true)
                     !g.mine && !g.claimed -> NxButton(t("support.giftLink.claim"), {
@@ -704,6 +708,7 @@ fun openGiftLink(code: String) {
                                 shown = fish.nexa.net.wireJson.decodeFromJsonElement(fish.nexa.net.GiftLinkView.serializer(), Nexa.api.request("POST", "/gifts/" + java.net.URLEncoder.encode(g.code, "UTF-8") + "/claim"))
                                 gift = shown
                                 Plans.load()
+                                if (shown?.plan == SHORT_NAME_GIFT) Nexa.users.me.value?.let { Nexa.users.setMe(it.copy(shortNameCredits = it.shortNameCredits + 1)) }
                             } catch (e: Exception) {
                                 Nexa.ui.toast(errorText(e), "error")
                             } finally {

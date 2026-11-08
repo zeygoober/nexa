@@ -183,7 +183,7 @@ private fun openNameSheet(username: Boolean) {
     fun submit() {
         if (busy) return
         val next = if (username) value.trim().lowercase() else value.trim()
-        val problem = if (username) usernameProblem(next) else if (next.isEmpty()) t("settings.account.displayNameCannotBeEmpty") else null
+        val problem = if (username) usernameProblem(next, canBeShort = next == me.username || me.shortNameCredits > 0) else if (next.isEmpty()) t("settings.account.displayNameCannotBeEmpty") else null
         if (problem != null) {
             error = problem
             return
@@ -218,6 +218,7 @@ private fun openNameSheet(username: Boolean) {
             modifier = Modifier.focusRequester(focus),
             label = t(if (username) "settings.account.username" else "settings.account.displayName"),
             error = error,
+            hint = if (username && me.shortNameCredits > 0) t("settings.account.shortNameHint") else null,
             imeAction = ImeAction.Done,
             onIme = { submit() },
             capitalize = !username,

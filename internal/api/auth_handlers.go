@@ -48,13 +48,15 @@ type MeUser struct {
 	HasRecovery     bool   `json:"has_recovery"`
 	MFAEnabled      bool   `json:"mfa_enabled"`
 	BackupCodesLeft int    `json:"backup_codes_left"`
+	// ShortNameCredits is how many one-character usernames this account may still take.
+	ShortNameCredits int `json:"short_name_credits"`
 	// Nexa is the account's moderation standing, so the app knows about a
 	// ban before it tries to connect and a mute before it shows a composer.
 	Nexa *nexaState `json:"nexa,omitempty"`
 }
 
 func (s *Server) meView(ctx context.Context, u *store.User) MeUser {
-	v := MeUser{PublicUser: u.Public(), Flags: u.Flags, PresencePref: u.PresencePref, DMPrivacy: u.DMPrivacy, HasRecovery: u.RecoveryAuthHash != ""}
+	v := MeUser{PublicUser: u.Public(), Flags: u.Flags, PresencePref: u.PresencePref, DMPrivacy: u.DMPrivacy, HasRecovery: u.RecoveryAuthHash != "", ShortNameCredits: u.ShortNameCredits}
 	if m, err := s.Store.MFAFor(ctx, u.ID); err == nil && m != nil && m.Enabled {
 		v.MFAEnabled = true
 		if n, err := s.Store.BackupCodesLeft(ctx, u.ID); err == nil {

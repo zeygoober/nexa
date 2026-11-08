@@ -97,7 +97,7 @@ function ModalEntry({ modal }: { modal: ModalState }) {
             (modal.props?.["onDismiss"] as (() => void) | undefined)?.();
             close();
           }}
-          title={String(modal.props?.["title"] ?? t("modals.modalHost.areYouSure"))}
+          title={(modal.props?.["title"] ?? t("modals.modalHost.areYouSure")) as React.ReactNode}
           body={modal.props?.["body"] as React.ReactNode}
           confirmLabel={modal.props?.["confirmLabel"] as string | undefined}
           cancelLabel={modal.props?.["cancelLabel"] as string | undefined}

@@ -41,6 +41,7 @@ import fish.nexa.ui.components.Txt
 import fish.nexa.ui.components.pressable
 import fish.nexa.ui.describeError
 import fish.nexa.ui.settings.copyAndSay
+import fish.nexa.ui.support.SHORT_NAME_GIFT
 import fish.nexa.ui.support.Segmented
 import fish.nexa.ui.support.giftLinkUrl
 import fish.nexa.ui.support.giftTitle
@@ -62,6 +63,7 @@ fun GiftLinksTab() {
     val scope = rememberCoroutineScope()
     var links by remember { mutableStateOf<List<GiftLink>?>(null) }
     var failed by remember { mutableStateOf(false) }
+    var what by remember { mutableStateOf("plan") }
     var plan by remember { mutableStateOf("supporter") }
     var period by remember { mutableStateOf("month") }
     var busy by remember { mutableStateOf(false) }
@@ -83,7 +85,7 @@ fun GiftLinksTab() {
         busy = true
         scope.launch {
             try {
-                val g = Moderation.createGiftLink(plan, period)
+                val g = Moderation.createGiftLink(if (what == "name") SHORT_NAME_GIFT else plan, period)
                 links = listOf(g) + links.orEmpty()
                 copyAndSay(context, giftLinkUrl(g.code), t("moderation.gifts.created"))
             } catch (e: Exception) {
@@ -109,9 +111,10 @@ fun GiftLinksTab() {
 
     LazyColumn(Modifier.fillMaxSize(), contentPadding = PanelPad, verticalArrangement = Arrangement.spacedBy(8.dp)) {
         item("new") {
-            SheetPanel(t("moderation.gifts.new"), t("moderation.gifts.hint")) {
+            SheetPanel(t("moderation.gifts.new"), t(if (what == "name") "moderation.gifts.hintName" else "moderation.gifts.hint")) {
                 Column(Modifier.padding(start = 14.dp, end = 14.dp, bottom = 12.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                    androidx.compose.foundation.layout.FlowRow(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    GiftChoice(t("moderation.gifts.what"), listOf("plan" to t("moderation.gifts.whatPlan"), "name" to t("moderation.gifts.whatName")), what) { what = it }
+                    if (what != "name") androidx.compose.foundation.layout.FlowRow(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                         GiftChoice(t("moderation.gifts.plan"), listOf("supporter" to t("support.plan.supporter"), "pro" to t("support.plan.pro")), plan) { plan = it }
                         GiftChoice(t("moderation.gifts.length"), listOf("month" to t("moderation.gifts.month"), "year" to t("moderation.gifts.year")), period) { period = it }
                     }

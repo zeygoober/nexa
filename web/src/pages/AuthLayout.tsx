@@ -145,7 +145,9 @@ export function passwordStrength(pw: string): { score: number; label: string } {
 
 export const USERNAME_RE = /^[a-z0-9_.]{2,32}$/;
 
-export function usernameProblem(u: string): string | null {
+/** `canBeShort`: this account holds a gift for a one-character name. */
+export function usernameProblem(u: string, canBeShort = false): string | null {
+  if (canBeShort && /^[a-z0-9]$/.test(u)) return null;
   if (u.length < 2) return t("authLayout.atLeast2Characters");
   if (u.length > 32) return t("authLayout.atMost32Characters");
   if (!USERNAME_RE.test(u)) return t("authLayout.onlyAZ09And");

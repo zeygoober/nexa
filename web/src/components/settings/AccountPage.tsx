@@ -61,7 +61,8 @@ export default function AccountPage({ onEditProfile }: { onEditProfile: () => vo
     run(async () => {
       const v = value.trim();
       if (field === "username") {
-        const p = usernameProblem(v.toLowerCase());
+        const next = v.toLowerCase();
+        const p = usernameProblem(next, next === me.username || (me.short_name_credits ?? 0) > 0);
         if (p) throw new Error(p);
       } else if (!v) throw new Error(t("settings.account.displayNameCannotBeEmpty"));
       setMe(await usersApi.patchMe(field === "username" ? { username: v.toLowerCase() } : { display_name: v }));
@@ -133,7 +134,7 @@ export default function AccountPage({ onEditProfile }: { onEditProfile: () => vo
 
       {dialog === "displayName" || dialog === "username" ? (
         <Modal open onClose={close} title={dialog === "username" ? t("settings.account.changeYourUsername") : t("settings.account.changeYourDisplayName")} onSubmit={submitName} footer={<><Button variant="ghost" onClick={close}>{t("chat.editMessage.cancel")}</Button><Button loading={busy} onClick={submitName}>{t("modals.serverNotifications.done")}</Button></>}>
-          <Field label={dialog === "username" ? t("settings.account.username") : t("settings.account.displayName")} error={error}>
+          <Field label={dialog === "username" ? t("settings.account.username") : t("settings.account.displayName")} error={error} hint={dialog === "username" && (me.short_name_credits ?? 0) > 0 ? t("settings.account.shortNameHint") : undefined}>
             <TextInput value={value} onChange={(e) => setValue(e.target.value)} autoFocus maxLength={32} autoCapitalize={dialog === "username" ? "none" : undefined} enterKeyHint="done" />
           </Field>
         </Modal>

@@ -65,7 +65,7 @@ const MESSAGE_PATH = /^\/channels\/(@me|\d+)\/(\d+)\/(\d+)\/?$/;
 /** A sticker or emoji pack's page (pages/StickerPackPage), which the app opens as one of its routes. */
 const PACK_PATH = /^\/stickers\/pack\/(\d{1,20})\/?$/;
 /** A profile link (lib/profileLinks): an @ and a username, which may have dots in it like a file's name. */
-const PROFILE_PATH = /^\/@([A-Za-z0-9_.]{2,32})\/?$/;
+const PROFILE_PATH = /^\/@([A-Za-z0-9_.]{1,32})\/?$/;
 /** The page that adds an app (pages/AuthorizePage), which an app's install link opens. */
 const AUTHORIZE_PATH = /^\/oauth2\/authorize\/?$/;
 

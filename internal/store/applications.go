@@ -171,7 +171,7 @@ func (s *Store) CreateApplication(ctx context.Context, a *Application, bot *User
 			}
 			return err
 		}
-		res, err := tx.ExecContext(ctx, `INSERT INTO users (`+userCols+`) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?) ON CONFLICT(username) DO NOTHING`,
+		res, err := tx.ExecContext(ctx, `INSERT INTO users (`+userCols+`) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,0) ON CONFLICT(username) DO NOTHING`,
 			int64(bot.ID), bot.Username, bot.DisplayName, bot.AuthHash, bot.KDFSalt, bot.KDFParams, bot.PublicKey, bot.EncPrivateKey, nil, nil,
 			nullID(bot.AvatarID), nullID(bot.BannerID), bot.AboutMe, "", nil, nil, "", "", nil, bot.PresencePref, bot.DMPrivacy, bot.Flags, bot.CreatedAt, bot.UpdatedAt, 0,
 			"", nil, "", "", nil, "", "")

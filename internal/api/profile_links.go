@@ -38,7 +38,7 @@ func (s *Server) profileLinkRoutes(mux *http.ServeMux) {
 // is disabled, deleted or banned.
 func (s *Server) sharedProfile(ctx context.Context, username string) *store.PublicUser {
 	username = strings.ToLower(strings.TrimSpace(username))
-	if !ValidUsername(username) {
+	if !ValidUsername(username) && !ShortUsername(username) {
 		return nil
 	}
 	u, err := s.Store.UserByUsername(ctx, username)
@@ -84,7 +84,7 @@ func (s *Server) handleSharedProfile(w http.ResponseWriter, r *http.Request) {
 // of our addresses, or "".
 func (s *Server) profileLinkName(raw string) string {
 	name := strings.ToLower(s.ownPath(raw, profilePath))
-	if !ValidUsername(name) {
+	if !ValidUsername(name) && !ShortUsername(name) {
 		return ""
 	}
 	return name

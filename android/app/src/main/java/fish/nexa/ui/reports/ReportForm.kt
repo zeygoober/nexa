@@ -414,7 +414,7 @@ private fun parseLink(href: String): Pair<String, String>? = runCatching {
     Regex("^/channels/(?:@me|\\d{1,20})/(\\d{1,20})/(\\d{1,20})/?$").find(path)?.let { return "message" to it.groupValues[2] }
     Regex("^/channels/(?:@me|\\d{1,20})/(\\d{1,20})/?$").find(path)?.let { return "channel" to it.groupValues[1] }
     Regex("^/stickers/pack/(\\d{1,20})/?$").find(path)?.let { return "pack" to it.groupValues[1] }
-    Regex("^/@([A-Za-z0-9_.]{2,32})/?$").find(path)?.let { return "profile" to it.groupValues[1].lowercase() }
+    Regex("^/@([A-Za-z0-9_.]{1,32})/?$").find(path)?.let { return "profile" to it.groupValues[1].lowercase() }
     null
 }.getOrNull()
 

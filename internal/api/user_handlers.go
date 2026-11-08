@@ -90,10 +90,16 @@ func (s *Server) handleMePatch(w http.ResponseWriter, r *http.Request) {
 	}
 	if v, present, null := getString("username"); present {
 		v = strings.ToLower(strings.TrimSpace(v))
-		if null || !ValidUsername(v) {
+		short := !null && v != u.Username && ShortUsername(v)
+		if short && u.ShortNameCredits <= 0 {
+			bad("short_name_gift", "One-character usernames come from a gift link.")
+			return
+		}
+		if null || !(ValidUsername(v) || short || (v == u.Username && ShortUsername(v))) {
 			bad("invalid_username", "Usernames are 2–32 characters of a-z, 0-9, _ and . (no leading, trailing or double dots).")
 			return
 		}
+		p.SpendShortName = short
 		if v != u.Username && reservedDisplayName(v) && !isSystem(u) {
 			bad("reserved_username", "That username belongs to the official Nexa account.")
 			return
@@ -279,6 +285,10 @@ func (s *Server) handleMePatch(w http.ResponseWriter, r *http.Request) {
 	if err := s.Store.UpdateProfile(r.Context(), u.ID, p); err != nil {
 		if errors.Is(err, store.ErrTypingImageGone) {
 			bad("invalid_typing_style", "One of your typing pictures has gone. Put it up again.")
+			return
+		}
+		if errors.Is(err, store.ErrNoShortName) {
+			bad("short_name_gift", "One-character usernames come from a gift link.")
 			return
 		}
 		WriteError(w, err)

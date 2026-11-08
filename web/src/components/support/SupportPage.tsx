@@ -358,8 +358,12 @@ export function giftLinkUrl(code: string): string {
   return `${shareOrigin()}/gift/${code}`;
 }
 
+/** The plan column of a link that gives a one-character username. */
+export const SHORT_NAME_GIFT = "short_name";
+
 /** How long a gift lasts, as its title says it ("A Month of Pro"). */
-export function giftTitle(plan: Plan, days: number): string {
+export function giftTitle(plan: Plan | typeof SHORT_NAME_GIFT, days: number): string {
+  if (plan === SHORT_NAME_GIFT) return t("support.giftLink.shortName");
   return t(days >= 365 ? "support.giftLink.yearOf" : "support.giftLink.monthOf", { plan: planName(plan) });
 }
 

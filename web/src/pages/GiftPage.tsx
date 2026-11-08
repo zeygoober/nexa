@@ -7,10 +7,12 @@ import type { GiftLinkView } from "@/api/types";
 import { Button } from "@/components/common/Button";
 import { FullScreenSpinner } from "@/components/common/Spinner";
 import { RequireAuth } from "@/components/shell/RequireAuth";
-import { giftLinkUrl, giftTitle } from "@/components/support/SupportPage";
+import { SHORT_NAME_GIFT, giftLinkUrl, giftTitle } from "@/components/support/SupportPage";
 import { copyText } from "@/lib/clipboard";
 import { describeError } from "@/lib/errors";
+import { useAuth } from "@/stores/auth";
 import { useBilling } from "@/stores/billing";
+import { useUI } from "@/stores/ui";
 import { AuthLayout, usePageTitle } from "./AuthLayout";
 import s from "./Auth.module.css";
 
@@ -50,6 +52,10 @@ function Claim() {
       const gift = await billingApi.claimGift(code);
       setStep({ at: "ready", gift });
       void useBilling.getState().load();
+      if (gift.plan === SHORT_NAME_GIFT) {
+        const me = useAuth.getState().me;
+        if (me) useAuth.getState().setMe({ ...me, short_name_credits: (me.short_name_credits ?? 0) + 1 });
+      }
     } catch (err) {
       setStep({ at: "failed", message: describeError(err) });
     } finally {
@@ -68,12 +74,16 @@ function Claim() {
   }
   const { gift } = step;
   const title = giftTitle(gift.plan, gift.days);
-  const mark = (icon: ReactNode) => <div className={s.mark} data-tone={gift.claimed_by_me ? "good" : undefined} style={{ ["--mark" as string]: gift.claimed_by_me ? undefined : `var(--tier-${gift.plan || "supporter"})` }}>{icon}</div>;
+  const mark = (icon: ReactNode) => <div className={s.mark} data-tone={gift.claimed_by_me ? "good" : undefined} style={{ ["--mark" as string]: gift.claimed_by_me ? undefined : gift.plan === SHORT_NAME_GIFT ? "var(--brand)" : `var(--tier-${gift.plan || "supporter"})` }}>{icon}</div>;
   if (gift.claimed_by_me) {
     return (
-      <AuthLayout title={t("support.giftLink.yoursNow")} subtitle={t("support.giftLink.yoursNowBody", { gift: title })} mark={mark(<Check size={28} />)}>
+      <AuthLayout title={t("support.giftLink.yoursNow")} subtitle={gift.plan === SHORT_NAME_GIFT ? t("support.giftLink.shortNameBody") : t("support.giftLink.yoursNowBody", { gift: title })} mark={mark(<Check size={28} />)}>
         <div className={s.form}>
-          <Button block size="lg" onClick={() => nav("/channels/@me/support", { replace: true })} data-testid="gift-see-plan">{t("support.giftLink.seePlan")}</Button>
+          {gift.plan === SHORT_NAME_GIFT ? (
+            <Button block size="lg" onClick={() => { nav("/channels/@me", { replace: true }); useUI.getState().openModal("settings", { page: "account", anchor: "username" }); }} data-testid="gift-choose-name">{t("support.giftLink.chooseName")}</Button>
+          ) : (
+            <Button block size="lg" onClick={() => nav("/channels/@me/support", { replace: true })} data-testid="gift-see-plan">{t("support.giftLink.seePlan")}</Button>
+          )}
           {home}
         </div>
       </AuthLayout>

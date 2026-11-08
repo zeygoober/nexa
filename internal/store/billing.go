@@ -274,8 +274,15 @@ type GiftLink struct {
 // ErrGiftClaimed is a gift link someone has already claimed.
 var ErrGiftClaimed = errors.New("store: gift link already claimed")
 
+// ErrNoShortName means the account has no one-character name left to take.
+var ErrNoShortName = errors.New("store: no one-character name to spend")
+
 // giftLinkCodeLen is long enough that a link can't be guessed.
 const giftLinkCodeLen = 20
+
+// GiftShortName is the plan column of a gift link that gives one change to a
+// one-character username instead of a plan. Only the owner's links carry it.
+const GiftShortName = "short_name"
 
 // AddGiftLink makes the link a paid Checkout session bought, once; a session
 // seen before answers the link it already made.
@@ -406,6 +413,16 @@ func (s *Store) ClaimGiftLink(ctx context.Context, code string, uid ids.ID) (g *
 			return ErrGiftClaimed
 		}
 		g = &GiftLink{Code: code, FromID: ids.ID(from), Plan: plan, Days: days}
+		if plan == GiftShortName {
+			res, err := tx.ExecContext(ctx, `UPDATE users SET short_name_credits = short_name_credits + 1 WHERE id = ?`, int64(uid))
+			if err != nil {
+				return err
+			}
+			if n, _ := res.RowsAffected(); n == 0 {
+				return ErrNotFound
+			}
+			return nil
+		}
 		given := "link:" + code
 		if strings.HasPrefix(session, ownerGiftPrefix) {
 			given = ownerGiftClaim + code

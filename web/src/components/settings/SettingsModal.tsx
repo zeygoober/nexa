@@ -297,8 +297,9 @@ export default function SettingsModal({ onClose, page: initial, packId, modalId,
   ) : null;
 
   return (
-    // Opened at My Account is opened as a whole, from the user panel: a phone starts on the list.
-    <SettingsLayer label={t("settings.settings.userSettings")} groups={groups} page={page} setPage={(id) => { setAnchor(null); setPage(id); }} onClose={onClose} footer={footer} startOnList={initial === "account" && !resume} navTop={search} navBody={found}>
+    // Opened at My Account is opened as a whole, from the user panel: a phone starts on the list,
+    // unless it was opened to show one setting there.
+    <SettingsLayer label={t("settings.settings.userSettings")} groups={groups} page={page} setPage={(id) => { setAnchor(null); setPage(id); }} onClose={onClose} footer={footer} startOnList={(initial === "account" && !resume) && !openAt} navTop={search} navBody={found}>
       {/* A blank content column on a slow link is indistinguishable from a crash. */}
       <Suspense fallback={<div style={{ display: "flex", justifyContent: "center", padding: 40 }}><Spinner label={t("chat.pins.loading")} /></div>}>{body}</Suspense>
     </SettingsLayer>

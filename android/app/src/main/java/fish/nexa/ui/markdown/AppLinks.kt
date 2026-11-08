@@ -49,7 +49,7 @@ object AppLinks {
     private val INVITE_PATH = Regex("^/invite/([A-Za-z0-9_-]{1,64})/?$")
     private val NOTE_PATH = Regex("^/note/([A-Za-z0-9_-]{16,128})/?$")
     private val MESSAGE_PATH = Regex("^/channels/(@me|[0-9]+)/([0-9]+)/([0-9]+)/?$")
-    private val PROFILE_PATH = Regex("^/@([A-Za-z0-9_.]{2,32})/?$")
+    private val PROFILE_PATH = Regex("^/@([A-Za-z0-9_.]{1,32})/?$")
 
     /**
      * What a link leads to when it is one of the app's own pages, or null for

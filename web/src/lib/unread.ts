@@ -1,3 +1,4 @@
+import { useThreads } from "@/stores/threads";
 import type { Channel } from "@/api/types";
 import { compareIds } from "@/lib/ids";
 import type { ChannelRead } from "@/stores/readStates";
@@ -50,7 +51,10 @@ export function serverUnread(serverId: string, channels: Record<string, Channel>
   let mentions = 0;
   const serverMuted = settings.notifications.muted.includes(serverId);
   for (const ch of Object.values(channels)) {
-    if (ch.server_id !== serverId || (ch.type !== "text" && ch.type !== "voice")) continue;
+    if (ch.server_id !== serverId) continue;
+    // A thread counts once this account is in it, as on Android.
+    const thread = ch.type === "thread" || ch.type === "private_thread";
+    if (ch.type !== "text" && ch.type !== "voice" && ch.type !== "announcement" && !(thread && useThreads.getState().joined[ch.id])) continue;
     const rs = reads[ch.id];
     mentions += rs?.mentions ?? 0;
     if (!serverMuted && !settings.notifications.muted.includes(ch.id) && isUnread(rs, ch.last_message_id)) unread = true;

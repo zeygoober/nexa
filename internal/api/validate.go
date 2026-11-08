@@ -9,6 +9,13 @@ import (
 
 var usernameRe = regexp.MustCompile(`^[a-z0-9_.]{2,32}$`)
 
+// shortNameRe is the one-character username a gift link gives: a letter or a
+// number, and never available any other way.
+var shortNameRe = regexp.MustCompile(`^[a-z0-9]$`)
+
+// ShortUsername reports whether a name is a one-character one.
+func ShortUsername(s string) bool { return shortNameRe.MatchString(s) }
+
 // ValidUsername reports whether s is an acceptable unique username.
 func ValidUsername(s string) bool {
 	if !usernameRe.MatchString(s) {

@@ -79,6 +79,15 @@ export function useAutosize(ref: RefObject<HTMLTextAreaElement | null>, value: s
   useLayoutEffect(() => {
     const el = ref.current;
     if (!el) return;
+    // An empty box is one line, which `rows` already says. Measured instead,
+    // WebKit answers 0 for a textarea that has never held text, and a sheet
+    // still loading gives the wrong line: the box came up with no room for its
+    // placeholder and nothing to click until something was typed.
+    if (!value) {
+      if (el.style.height) el.style.height = "";
+      if (el.style.overflowY !== "hidden") el.style.overflowY = "hidden";
+      return;
+    }
     const needed = neededHeight(el);
     const h = Math.min(maxPx, needed);
     const next = `${h}px`;

@@ -99,7 +99,7 @@ private fun Modifier.overlapAbove(by: Dp): Modifier = layout { measurable, const
 }
 
 private val INVITE_PATH = Regex("^/invite/([A-Za-z0-9_-]{1,64})/?$")
-private val PROFILE_PATH = Regex("^/@([A-Za-z0-9_.]{2,32})/?$")
+private val PROFILE_PATH = Regex("^/@([A-Za-z0-9_.]{1,32})/?$")
 private val PACK_PATH = Regex("^/stickers/pack/(\\d{1,20})/?$")
 private val AUTHORIZE_PATH = Regex("^/oauth2/authorize/?$")
 
@@ -372,7 +372,7 @@ fun ProfileCards(text: String?, embeds: List<Unfurl>) {
         }
         for (e in embeds) {
             val u = e.username ?: continue
-            if (e.type != "profile" || !Regex("^[a-z0-9_.]{2,32}$").matches(u)) continue
+            if (e.type != "profile" || !Regex("^[a-z0-9_.]{1,32}$").matches(u)) continue
             if (u !in out && out.size < MAX_PROFILE_CARDS) out += u
         }
         out

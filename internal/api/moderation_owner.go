@@ -268,7 +268,9 @@ func (s *Server) handleModGiftLinkCreate(w http.ResponseWriter, r *http.Request)
 		return
 	}
 	days := giftDays[req.Period]
-	if days == 0 || giftPrices[req.Plan] == nil {
+	if req.Plan == store.GiftShortName {
+		days = 0 // nothing runs out: it gives one change of name
+	} else if days == 0 || giftPrices[req.Plan] == nil {
 		WriteError(w, E(http.StatusBadRequest, "invalid_plan", "Pick supporter or pro, for a month or a year."))
 		return
 	}

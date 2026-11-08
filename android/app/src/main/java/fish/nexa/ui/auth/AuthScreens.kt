@@ -209,8 +209,11 @@ fun passwordStrength(pw: String): Pair<Int, String> {
 }
 
 private val USERNAME_RE = Regex("^[a-z0-9_.]{2,32}$")
+private val SHORT_NAME_RE = Regex("^[a-z0-9]$")
 
-fun usernameProblem(u: String): String? = when {
+/** [canBeShort]: this account holds a gift for a one-character name. */
+fun usernameProblem(u: String, canBeShort: Boolean = false): String? = when {
+    canBeShort && SHORT_NAME_RE.matches(u) -> null
     u.length < 2 -> t("authLayout.atLeast2Characters")
     u.length > 32 -> t("authLayout.atMost32Characters")
     !USERNAME_RE.matches(u) -> t("authLayout.onlyAZ09And")

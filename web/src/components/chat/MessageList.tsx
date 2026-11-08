@@ -866,24 +866,26 @@ export function MessageList({ channel }: { channel: Channel }) {
   }, [channel.id]);
 
   // What the checks below need from the latest render, for the ones that run outside of one.
-  const live = useRef({ loaded, readKnown, hasNewer, newest, readState });
-  live.current = { loaded, readKnown, hasNewer, newest, readState };
+  // with nothing to show (every message gone or out of reach) the channel's own newest stands in, or it could never be read
+  const readUpTo = newest ?? channel.last_message_id ?? undefined;
+  const live = useRef({ loaded, readKnown, hasNewer, readUpTo, readState });
+  live.current = { loaded, readKnown, hasNewer, readUpTo, readState };
   /** Marks the newest message read when the list is showing it: the present, scrolled to the bottom. */
   const ackIfPresent = useCallback(() => {
     const v = live.current;
     // Wait for the first page: the unread point is taken from the read state
     // on that render, and acking earlier would move it to the newest message.
     // A list that stops short of the present has not shown the newest message.
-    if (!v.loaded || !v.readKnown || v.hasNewer || !v.newest || !atBottom.current || typeof document === "undefined" || document.visibilityState !== "visible") return;
-    if (lastAcked.current === v.newest) return;
-    if (v.readState?.lastReadId && compareIds(v.readState.lastReadId, v.newest) >= 0 && v.readState.mentions === 0) return;
-    lastAcked.current = v.newest;
-    void ack(channel.id, v.newest);
+    if (!v.loaded || !v.readKnown || v.hasNewer || !v.readUpTo || !atBottom.current || typeof document === "undefined" || document.visibilityState !== "visible") return;
+    if (lastAcked.current === v.readUpTo) return;
+    if (v.readState?.lastReadId && compareIds(v.readState.lastReadId, v.readUpTo) >= 0 && v.readState.mentions === 0) return;
+    lastAcked.current = v.readUpTo;
+    void ack(channel.id, v.readUpTo);
   }, [ack, channel.id]);
 
   useEffect(() => {
     if (focused) ackIfPresent();
-  }, [loaded, readKnown, hasNewer, newest, focused, readState, reachedBottom, ackIfPresent]);
+  }, [loaded, readKnown, hasNewer, readUpTo, focused, readState, reachedBottom, ackIfPresent]);
 
   // A click, a key or a wheel turned in the window means the person is looking
   // at it, whatever its focus says (lib/interaction). And leaving the

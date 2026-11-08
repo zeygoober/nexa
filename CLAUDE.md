@@ -714,8 +714,9 @@ it:
 - Everything a person can make the server fetch goes through `internal/egress` (WARP's SOCKS5 proxy,
   `EGRESS_PROXY=warp|off|socks5://...`): link previews (`unfurl`, asked for by the sender's app, which seals
   the preview in the message), the media proxy (only addresses the server signed; `POST /proxy/refresh`
-  re-signs old ones), the players, music cards' details, IGDB, Deezer, Discord's Rich Presence apps and
-  Discord templates. Discord's gateway, Cloudflare Realtime and the tunnel go out directly.
+  re-signs old ones), the players, music cards' details, IGDB, Discord's Rich Presence apps and Discord
+  templates. Discord's gateway, Cloudflare Realtime, the tunnel and the music widgets' Deezer searches
+  (`internal/music`: a fixed host that answers 403 to every WARP address) go out directly.
 - Music links (`unfurl/music.go`) carry a `music` card, held by `sanitizeMusic` in web `crypto/message.ts` and
   Android `MessageCrypto`, drawn by web `chat/MusicEmbed.tsx` and Android `ui/media/MusicEmbed.kt`. Each
   service's terms decide how it plays: Deezer's and Apple's thirty-second previews play in the app's own
@@ -910,6 +911,13 @@ it:
   `GiftLinksTab.tsx`, Android `ui/moderation/GiftLinks.kt`): free links in `gift_links` claimed at the usual `/gift/<code>`, whose
   `session_id` starts `owner:` (`ownerGiftPrefix`) and whose `plan_gifts` row starts `owner-link:` (`ownerGiftClaim`), which keeps
   them out of the Your Links list and out of the Gift Giver badge. Nexa collects no email address, so there is none to show.
+- One-character names (added 2026-11-09): usernames are 2 to 32 characters unless the account holds a gift for one. A
+  Gift Link with plan `short_name` (`store.GiftShortName`, length 0) adds one `users.short_name_credits` (migration 0056)
+  when claimed, and renaming to a single letter or number spends one inside `UpdateProfile`, or fails with `ErrNoShortName`
+  (error `short_name_gift`). The count reaches only its owner (`/users/@me` and `ready`). Patterns that find usernames in
+  links and mentions accept one character on both apps.
+- A name taken down stays taken: deleting an account whose latest open case is a ban or a deletion holds its username in
+  `username_holds` (`holdTakenDownNameTx`), as a moderator's name reset already did.
 - Staff actions (`moderation_*` files) are logged in `mod_log`; an action on an account comes with a case
   (`mod_cases`) whose thread the member sees. Bulk moderation sends the same per-account action for each
   account in turn, so each gets its own case.

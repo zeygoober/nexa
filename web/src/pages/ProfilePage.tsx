@@ -32,7 +32,7 @@ import s from "./ProfilePage.module.css";
 export default function ProfilePage() {
   const { handle = "" } = useParams();
   // the route takes any one-part address; only one starting with @ is a profile
-  if (!/^@[A-Za-z0-9_.]{2,32}$/.test(handle)) return <NotFoundPage />;
+  if (!/^@[A-Za-z0-9_.]{1,32}$/.test(handle)) return <NotFoundPage />;
   return <ProfileLinkPage username={handle.slice(1).toLowerCase()} />;
 }
 

@@ -186,9 +186,8 @@ func main() {
 	// and their music, searched on Deezer and its pictures kept the same way
 	srv.Music = music.New(filepath.Join(cfg.DataDir, "music"))
 	srv.Music.Log = log
-	if out != nil {
-		srv.Music.HTTP.Transport = out.Transport()
-	}
+	// Deezer goes out directly: its host is fixed, all it learns is a search
+	// term, and it answers 403 to every WARP address, which emptied music search.
 	hub := gateway.New(st, srv.Auth, log, cfg.Origins())
 	srv.Bcast = hub
 	srv.WireServers(hub)

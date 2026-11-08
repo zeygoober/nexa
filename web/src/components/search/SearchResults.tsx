@@ -443,10 +443,13 @@ export function SearchResults({
   const scroller = useRef<HTMLDivElement>(null);
   const sentinel = useRef<HTMLDivElement>(null);
   const { counts } = run.result;
-  // a new search, a new tab or a new order starts at the top
+  // A new search, a new tab or a new order starts at the top. By what is
+  // asked, not the object: names change with every member and profile update,
+  // which remade it and threw a reader back to the start mid-scroll.
+  const asked = JSON.stringify(run.resolved);
   useEffect(() => {
     scroller.current?.scrollTo?.({ top: 0 });
-  }, [run.resolved, tab, sort]);
+  }, [asked, tab, sort]);
   // more come in as the end of the list comes near
   useEffect(() => {
     const el = sentinel.current;

@@ -105,6 +105,9 @@ type User struct {
 	// Plan is the subscription the account has now: "" (free), "supporter"
 	// or "pro" (api/billing.go). Public, as the badge it wears.
 	Plan string `json:"-"`
+	// ShortNameCredits is how many one-character usernames the account may
+	// still take; private to it.
+	ShortNameCredits int `json:"-"`
 
 	AuthHash              string `json:"-"`
 	KDFSalt               []byte `json:"-"`
@@ -178,7 +181,9 @@ func (u *User) WornTag() *WornTag {
 // ProfilePatch describes optional profile changes. A nil pointer means "leave
 // unchanged"; for the double pointers, a pointer to nil means "clear".
 type ProfilePatch struct {
-	Username        *string
+	Username *string
+	// SpendShortName takes one of the account's one-character names with the change.
+	SpendShortName  bool
 	DisplayName     *string
 	AboutMe         *string
 	Pronouns        *string

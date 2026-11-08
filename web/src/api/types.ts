@@ -174,7 +174,7 @@ export interface Billing {
 /** A plan bought as a link, which whoever opens it first claims (store.GiftLink). */
 export interface GiftLink {
   code: string;
-  plan: Plan;
+  plan: Plan | "short_name";
   days: number;
   created_at: number;
   claimed: boolean;
@@ -188,7 +188,7 @@ export interface GiftLinkView {
   code: string;
   from_id: Snowflake;
   from_name: string;
-  plan: Plan;
+  plan: Plan | "short_name";
   days: number;
   claimed: boolean;
   claimed_by_me: boolean;
@@ -221,6 +221,8 @@ export interface MeUser extends PublicUser {
   /** Who may start a direct message with the account; "friends_servers" (friends and people in a server with it) is the default. */
   dm_privacy: "everyone" | "friends_servers" | "friends" | "nobody";
   has_recovery: boolean;
+  /** One-character usernames this account may still take, one per gift link claimed. */
+  short_name_credits?: number;
   /** An authenticator app is required to sign in. */
   mfa_enabled?: boolean;
   backup_codes_left?: number;

@@ -113,8 +113,8 @@ export function extractMentions(text: string, users: Record<string, PublicUser>,
 
   const userAt = (seg: string, at: number): Named | null => {
     // the longest run a username can be, then without the dots that end a sentence
-    const run = /^[a-z0-9_.]{2,32}/i.exec(seg.slice(at))?.[0] ?? "";
-    for (let typed = run; typed.length >= 2; typed = typed.slice(0, -1)) {
+    const run = /^[a-z0-9_.]{1,32}/i.exec(seg.slice(at))?.[0] ?? "";
+    for (let typed = run; typed.length >= 1; typed = typed.slice(0, -1)) {
       const u = byUsername.get(typed.toLowerCase());
       if (u && ends(seg[at + typed.length])) return { id: u.id, name: u.username, lower: typed.toLowerCase(), rank: 0 };
       if (!typed.endsWith(".")) break;

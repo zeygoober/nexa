@@ -98,8 +98,11 @@ export function SearchPanel({
   const at = inline ? ownCaret : (caret ?? query.length);
 
   // Suggestions, put away with Escape until the query changes again.
+  // A choice that finishes a filter puts them away too, or the next ones came
+  // up over the results it had just asked for.
   const [dismissed, setDismissed] = useState(false);
-  useEffect(() => setDismissed(false), [query]);
+  const finished = useRef<string | null>(null);
+  useEffect(() => setDismissed(finished.current === query), [query]);
   const nearby = useMemo(() => (home.kind === "conversation" ? (byId[home.id]?.recipient_ids ?? []) : []), [home, byId]);
   const candidates = useMemo(() => suggestionChannels(byId, run.channels), [byId, run.channels]);
   const groups = useMemo(
@@ -109,6 +112,7 @@ export function SearchPanel({
   const pick = useCallback(
     (sg: Suggestion) => {
       if (sg.kind === "recent") rememberSearch(sg.text);
+      finished.current = sg.kind === "key" ? null : sg.text;
       onQuery(sg.text);
       setOwnCaret(sg.caret);
       // the caret goes where the suggestion left it: after a finished filter, or inside one still to fill
@@ -200,7 +204,13 @@ export function SearchPanel({
     />
   );
   const body = (
-    <div className={s.panelBody}>
+    <div
+      className={s.panelBody}
+      // pressing or scrolling what is under the suggestions is done with them
+      onPointerDownCapture={(e) => {
+        if (floating.length && !(e.target as Element).closest?.("[data-testid=search-suggest]")) dismiss();
+      }}
+    >
       {floating.length ? <SearchSuggestions groups={floating} active={sk.active} listId={listId} names={names} onPick={pick} onHover={sk.setActive} onDate={onDate} /> : null}
       {run.empty ? (
         <div className={s.intro}>

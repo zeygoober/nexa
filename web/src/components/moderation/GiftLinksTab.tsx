@@ -6,7 +6,7 @@ import type { GiftLink } from "@/api/types";
 import { Button } from "@/components/common/Button";
 import { LoadError } from "@/components/common/LoadError";
 import { Spinner } from "@/components/common/Spinner";
-import { giftLinkUrl, giftTitle } from "@/components/support/SupportPage";
+import { SHORT_NAME_GIFT, giftLinkUrl, giftTitle } from "@/components/support/SupportPage";
 import { copyAndSay } from "@/lib/copyText";
 import { describeError } from "@/lib/errors";
 import { formatRelative } from "@/lib/time";
@@ -16,6 +16,7 @@ import m from "./Moderation.module.css";
 import b from "./BadgesTab.module.css";
 
 type Plan = "supporter" | "pro";
+type What = "plan" | "name";
 type Period = "month" | "year";
 
 function Choice<T extends string>({ label, value, options, onPick }: { label: string; value: T; options: [T, string][]; onPick: (v: T) => void }) {
@@ -43,6 +44,7 @@ export function GiftLinksTab() {
   const openModal = useUI((u) => u.openModal);
   const [links, setLinks] = useState<GiftLink[] | null>(null);
   const [failed, setFailed] = useState(false);
+  const [what, setWhat] = useState<What>("plan");
   const [plan, setPlan] = useState<Plan>("supporter");
   const [period, setPeriod] = useState<Period>("month");
   const [busy, setBusy] = useState(false);
@@ -56,7 +58,7 @@ export function GiftLinksTab() {
   const create = async () => {
     setBusy(true);
     try {
-      const g = await modApi.createGiftLink(plan, period);
+      const g = await modApi.createGiftLink(what === "name" ? SHORT_NAME_GIFT : plan, period);
       setLinks((cur) => [g, ...(cur ?? [])]);
       copyAndSay(giftLinkUrl(g.code), t("moderation.gifts.created"));
     } catch (err) {
@@ -90,12 +92,13 @@ export function GiftLinksTab() {
             <Gift size={18} aria-hidden="true" />
             {t("moderation.gifts.new")}
           </h2>
-          <p className={m.panelHint}>{t("moderation.gifts.hint")}</p>
+          <p className={m.panelHint}>{t(what === "name" ? "moderation.gifts.hintName" : "moderation.gifts.hint")}</p>
           <div className={m.annForm}>
-            <div className={b.pair}>
+            <Choice label={t("moderation.gifts.what")} value={what} onPick={setWhat} options={[["plan", t("moderation.gifts.whatPlan")], ["name", t("moderation.gifts.whatName")]]} />
+            {what === "name" ? null : <div className={b.pair}>
               <Choice label={t("moderation.gifts.plan")} value={plan} onPick={setPlan} options={[["supporter", t("support.plan.supporter")], ["pro", t("support.plan.pro")]]} />
               <Choice label={t("moderation.gifts.length")} value={period} onPick={setPeriod} options={[["month", t("moderation.gifts.month")], ["year", t("moderation.gifts.year")]]} />
-            </div>
+            </div>}
             <div>
               <Button onClick={() => void create()} loading={busy} data-testid="gift-create">
                 <Link2 size={15} aria-hidden="true" /> {t("moderation.gifts.create")}

@@ -28,7 +28,7 @@ func init() {
 	})
 }
 
-const userCols = `id, username, display_name, auth_hash, kdf_salt, kdf_params, public_key, enc_private_key, enc_private_key_recovery, recovery_auth_hash, avatar_id, banner_id, about_me, pronouns, accent_color, accent_color_2, status_text, status_emoji, status_expires_at, presence_pref, dm_privacy, flags, created_at, updated_at, group_link_only, typing_style, tag_server_id, tag_text, tag_badge, tag_color, name_style, plan`
+const userCols = `id, username, display_name, auth_hash, kdf_salt, kdf_params, public_key, enc_private_key, enc_private_key_recovery, recovery_auth_hash, avatar_id, banner_id, about_me, pronouns, accent_color, accent_color_2, status_text, status_emoji, status_expires_at, presence_pref, dm_privacy, flags, created_at, updated_at, group_link_only, typing_style, tag_server_id, tag_text, tag_badge, tag_color, name_style, plan, short_name_credits`
 
 type rowScanner interface{ Scan(dest ...any) error }
 
@@ -39,7 +39,7 @@ func scanUser(r rowScanner) (*User, error) {
 	var linkOnly int64
 	err := r.Scan(&u.ID, &u.Username, &u.DisplayName, &u.AuthHash, &u.KDFSalt, &u.KDFParams, &u.PublicKey, &u.EncPrivateKey, &u.EncPrivateKeyRecovery, &recoveryHash,
 		&avatar, &banner, &u.AboutMe, &u.Pronouns, &accent, &accent2, &u.StatusText, &u.StatusEmoji, &statusExp, &u.PresencePref, &u.DMPrivacy, &u.Flags, &u.CreatedAt, &u.UpdatedAt, &linkOnly,
-		&u.TypingStyle, &tagServer, &u.TagText, &u.TagBadge, &tagColor, &u.NameStyle, &u.Plan)
+		&u.TypingStyle, &tagServer, &u.TagText, &u.TagBadge, &tagColor, &u.NameStyle, &u.Plan, &u.ShortNameCredits)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, ErrNotFound
@@ -119,7 +119,7 @@ func (s *Store) createUser(ctx context.Context, u *User, registration bool, admi
 			}
 			return err
 		}
-		res, err := tx.ExecContext(ctx, `INSERT INTO users (`+userCols+`) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?) ON CONFLICT(username) DO NOTHING`,
+		res, err := tx.ExecContext(ctx, `INSERT INTO users (`+userCols+`) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,0) ON CONFLICT(username) DO NOTHING`,
 			int64(u.ID), u.Username, u.DisplayName, u.AuthHash, u.KDFSalt, u.KDFParams, u.PublicKey, u.EncPrivateKey, u.EncPrivateKeyRecovery, recovery,
 			nullID(u.AvatarID), nullID(u.BannerID), u.AboutMe, u.Pronouns, nullInt(u.AccentColor), nullInt(u.AccentColor2), u.StatusText, u.StatusEmoji, nullInt64(u.StatusExpiresAt), u.PresencePref, u.DMPrivacy, u.Flags, u.CreatedAt, u.UpdatedAt, boolInt(u.GroupLinkOnly),
 			u.TypingStyle, nullID(u.TagServerID), u.TagText, u.TagBadge, nullInt(u.TagColor), u.NameStyle, u.Plan)
@@ -144,6 +144,28 @@ func (s *Store) UsernameFree(ctx context.Context, username string) (bool, error)
 	var n int
 	err := s.db.R.QueryRowContext(ctx, `SELECT (SELECT count(*) FROM users WHERE username = ?) + (SELECT count(*) FROM username_holds WHERE username = ?)`, username, username).Scan(&n)
 	return n == 0, err
+}
+
+// holdTakenDownNameTx keeps the name of an account staff banned or deleted out
+// of reach once the account goes: deleting it would otherwise have handed the
+// name to whoever asked next. A ban that was lifted holds nothing, and a name
+// staff reset was held when it was reset.
+func holdTakenDownNameTx(ctx context.Context, tx *db.Tx, id ids.ID) error {
+	var name string
+	var caseID int64
+	err := tx.QueryRowContext(ctx, `SELECT u.username, c.id FROM users u JOIN mod_cases c ON c.user_id = u.id
+		WHERE u.id = ? AND c.action IN ('ban', 'delete') AND c.lifted_at IS NULL ORDER BY c.id DESC LIMIT 1`, int64(id)).Scan(&name, &caseID)
+	if errors.Is(err, sql.ErrNoRows) {
+		return nil
+	}
+	if err != nil {
+		return err
+	}
+	if err := tx.Serialise(ctx, "username:"+name); err != nil {
+		return err
+	}
+	_, err = tx.ExecContext(ctx, `INSERT INTO username_holds (username, user_id, case_id, created_at) VALUES (?,?,?,?) ON CONFLICT (username) DO NOTHING`, name, int64(id), caseID, nowMs())
+	return err
 }
 
 // usernameHeldTx reports whether a moderator reset took this name off an
@@ -353,6 +375,17 @@ func (s *Store) UpdateProfile(ctx context.Context, id ids.ID, p ProfilePatch) er
 					return ErrUsernameTaken
 				}
 			}
+			// A one-character name is spent with the change that takes it, so
+			// two changes at once cannot both use the same gift.
+			if p.SpendShortName {
+				res, err := tx.ExecContext(ctx, `UPDATE users SET short_name_credits = short_name_credits - 1 WHERE id = ? AND short_name_credits > 0`, int64(id))
+				if err != nil {
+					return err
+				}
+				if n, _ := res.RowsAffected(); n == 0 {
+					return ErrNoShortName
+				}
+			}
 			if p.TypingStyle != nil {
 				if err := swapTypingImagesTx(ctx, tx, id, *p.TypingStyle); err != nil {
 					return err
@@ -472,6 +505,9 @@ func (s *Store) DeleteAccount(ctx context.Context, id ids.ID) error {
 	defer s.everythingChanged()
 	return s.Tx(ctx, func(tx *db.Tx) error {
 		anon := fmt.Sprintf("deleted-%d", int64(id))
+		if err := holdTakenDownNameTx(ctx, tx, id); err != nil {
+			return err
+		}
 		// the avatar and banner are cleared below; give back their references
 		if err := releaseBlobRefs(ctx, tx, `SELECT avatar_id FROM users WHERE id = ? UNION ALL SELECT banner_id FROM users WHERE id = ?`, int64(id), int64(id)); err != nil {
 			return err
