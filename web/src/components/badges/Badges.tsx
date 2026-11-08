@@ -1,67 +1,46 @@
 import { lazy, Suspense, useId } from "react";
 import type { Badge, PublicUser } from "@/api/types";
 import { Tooltip } from "@/components/common/Tooltip";
-import { badgeLook, fallbackBadges, hexColour, SHAPE_ICONS, SHAPE_PATHS, type BadgeLook } from "@/lib/badges";
+import { badgeLook, fallbackBadges, hexColour, type BadgeLook } from "@/lib/badges";
 import s from "./Badges.module.css";
 
 const EventIcon = lazy(() => import("./EventIcon"));
 
 type Who = Pick<PublicUser, "id" | "flags" | "plan">;
 
-/** The dark glyph, for light colours a white icon would vanish on. */
-const DARK_GLYPH = "#1b1724";
-
-/** One outline in the 24 by 24 box every badge is drawn in. */
-function Outline({ shape, ...rest }: { shape: BadgeLook["shape"] } & React.SVGProps<SVGPathElement & SVGCircleElement & SVGRectElement>) {
-  if (!shape || shape === "circle") return <circle cx={12} cy={12} r={11.5} {...rest} />;
-  if (shape === "rounded") return <rect x={0.5} y={0.5} width={23} height={23} rx={6.5} {...rest} />;
-  return <path d={SHAPE_PATHS[shape]} {...rest} />;
-}
+/** A colour staff chose, pulled towards the text colour so it reads on this theme (--badge-ink-mix). */
+const ink = (rgb: number) => `color-mix(in srgb, ${hexColour(rgb)}, var(--text-strong) var(--badge-ink-mix))`;
 
 /**
- * An event badge staff made: its shape filled with its colour (or a gradient
- * to its second), lit from above and ringed, holding its icon in white or dark,
- * or its uploaded picture clipped to the shape. Drawn at any [size], so the
+ * An event badge staff made: just its icon, in its colour (or a gradient to
+ * its second), or its uploaded picture whole. Drawn at any [size], so the
  * Badges tab's preview is the badge itself.
  */
 export function BadgeMark({ look, size = 20 }: { look: BadgeLook; size?: number }) {
   const id = useId().replace(/:/g, "");
-  const from = look.color !== undefined ? hexColour(look.color) : "var(--brand)";
-  const to = look.color2 !== undefined ? hexColour(look.color2) : from;
-  const fit = (look.shape && SHAPE_ICONS[look.shape]) || { size: 0.62, y: 0 };
+  if (look.image) {
+    return (
+      <span className={s.mark} style={{ width: size, height: size }}>
+        <img className={s.markImage} src={look.image} alt="" draggable={false} />
+      </span>
+    );
+  }
+  const from = look.color !== undefined ? ink(look.color) : "var(--brand)";
+  const to = look.color2 !== undefined ? ink(look.color2) : null;
   return (
-    <span className={s.mark} style={{ width: size, height: size, color: look.glyph === "dark" ? DARK_GLYPH : "#fff" }}>
-      <svg className={s.shape} viewBox="0 0 24 24" aria-hidden="true">
-        <defs>
-          <linearGradient id={`${id}f`} x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0" stopColor={from} />
-            <stop offset="1" stopColor={to} />
+    <span className={s.mark} style={{ width: size, height: size }}>
+      {to && (
+        <svg className={s.defs} aria-hidden="true">
+          {/* in the icon's own 24 box: a bounding box would lose a straight line's gradient */}
+          <linearGradient id={`${id}i`} gradientUnits="userSpaceOnUse" x1={12} y1={2} x2={12} y2={22}>
+            <stop offset={0} style={{ stopColor: from }} />
+            <stop offset={1} style={{ stopColor: to }} />
           </linearGradient>
-          <linearGradient id={`${id}h`} x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0" stopColor="#fff" stopOpacity={0.32} />
-            <stop offset="0.55" stopColor="#fff" stopOpacity={0} />
-          </linearGradient>
-          <clipPath id={`${id}c`}>
-            <Outline shape={look.shape} />
-          </clipPath>
-        </defs>
-        {look.image ? (
-          <image href={look.image} x={0} y={0} width={24} height={24} preserveAspectRatio="xMidYMid slice" clipPath={`url(#${id}c)`} />
-        ) : (
-          <>
-            <Outline shape={look.shape} fill={`url(#${id}f)`} />
-            <Outline shape={look.shape} fill={`url(#${id}h)`} />
-          </>
-        )}
-        <Outline shape={look.shape} fill="none" stroke="rgb(0 0 0 / 0.22)" strokeWidth={1} vectorEffect="non-scaling-stroke" />
-      </svg>
-      {!look.image && (
-        <Suspense fallback={null}>
-          <span className={s.markIcon} style={{ transform: fit.y ? `translateY(${(fit.y * size).toFixed(1)}px)` : undefined }}>
-            <EventIcon name={look.iconName} size={Math.round(size * fit.size)} />
-          </span>
-        </Suspense>
+        </svg>
       )}
+      <Suspense fallback={null}>
+        <EventIcon name={look.iconName} size={size} color={to ? `url(#${id}i)` : from} />
+      </Suspense>
     </span>
   );
 }

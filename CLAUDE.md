@@ -481,7 +481,9 @@ serves until SIGINT or SIGTERM.
   them until added there.
 - Beyond the generic 600 a minute, what a script would turn on people or paid services has its own limit:
   `limReact`, `limMsgAll` (beside per-channel `limMsg`), `limSearch`, `limLookup` (signed-out lookups, per
-  address), `limBuild` (things people create), `limForward`, `limReport`, `limTurn`. `limLookup` and
+  address), `limBuild` (things people create, servers included), `limForward`, `limReport`, `limTurn`, `limUsername` (two real
+  changes an hour; a taken or unchanged name spends nothing), `limFriend`, `limRelate`, `limDM`, `limJoin`, `limPin`,
+  `limTyping`, `limDelete`, `limBilling` and `limManage` (server management). `limLookup` and
   `limBuild` step up (`stepup.go`): past the free allowance a captcha (action `lookup` or `build`) buys a
   batch, those captchas capped per address and per account; batches are in memory, per process. A server holds
   at most 500 channels and 250 roles (`store.MaxServerChannels`, `MaxServerRoles`, counted in the creating
@@ -1001,10 +1003,9 @@ follows the account, level 0 takes it away, above 0 gives it at that tier, and i
 badges come with the account and cannot be overridden. Every badge has a holders list, with give and take where staff can set it
 (`/moderation/badges/{badge}/holders`, web `moderation/BadgeHoldersModal.tsx`, Android `openHoldersSheet`), Admin and
 up; a person's page sets them all at once (web `GrantBadgesModal.tsx`, Android `openGiveBadgesSheet`). A staff-made
-badge has a description (its tooltip and toast, at most 120 characters), one or two colours, a white or dark glyph, a
-shape (circle, rounded, shield, hexagon, star, diamond, seal, ribbon; `store.BadgeShapes`, web `SHAPE_PATHS` and `SHAPE_ICONS`, Android the same in `ui/profile/Badges.kt`) and any Lucide icon or an uploaded picture (public blob of kind `badge`). Every badge, staff ranks and plans included, is a
-full-colour SVG in `web/src/assets/badges/` written by `tools/badge_art.py` (Android copies the same files and
-takes them over the air); an event badge is drawn from its look on both clients. A profile draws
+badge has a description (its tooltip and toast, at most 120 characters), one or two colours and any Lucide icon or an uploaded picture (public blob of kind `badge`). Every badge, staff ranks and plans included, is a
+bare coloured icon with nothing behind it: an SVG in `web/src/assets/badges/` written by `tools/badge_art.py` (Android copies the same files and
+takes them over the air), each colour held to a luminance that reads on Dark and Light alike; an event badge is drawn from its look on both clients, its colour pulled towards the text colour (`--badge-ink-mix`, Android the same numbers). The `shape` and `glyph` stored on a badge only serve APKs from before icon-only badges, which still draw them; their editor controls are gone. A profile draws
 all its badges in one pill on the username line, each saying its name and meaning (a tooltip, a toast on
 Android). `/users/@me/badges` stays open to muted and
 banned accounts. Web `lib/badges.ts`, `components/badges/Badges.tsx`, `moderation/BadgesTab.tsx`; Android

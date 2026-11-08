@@ -24,9 +24,9 @@ func (s *Server) mediaRoutes(mux *http.ServeMux) {
 	// Replacing a picture leaves the old one on disk for a day, so pictures
 	// are metered like any other upload.
 	mux.Handle("PUT /api/v1/users/@me/avatar", s.userLimited(s.limUpload, s.handleAvatarPut("avatar")))
-	mux.Handle("DELETE /api/v1/users/@me/avatar", s.authed(s.handleAvatarDelete("avatar")))
+	mux.Handle("DELETE /api/v1/users/@me/avatar", s.userLimited(s.limProfile, s.handleAvatarDelete("avatar")))
 	mux.Handle("PUT /api/v1/users/@me/banner", s.userLimited(s.limUpload, s.handleAvatarPut("banner")))
-	mux.Handle("DELETE /api/v1/users/@me/banner", s.authed(s.handleAvatarDelete("banner")))
+	mux.Handle("DELETE /api/v1/users/@me/banner", s.userLimited(s.limProfile, s.handleAvatarDelete("banner")))
 }
 
 // releaseBlob gives back the reference an upload took when whatever was meant

@@ -101,7 +101,7 @@ func TestStepUpLimits(t *testing.T) {
 		res, body := withCaptcha(t, ts, "POST", "/api/v1/channels/"+general+"/invites", tok, captcha, map[string]any{})
 		return res.StatusCode, errCode(body)
 	}
-	free := srv.limBuild.Burst()
+	free := srv.limBuild.Burst() - 1 // making the server took one
 	for i := 0; i < free; i++ {
 		if code, e := invite(""); code != 200 && code != 201 {
 			t.Fatalf("free invite %d: %d %s", i, code, e)

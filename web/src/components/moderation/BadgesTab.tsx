@@ -10,7 +10,7 @@ import { LoadError } from "@/components/common/LoadError";
 import { Spinner } from "@/components/common/Spinner";
 import { Field, TextInput } from "@/components/common/TextInput";
 import { Toggle } from "@/components/common/Toggle";
-import { BADGE_SHAPES, CONTRIBUTOR, defBadge, EVENT_COLOURS, EVENT_ICONS, EVENT_PREFIX, hexColour, OVERRIDABLE, SHAPE_PATHS, type BadgeLook } from "@/lib/badges";
+import { CONTRIBUTOR, defBadge, EVENT_COLOURS, EVENT_ICONS, EVENT_PREFIX, hexColour, OVERRIDABLE, type BadgeLook } from "@/lib/badges";
 import { describeError } from "@/lib/errors";
 import { useModEvents } from "@/stores/moderation";
 import { useUI } from "@/stores/ui";
@@ -40,7 +40,7 @@ export interface HoldersOf {
 
 /**
  * Every badge on Nexa: those staff make for an event (a name, a description
- * shown as its tooltip, an icon or picture on a shape in one colour or two),
+ * shown as its tooltip, an icon in one colour or two, or a picture),
  * Contributor, and the earned ones. Each opens its holders, where it is given
  * and taken; deleting one staff made takes it from everyone.
  */
@@ -168,8 +168,6 @@ export function BadgesTab() {
     iconName: icon,
     color: colour,
     color2: colour2 ?? undefined,
-    glyph: glyph === "dark" ? "dark" : undefined,
-    shape,
     image: mode === "picture" ? image?.url : undefined,
     label: shownName,
     tip: description.trim(),
@@ -228,18 +226,6 @@ export function BadgesTab() {
             </Field>
 
             <div>
-              <span className={b.label} id="badge-shape-label">{t("badges.staff.shape")}</span>
-              <div className={b.shapes} role="radiogroup" aria-labelledby="badge-shape-label">
-                {BADGE_SHAPES.map((s) => (
-                  <button key={s} type="button" role="radio" aria-checked={shape === s} className={b.shape} data-on={shape === s || undefined} onClick={() => setShape(s)} data-testid={`badge-shape-${s}`}>
-                    <ShapeGlyph shape={s} />
-                    <span>{t(`badges.staff.shape.${s}`)}</span>
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            <div>
               <span className={b.label} id="badge-colour-label">{colour2 === null ? t("badges.staff.colour") : t("badges.staff.firstColour")}</span>
               <Swatches value={colour} onChange={setColour} labelledBy="badge-colour-label" />
             </div>
@@ -267,18 +253,6 @@ export function BadgesTab() {
                   ))}
                 </div>
               </div>
-              {mode === "icon" ? (
-                <div>
-                  <span className={b.label} id="badge-glyph-label">{t("badges.staff.glyph")}</span>
-                  <div className={b.segment} role="radiogroup" aria-labelledby="badge-glyph-label" data-glide="">
-                    {(["light", "dark"] as const).map((v) => (
-                      <button key={v} type="button" role="radio" aria-checked={glyph === v} className={b.segmentItem} onClick={() => setGlyph(v)} data-testid={`badge-glyph-${v}`}>
-                        {v === "light" ? t("badges.staff.glyph.light") : t("badges.staff.glyph.dark")}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              ) : null}
             </div>
 
             {mode === "icon" ? (
@@ -462,19 +436,8 @@ function previewBadge(look: BadgeLook): Badge {
     icon: look.iconName,
     color: look.color,
     color2: look.color2,
-    glyph: look.glyph,
-    shape: look.shape,
     image: look.image,
   };
-}
-
-/** The outline a shape button shows. */
-function ShapeGlyph({ shape }: { shape: BadgeShape }) {
-  return (
-    <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true" className={b.shapeGlyph}>
-      {shape === "circle" ? <circle cx="12" cy="12" r="10.5" /> : shape === "rounded" ? <rect x="1.5" y="1.5" width="21" height="21" rx="6" /> : <path d={SHAPE_PATHS[shape]} transform="translate(1.2 1.2) scale(0.9)" />}
-    </svg>
-  );
 }
 
 /** The colour swatches, with any other colour from the picker. */

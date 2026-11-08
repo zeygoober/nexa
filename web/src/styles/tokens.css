@@ -28,6 +28,7 @@
   --bg-overlay: rgba(6, 3, 14, 0.74);
   --text: #f0edf7;
   --text-strong: #ffffff;
+  --badge-ink-mix: 12%;
   --text-subtle: #d0cadb;
   --text-muted: #b0a8bf;
   --text-channel: #a39bb3;
@@ -130,6 +131,7 @@
 }
 
 [data-theme="light"] {
+  --badge-ink-mix: 38%;
   --bg-base: #f4f2fb;
   --bg-raised: #ffffff;
   --bg-surface: #eae8f3;
@@ -202,6 +204,7 @@
    theme changes is put back; the accent colour carries through. A member's
    call wears their theme (components/voice/Voice.module.css). */
 [data-theme="light"] [data-dark-scope] {
+  --badge-ink-mix: 12%;
   --bg-base: #1c1825;
   --bg-raised: #221d2b;
   --bg-surface: #2b2636;

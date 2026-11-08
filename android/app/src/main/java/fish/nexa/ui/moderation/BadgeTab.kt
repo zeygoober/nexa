@@ -83,7 +83,6 @@ import fish.nexa.ui.components.pressable
 import fish.nexa.ui.describeError
 import fish.nexa.ui.layers.openSheet
 import fish.nexa.ui.profile.BadgePill
-import fish.nexa.ui.profile.badgeShape
 import fish.nexa.ui.server.ServerApi
 import fish.nexa.ui.server.openImageCrop
 import fish.nexa.ui.settings.keptAboveSaveBar
@@ -285,12 +284,6 @@ fun BadgesTab() {
                     NxTextField(name, { name = it.take(MAX_NAME + 8) }, label = t("badges.staff.name"), placeholder = t("badges.staff.namePlaceholder"), hint = if (nameLength > MAX_NAME - 8) "$nameLength/$MAX_NAME" else null, capitalize = true)
                     NxTextField(description, { description = it.take(MAX_DESCRIPTION + 8) }, label = t("badges.staff.description"), placeholder = t("badges.staff.descriptionPlaceholder"), hint = "$descLength/$MAX_DESCRIPTION", capitalize = true)
                     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        FieldLabel(t("badges.staff.shape"))
-                        for (row in Badges.SHAPES.chunked(4)) Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                            for (s in row) ShapeCard(s, shape == s, Modifier.weight(1f)) { shape = s }
-                        }
-                    }
-                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         FieldLabel(if (colour2 == null) t("badges.staff.colour") else t("badges.staff.firstColour"))
                         Swatches(colour) { colour = it }
                     }
@@ -305,15 +298,9 @@ fun BadgesTab() {
                             Swatches(second) { colour2 = it }
                         }
                     }
-                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                            FieldLabel(t("badges.staff.look"))
-                            Segmented(listOf("icon" to t("badges.staff.lookIcon"), "picture" to t("badges.staff.lookPicture")), mode, { mode = it }, t("badges.staff.look"))
-                        }
-                        if (mode == "icon") Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                            FieldLabel(t("badges.staff.glyph"))
-                            Segmented(listOf("light" to t("badges.staff.glyph.light"), "dark" to t("badges.staff.glyph.dark")), glyph, { glyph = it }, t("badges.staff.glyph"))
-                        }
+                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        FieldLabel(t("badges.staff.look"))
+                        Segmented(listOf("icon" to t("badges.staff.lookIcon"), "picture" to t("badges.staff.lookPicture")), mode, { mode = it }, t("badges.staff.look"))
                     }
                     if (mode == "icon") {
                         // the search sits at the bottom of the form, under where the keyboard comes up, and its results under it
@@ -437,28 +424,6 @@ private fun Stage(preview: Badges.Badge, glow: Int, description: String) {
             }
         }
         Box(Modifier.align(Alignment.Top)) { BadgePill(preview, "0", 0L, "", still = true) }
-    }
-}
-
-@Composable
-private fun ShapeCard(name: String, on: Boolean, modifier: Modifier, onClick: () -> Unit) {
-    val c = Nx.colors
-    val card = RoundedCornerShape(8.dp)
-    val tone = if (on) c.textBrand else c.textMuted
-    val label = t("badges.staff.shape.$name")
-    Column(
-        modifier
-            .clip(card)
-            .background(if (on) c.brand.copy(alpha = 0.14f) else c.bgInput)
-            .ring(card, if (on) c.brand.copy(alpha = 0.45f) else c.borderSubtle)
-            .pressable(remember { MutableInteractionSource() }, role = Role.RadioButton, onClick = onClick)
-            .semantics { contentDescription = label; selected = on }
-            .padding(start = 4.dp, end = 4.dp, top = 8.dp, bottom = 6.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(4.dp),
-    ) {
-        Box(Modifier.size(22.dp).border(1.8.dp, tone, badgeShape(name)))
-        Txt(label, style = Nx.type.hint.copy(fontSize = Nx.type.sp(12f), fontWeight = FontWeight(600)), color = tone, maxLines = 1)
     }
 }
 

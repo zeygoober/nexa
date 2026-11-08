@@ -1,17 +1,10 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24">
   <defs>
-    <linearGradient id="plansupporterp" x1="12" y1="1" x2="12" y2="23" gradientUnits="userSpaceOnUse">
-      <stop offset="0" stop-color="#ff8ab4"/><stop offset="1" stop-color="#e23a74"/>
+    <linearGradient id="plansupporterp" x1="12" y1="2" x2="12" y2="22" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#ff4387"/><stop offset="1" stop-color="#f40059"/>
     </linearGradient>
-    <linearGradient id="plansupporterg" x1="12" y1="1" x2="12" y2="12" gradientUnits="userSpaceOnUse">
-      <stop offset="0" stop-color="#ffffff" stop-opacity=".55"/><stop offset="1" stop-color="#ffffff" stop-opacity="0"/>
-    </linearGradient>
-    <clipPath id="plansupporterc"><path d="M12 1.5a10.5 10.5 0 1 1 0 21a10.5 10.5 0 1 1 0-21z"/></clipPath>
   </defs>
-  <path d="M12 1.5a10.5 10.5 0 1 1 0 21a10.5 10.5 0 1 1 0-21z" fill="url(#plansupporterp)"/>
-  <g clip-path="url(#plansupporterc)"><ellipse cx="12" cy="3.2" rx="13" ry="8.2" fill="url(#plansupporterg)"/></g>
-  <path d="M12 1.5a10.5 10.5 0 1 1 0 21a10.5 10.5 0 1 1 0-21z" fill="none" stroke="#a8164c" stroke-opacity=".7" stroke-width="1"/>
-  <g transform="translate(4.80 5.35) scale(0.6)" stroke="#7a0f37" stroke-opacity=".45" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" fill="none"><path d="M2 9.5a5.5 5.5 0 0 1 9.591-3.676.56.56 0 0 0 .818 0A5.49 5.49 0 0 1 22 9.5c0 2.29-1.5 4-3 5.5l-5.492 5.313a2 2 0 0 1-3 .019L5 15c-1.5-1.5-3-3.2-3-5.5"/></g>
-  <g transform="translate(4.80 4.80) scale(0.6)" stroke="#ffffff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" fill="none"><path d="M2 9.5a5.5 5.5 0 0 1 9.591-3.676.56.56 0 0 0 .818 0A5.49 5.49 0 0 1 22 9.5c0 2.29-1.5 4-3 5.5l-5.492 5.313a2 2 0 0 1-3 .019L5 15c-1.5-1.5-3-3.2-3-5.5"/></g>
+  <g transform="translate(0.00 0.00) scale(1)" fill="url(#plansupporterp)" fill-opacity=".22"></g>
+  <g transform="translate(0.00 0.00) scale(1)" stroke="url(#plansupporterp)" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round" fill="none"><path d="M2 9.5a5.5 5.5 0 0 1 9.591-3.676.56.56 0 0 0 .818 0A5.49 5.49 0 0 1 22 9.5c0 2.29-1.5 4-3 5.5l-5.492 5.313a2 2 0 0 1-3 .019L5 15c-1.5-1.5-3-3.2-3-5.5"/></g>
   
 </svg>

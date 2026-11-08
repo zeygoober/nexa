@@ -1,12 +1,11 @@
-/* Profile badges: every badge is a small picture (assets/badges), and a
-   profile's badges sit together in one rounded pill on the username line,
-   which wraps when the line runs out of room. An event badge staff made is a
-   outline (BadgeMark) in its own colour or gradient, with its icon or picture. */
+/* Profile badges: every badge is just its icon (assets/badges, or BadgeMark for
+   one staff made), and a profile's badges sit together in one rounded pill on
+   the username line, which wraps when the line runs out of room. */
 .pill {
   display: inline-flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 3px;
+  gap: 4px;
   min-width: 0;
   max-width: 100%;
   padding: 3px 5px;
@@ -20,7 +19,7 @@
   flex: none;
   width: 20px;
   height: 20px;
-  border-radius: 6px;
+  border-radius: 4px;
   user-select: none;
 }
 .badge:focus-visible {
@@ -28,27 +27,23 @@
   outline-offset: 1px;
 }
 
-.badge:has(> .mark) {
-  border-radius: 0;
-}
-
-/* an event badge staff made: its outline drawn in a 24 box, its icon on top */
+/* an event badge staff made */
 .mark {
   position: relative;
   display: grid;
   flex: none;
   place-items: center;
 }
-.shape {
-  position: absolute;
-  inset: 0;
+.markImage {
+  display: block;
   width: 100%;
   height: 100%;
-  overflow: visible;
+  object-fit: contain;
 }
-.markIcon {
-  position: relative;
-  display: grid;
+.defs {
+  position: absolute;
+  width: 0;
+  height: 0;
 }
 
 /* in a list: the picture, then its name */

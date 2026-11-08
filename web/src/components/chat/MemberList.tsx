@@ -39,8 +39,10 @@ type Row =
   | { kind: "head"; key: string; label: string; count: number }
   | { kind: "member"; key: string; member: Member; user: PublicUser | undefined; look: RoleLook | undefined; offline: boolean };
 
-const ROW_H = 44;
-const HEAD_H = 40;
+// The space each takes up in the list, margins included. They must match the
+// CSS: every row out by a few pixels made the list jump as rows came and went.
+const ROW_H = 48;
+const HEAD_H = 42;
 const VIRTUAL_FROM = 200;
 
 /** Members grouped by hoisted roles, then online, then offline; windowed past 200 rows. */

@@ -36,8 +36,8 @@ func (s *Server) threadRoutes(mux *http.ServeMux) {
 	mux.Handle("GET /api/v1/channels/{id}/thread-members", s.authed(s.handleThreadMembers))
 	mux.Handle("PUT /api/v1/channels/{id}/thread-members/{uid}", s.authed(s.handleThreadMemberAdd))
 	mux.Handle("DELETE /api/v1/channels/{id}/thread-members/{uid}", s.authed(s.handleThreadMemberRemove))
-	mux.Handle("PUT /api/v1/channels/{id}/pinned-post/{tid}", s.authed(s.handleForumPin(true)))
-	mux.Handle("DELETE /api/v1/channels/{id}/pinned-post/{tid}", s.authed(s.handleForumPin(false)))
+	mux.Handle("PUT /api/v1/channels/{id}/pinned-post/{tid}", s.userLimited(s.limPin, s.handleForumPin(true)))
+	mux.Handle("DELETE /api/v1/channels/{id}/pinned-post/{tid}", s.userLimited(s.limPin, s.handleForumPin(false)))
 }
 
 // threadEvent is a thread as thread_create and thread_update carry it.

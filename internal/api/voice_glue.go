@@ -101,7 +101,7 @@ func (s *Server) voiceRoutes(mux *http.ServeMux) {
 	mux.Handle("GET /api/v1/channels/{id}/voice", s.authed(s.handleVoiceParticipants))
 	mux.Handle("POST /api/v1/channels/{id}/call/decline", s.authed(s.handleCallDecline))
 	mux.Handle("PUT /api/v1/channels/{id}/messages/{mid}/call", s.authed(s.handleCallSummary))
-	mux.Handle("PATCH /api/v1/servers/{id}/members/{uid}/voice", s.authed(s.handleVoiceModerate))
+	mux.Handle("PATCH /api/v1/servers/{id}/members/{uid}/voice", s.userLimited(s.limManage, s.handleVoiceModerate))
 	s.sfuRoutes(mux)
 }
 

@@ -8,7 +8,8 @@ const known = new Set<string>(iconNames);
  * (this module, with the list of every name, loads only then too). A name
  * this build does not know draws a plain award.
  */
-export default function EventIcon({ name, size = 12 }: { name: string | undefined; size?: number }) {
-  if (!name || !known.has(name)) return <Award size={size} aria-hidden="true" />;
-  return <DynamicIcon name={name as IconName} size={size} aria-hidden="true" fallback={() => <Award size={size} aria-hidden="true" />} />;
+export default function EventIcon({ name, size = 12, color }: { name: string | undefined; size?: number; color?: string }) {
+  const line = { size, color, strokeWidth: 2.3, "aria-hidden": true } as const;
+  if (!name || !known.has(name)) return <Award {...line} />;
+  return <DynamicIcon name={name as IconName} {...line} fallback={() => <Award {...line} />} />;
 }

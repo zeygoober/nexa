@@ -2,6 +2,7 @@ package api
 
 import (
 	"fmt"
+	"net/http"
 	"strings"
 	"testing"
 )
@@ -103,5 +104,30 @@ func TestReadyCarriesTheWholeAccount(t *testing.T) {
 		if k != "nexa" && fmt.Sprint(user[k]) != fmt.Sprint(me[k]) {
 			t.Errorf("%s: ready %v, /users/@me %v", k, user[k], me[k])
 		}
+	}
+}
+
+// A new name is limited on its own, and only a real change spends the allowance.
+func TestUsernameChangesAreLimited(t *testing.T) {
+	_, ts := newTestServer(t)
+	token, _ := register(t, ts, "namer")
+	register(t, ts, "taken")
+	change := func(name string) int {
+		res, _ := do(t, ts, "PATCH", "/api/v1/users/@me", token, map[string]any{"username": name})
+		return res.StatusCode
+	}
+	if got := change("taken"); got != http.StatusConflict {
+		t.Fatalf("a taken name: %d", got)
+	}
+	if got := change("namer"); got != http.StatusOK {
+		t.Fatalf("the same name: %d", got)
+	}
+	for _, name := range []string{"first_new", "second_new"} {
+		if got := change(name); got != http.StatusOK {
+			t.Fatalf("%s: %d", name, got)
+		}
+	}
+	if got := change("third_new"); got != http.StatusTooManyRequests {
+		t.Fatalf("a third change within the hour: %d", got)
 	}
 }

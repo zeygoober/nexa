@@ -465,7 +465,7 @@ func TestOneAccountCannotAnswerEveryRotation(t *testing.T) {
 // and leaving in a loop must not be able to keep one pending. Being removed always
 // costs a new key.
 func TestLeavingInALoopCannotHoldTheKeyUp(t *testing.T) {
-	_, ts := newTestServer(t)
+	srv, ts := newTestServer(t)
 	tokA, _ := register(t, ts, "alice")
 	tokB, idB := register(t, ts, "bob")
 	s := createServer(t, ts, tokA, "Keys")
@@ -478,6 +478,7 @@ func TestLeavingInALoopCannotHoldTheKeyUp(t *testing.T) {
 	}
 	stopped := false
 	for i := 0; i < 20 && !stopped; i++ {
+		srv.limJoin.Reset(idB) // this test is about what leaving costs
 		join(t, ts, tokB, invite)
 		if res, _ := do(t, ts, "POST", "/api/v1/servers/"+conv+"/leave", tokB, nil); res.StatusCode != 204 {
 			t.Fatalf("leave: %d", res.StatusCode)
@@ -489,6 +490,7 @@ func TestLeavingInALoopCannotHoldTheKeyUp(t *testing.T) {
 	if !stopped {
 		t.Fatal("every leave asked for a new key, without end")
 	}
+	srv.limJoin.Reset(idB)
 	join(t, ts, tokB, invite)
 	if res, _ := do(t, ts, "DELETE", "/api/v1/servers/"+conv+"/members/"+idB, tokA, nil); res.StatusCode != 204 {
 		t.Fatalf("kick: %d", res.StatusCode)

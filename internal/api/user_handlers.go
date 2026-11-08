@@ -26,7 +26,7 @@ const (
 func (s *Server) userRoutes(mux *http.ServeMux) {
 	mux.Handle("GET /api/v1/users/@me", s.authed(s.handleMe))
 	mux.Handle("PATCH /api/v1/users/@me", s.authed(s.handleMePatch))
-	mux.Handle("POST /api/v1/users/@me/delete", s.authed(s.handleMeDelete))
+	mux.Handle("POST /api/v1/users/@me/delete", s.userLimited(s.limPass, s.handleMeDelete))
 	mux.Handle("GET /api/v1/users/@me/delete-preview", s.authed(s.handleMeDeletePreview))
 	mux.Handle("GET /api/v1/users/@me/settings", s.authed(s.handleSettingsGet))
 	mux.Handle("PUT /api/v1/users/@me/settings", s.authed(s.handleSettingsPut))
@@ -98,10 +98,27 @@ func (s *Server) handleMePatch(w http.ResponseWriter, r *http.Request) {
 			bad("reserved_username", "That username belongs to the official Nexa account.")
 			return
 		}
-		// a new name is a captcha away, so nobody can cycle through names or
-		// snap up a stream of them with a script
-		if v != u.Username && !s.requireCaptcha(w, r, "username") {
-			return
+		if v != u.Username {
+			// a name already taken changes nothing, so it costs nothing
+			free, err := s.Store.UsernameFree(r.Context(), v)
+			if err != nil {
+				WriteError(w, err)
+				return
+			}
+			if !free {
+				WriteError(w, E(http.StatusConflict, "username_taken", "That username is already taken."))
+				return
+			}
+			if ok, retry := s.limUsername.Allow("username:" + u.ID.String()); !ok {
+				w.Header().Set("Retry-After", retryAfter(retry))
+				WriteError(w, ErrRateLimited)
+				return
+			}
+			// a new name is also a captcha away, so nobody can snap up a
+			// stream of them with a script
+			if !s.requireCaptcha(w, r, "username") {
+				return
+			}
 		}
 		p.Username = &v
 	}

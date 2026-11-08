@@ -188,12 +188,12 @@ func planForLookupKey(key string) (plan, period string) {
 
 func (s *Server) billingRoutes(mux *http.ServeMux) {
 	mux.Handle("GET /api/v1/billing", s.authed(s.handleBilling))
-	mux.Handle("POST /api/v1/billing/checkout", s.authed(s.handleCheckout))
-	mux.Handle("POST /api/v1/billing/portal", s.authed(s.handlePortal))
-	mux.Handle("POST /api/v1/billing/gift", s.authed(s.handleGift))
-	mux.Handle("POST /api/v1/billing/pay-what-you-want", s.authed(s.handlePayWhatYouWant))
+	mux.Handle("POST /api/v1/billing/checkout", s.userLimited(s.limBilling, s.handleCheckout))
+	mux.Handle("POST /api/v1/billing/portal", s.userLimited(s.limBilling, s.handlePortal))
+	mux.Handle("POST /api/v1/billing/gift", s.userLimited(s.limBilling, s.handleGift))
+	mux.Handle("POST /api/v1/billing/pay-what-you-want", s.userLimited(s.limBilling, s.handlePayWhatYouWant))
 	mux.Handle("GET /api/v1/gifts/{code}", s.authed(s.handleGiftLink))
-	mux.Handle("POST /api/v1/gifts/{code}/claim", s.authed(s.handleGiftClaim))
+	mux.Handle("POST /api/v1/gifts/{code}/claim", s.userLimited(s.limJoin, s.handleGiftClaim))
 	mux.Handle("POST /api/v1/billing/boosts", s.authed(s.handleBoostAdd))
 	mux.Handle("DELETE /api/v1/billing/boosts/{id}", s.authed(s.handleBoostRemove))
 	// Stripe's, signed with the endpoint's secret

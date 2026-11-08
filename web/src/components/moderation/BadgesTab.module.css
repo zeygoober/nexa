@@ -111,44 +111,6 @@
   background: var(--bg-hover);
   color: var(--text-strong);
 }
-/* shapes: four cards, each its outline over its name */
-.shapes {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 6px;
-}
-.shape {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 4px;
-  padding: 8px 4px 6px;
-  border-radius: 8px;
-  font-size: 12px;
-  font-weight: 600;
-  color: var(--text-muted);
-  background: var(--bg-input);
-  box-shadow: inset 0 0 0 1px var(--border-subtle);
-}
-.shape:hover {
-  color: var(--text-strong);
-  background: var(--bg-hover);
-}
-.shape[data-on] {
-  color: var(--text-brand);
-  background: color-mix(in srgb, var(--brand) 14%, var(--bg-input));
-  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--brand) 45%, transparent);
-}
-.shape:focus-visible {
-  outline: 2px solid var(--focus-ring);
-  outline-offset: 2px;
-}
-.shapeGlyph {
-  fill: none;
-  stroke: currentColor;
-  stroke-width: 1.8;
-  stroke-linejoin: round;
-}
 /* two segmented switches side by side, wrapping on a narrow panel */
 .pair {
   display: flex;

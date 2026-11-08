@@ -57,7 +57,7 @@ func (s *Server) noteRoutes(mux *http.ServeMux) {
 	mux.Handle("POST /api/v1/notes/{id}/links", s.stepUpUser(s.stepBuild, s.handleNoteLinkCreate))
 	mux.Handle("DELETE /api/v1/notes/{id}/links/{link}", s.authed(s.handleNoteLinkDelete))
 	mux.Handle("GET /api/v1/note-links/{token}", s.authed(s.handleNoteLinkGet))
-	mux.Handle("POST /api/v1/note-links/{token}/join", s.authed(s.handleNoteLinkJoin))
+	mux.Handle("POST /api/v1/note-links/{token}/join", s.userLimited(s.limJoin, s.handleNoteLinkJoin))
 }
 
 // sealed reports whether v is something a device sealed: not empty, within

@@ -13,13 +13,13 @@ import (
 
 func (s *Server) relationshipRoutes(mux *http.ServeMux) {
 	mux.Handle("GET /api/v1/users/@me/relationships", s.authed(s.handleRelationships))
-	mux.Handle("POST /api/v1/users/@me/relationships", s.authed(s.handleFriendRequest))
-	mux.Handle("PUT /api/v1/users/@me/relationships/{id}", s.authed(s.handleFriendAccept))
-	mux.Handle("DELETE /api/v1/users/@me/relationships/{id}", s.authed(s.handleRelationshipDelete))
-	mux.Handle("PATCH /api/v1/users/@me/relationships/{id}", s.authed(s.handleRelationshipNickname))
-	mux.Handle("PUT /api/v1/users/@me/relationships/{id}/note", s.authed(s.handleRequestNote))
-	mux.Handle("PUT /api/v1/users/@me/blocks/{id}", s.authed(s.handleBlock))
-	mux.Handle("DELETE /api/v1/users/@me/blocks/{id}", s.authed(s.handleUnblock))
+	mux.Handle("POST /api/v1/users/@me/relationships", s.userLimited(s.limFriend, s.handleFriendRequest))
+	mux.Handle("PUT /api/v1/users/@me/relationships/{id}", s.userLimited(s.limRelate, s.handleFriendAccept))
+	mux.Handle("DELETE /api/v1/users/@me/relationships/{id}", s.userLimited(s.limRelate, s.handleRelationshipDelete))
+	mux.Handle("PATCH /api/v1/users/@me/relationships/{id}", s.userLimited(s.limRelate, s.handleRelationshipNickname))
+	mux.Handle("PUT /api/v1/users/@me/relationships/{id}/note", s.userLimited(s.limRelate, s.handleRequestNote))
+	mux.Handle("PUT /api/v1/users/@me/blocks/{id}", s.userLimited(s.limRelate, s.handleBlock))
+	mux.Handle("DELETE /api/v1/users/@me/blocks/{id}", s.userLimited(s.limRelate, s.handleUnblock))
 	s.Profile.MutualFriends = func(r *http.Request, me, other ids.ID) ([]ids.ID, error) {
 		return s.Store.MutualFriends(r.Context(), me, other)
 	}

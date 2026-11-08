@@ -1,17 +1,10 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24">
   <defs>
-    <linearGradient id="gift1p" x1="12" y1="1" x2="12" y2="23" gradientUnits="userSpaceOnUse">
-      <stop offset="0" stop-color="#f2b98a"/><stop offset="1" stop-color="#b0632c"/>
+    <linearGradient id="gift1p" x1="12" y1="2" x2="12" y2="22" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#d87328"/><stop offset="1" stop-color="#bc6422"/>
     </linearGradient>
-    <linearGradient id="gift1g" x1="12" y1="1" x2="12" y2="12" gradientUnits="userSpaceOnUse">
-      <stop offset="0" stop-color="#ffffff" stop-opacity=".55"/><stop offset="1" stop-color="#ffffff" stop-opacity="0"/>
-    </linearGradient>
-    <clipPath id="gift1c"><path d="M12 1.5a10.5 10.5 0 1 1 0 21a10.5 10.5 0 1 1 0-21z"/></clipPath>
   </defs>
-  <path d="M12 1.5a10.5 10.5 0 1 1 0 21a10.5 10.5 0 1 1 0-21z" fill="url(#gift1p)"/>
-  <g clip-path="url(#gift1c)"><ellipse cx="12" cy="3.2" rx="13" ry="8.2" fill="url(#gift1g)"/></g>
-  <path d="M12 1.5a10.5 10.5 0 1 1 0 21a10.5 10.5 0 1 1 0-21z" fill="none" stroke="#7a3f17" stroke-opacity=".7" stroke-width="1"/>
-  <g transform="translate(4.80 5.35) scale(0.6)" stroke="#5a2c0e" stroke-opacity=".45" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" fill="none"><path d="M12 7v14"/><path d="M20 11v8a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2v-8"/><path d="M7.5 7a1 1 0 0 1 0-5A4.8 8 0 0 1 12 7a4.8 8 0 0 1 4.5-5 1 1 0 0 1 0 5"/><path d="M4 7h16a1 1 0 0 1 1 1v2a1 1 0 0 1 -1 1h-16a1 1 0 0 1 -1 -1v-2a1 1 0 0 1 1 -1Z"/></g>
-  <g transform="translate(4.80 4.80) scale(0.6)" stroke="#fff4ea" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" fill="none"><path d="M12 7v14"/><path d="M20 11v8a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2v-8"/><path d="M7.5 7a1 1 0 0 1 0-5A4.8 8 0 0 1 12 7a4.8 8 0 0 1 4.5-5 1 1 0 0 1 0 5"/><path d="M4 7h16a1 1 0 0 1 1 1v2a1 1 0 0 1 -1 1h-16a1 1 0 0 1 -1 -1v-2a1 1 0 0 1 1 -1Z"/></g>
+  <g transform="translate(0.00 0.00) scale(1)" fill="url(#gift1p)" fill-opacity=".22"><path d="M4 7h16a1 1 0 0 1 1 1v2a1 1 0 0 1 -1 1h-16a1 1 0 0 1 -1 -1v-2a1 1 0 0 1 1 -1Z"/></g>
+  <g transform="translate(0.00 0.00) scale(1)" stroke="url(#gift1p)" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round" fill="none"><path d="M12 7v14"/><path d="M20 11v8a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2v-8"/><path d="M7.5 7a1 1 0 0 1 0-5A4.8 8 0 0 1 12 7a4.8 8 0 0 1 4.5-5 1 1 0 0 1 0 5"/><path d="M4 7h16a1 1 0 0 1 1 1v2a1 1 0 0 1 -1 1h-16a1 1 0 0 1 -1 -1v-2a1 1 0 0 1 1 -1Z"/></g>
   
 </svg>

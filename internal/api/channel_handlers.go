@@ -26,21 +26,21 @@ const (
 var errLinkOnly = E(http.StatusForbidden, "link_only", "They only join group chats from an invite link. Send them one in a message.")
 
 func (s *Server) channelRoutes(mux *http.ServeMux) {
-	mux.Handle("POST /api/v1/users/@me/channels", s.authed(s.handleDMCreate))
+	mux.Handle("POST /api/v1/users/@me/channels", s.userLimited(s.limDM, s.handleDMCreate))
 	mux.Handle("GET /api/v1/users/@me/channels", s.authed(s.handleDMList))
 	mux.Handle("GET /api/v1/channels/{id}", s.authed(s.handleChannelGet))
-	mux.Handle("PATCH /api/v1/channels/{id}", s.authed(s.handleChannelPatch))
+	mux.Handle("PATCH /api/v1/channels/{id}", s.userLimited(s.limManage, s.handleChannelPatch))
 	mux.Handle("PUT /api/v1/channels/{id}/icon", s.userLimited(s.limUpload, s.handleChannelIcon))
 	mux.Handle("DELETE /api/v1/channels/{id}/icon", s.authed(s.handleChannelIconDelete))
 	mux.Handle("POST /api/v1/channels/{id}/recipients/{uid}", s.stepUpUser(s.stepBuild, s.handleRecipientAdd))
 	mux.Handle("DELETE /api/v1/channels/{id}/recipients/{uid}", s.authed(s.handleRecipientRemove))
 	mux.Handle("DELETE /api/v1/channels/{id}/add-notice", s.authed(s.handleGroupAddNoticeDismiss))
-	mux.Handle("POST /api/v1/channels/{id}/typing", s.authed(s.handleTyping))
+	mux.Handle("POST /api/v1/channels/{id}/typing", s.userLimited(s.limTyping, s.handleTyping))
 	mux.Handle("POST /api/v1/channels/{id}/attachments", s.authed(s.handleAttachmentUpload))
 	mux.Handle("GET /media/attachments/{id}", s.authed(s.handleAttachmentDownload))
 	mux.Handle("GET /api/v1/channels/{id}/pins", s.authed(s.handlePins))
-	mux.Handle("PUT /api/v1/channels/{id}/pins/{mid}", s.authed(s.handlePin))
-	mux.Handle("DELETE /api/v1/channels/{id}/pins/{mid}", s.authed(s.handleUnpin))
+	mux.Handle("PUT /api/v1/channels/{id}/pins/{mid}", s.userLimited(s.limPin, s.handlePin))
+	mux.Handle("DELETE /api/v1/channels/{id}/pins/{mid}", s.userLimited(s.limPin, s.handleUnpin))
 }
 
 // systemMessage inserts and broadcasts a system message in a channel.

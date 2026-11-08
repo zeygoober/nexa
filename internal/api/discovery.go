@@ -38,7 +38,7 @@ func (s *Server) discoveryRoutes(mux *http.ServeMux) {
 	mux.Handle("GET /api/v1/discovery", s.authed(s.handleDiscover))
 	mux.Handle("GET /api/v1/discovery/categories", s.authed(s.handleDiscoveryCategories))
 	mux.Handle("GET /api/v1/discovery/{id}", s.authed(s.handleDiscoveryServer))
-	mux.Handle("POST /api/v1/discovery/{id}/join", s.authed(s.handleDiscoveryJoin))
+	mux.Handle("POST /api/v1/discovery/{id}/join", s.userLimited(s.limJoin, s.handleDiscoveryJoin))
 }
 
 // cleanDiscoveryTags checks and tidies a listing's tags: lower case, single

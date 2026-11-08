@@ -1,131 +1,95 @@
 #!/usr/bin/env python3
 """Writes Nexa's profile badge art into web/src/assets/badges/.
 
-Every badge is a shaped plate (a vertical gradient, a darker rim, a gloss
-across the top) with a Lucide glyph on it, taken from Android's lucide.json so
-both apps draw the same lines. The web imports the files; Android copies them
-from the web (CopyWebAssets) and takes newer ones over the air (data/Ota.kt).
-Run it again after changing anything here; the output is committed.
+Every badge is a Lucide glyph on nothing, taken from Android's lucide.json so
+both apps draw the same lines, and coloured with a short gradient. The same
+file shows on every theme, so each colour stays between relative luminance
+0.20 and 0.27: at least 3:1 on Dark's badge pill and on Light's. The web imports the files; Android
+copies them from the web (CopyWebAssets) and takes newer ones over the air
+(data/Ota.kt). Run it again after changing anything here; the output is
+committed.
 
     python3 tools/badge_art.py
 """
 
 import json
-import math
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 OUT = ROOT / "web/src/assets/badges"
 LUCIDE = json.loads((ROOT / "android/app/src/main/assets/lucide.json").read_text())["icons"]
 
-# a palette: plate top, plate bottom, rim, glyph colour, glyph shadow
+# a palette: the top of the icon, the bottom of it
 PALETTES = {
-    "staff": ("#b56bff", "#6a00d6", "#4a0099", "#ffffff", "#2b005c"),
-    "supporter": ("#ff8ab4", "#e23a74", "#a8164c", "#ffffff", "#7a0f37"),
-    "pro": ("#c58bff", "#5b10e0", "#3d0a9e", "#ffffff", "#25065e"),
-    "og": ("#7ae6d0", "#1f9e86", "#126b5a", "#ffffff", "#0b4a3e"),
-    "years": ("#a9cdf2", "#4a7fb8", "#2f5a88", "#ffffff", "#1c3a5c"),
-    "contributor": ("#d2b6ff", "#8a55e8", "#5f30b5", "#ffffff", "#3c1a7a"),
-    "dev": ("#9cc2ff", "#3a74e0", "#2551a8", "#ffffff", "#163470"),
-    "bronze": ("#f2b98a", "#b0632c", "#7a3f17", "#fff4ea", "#5a2c0e"),
-    "silver": ("#f4f7fb", "#9aa6b4", "#6b7684", "#2f3a46", "#ffffff"),
-    "gold": ("#ffe79a", "#e0a419", "#9c6c05", "#5a3b00", "#fff3c4"),
-    "emerald": ("#8af5c4", "#13a86c", "#0a6e46", "#ffffff", "#064a2e"),
-    "prism": (None, None, "#5a3fb0", "#ffffff", "#2a1a66"),
+    "staff": ("#a770ff", "#9654ff"),
+    "supporter": ("#ff4387", "#f40059"),
+    "pro": ("#a173ff", "#8f58ff"),
+    "og": ("#10a084", "#0e8c73"),
+    "years": ("#3592e7", "#1a7dd9"),
+    "contributor": ("#a471ff", "#9356ff"),
+    "dev": ("#4f8aff", "#2d73ff"),
+    "bronze": ("#d87328", "#bc6422"),
+    "silver": ("#7c90a8", "#667e9a"),
+    "gold": ("#b88500", "#a07400"),
+    "emerald": ("#0da267", "#0c8d5a"),
 }
 
 TIERS = ["bronze", "silver", "gold", "emerald", "prism"]
 
-
-def plate(shape):
-    """The plate's outline as a path in a 24 box."""
-    if shape == "circle":
-        return "M12 1.5a10.5 10.5 0 1 1 0 21a10.5 10.5 0 1 1 0-21z"
-    if shape == "square":
-        return "M7 1.5h10a5.5 5.5 0 0 1 5.5 5.5v10a5.5 5.5 0 0 1-5.5 5.5H7A5.5 5.5 0 0 1 1.5 17V7A5.5 5.5 0 0 1 7 1.5z"
-    if shape in ("hexagon", "octagon"):
-        n, r, turn = (6, 11.2, -90) if shape == "hexagon" else (8, 11.4, -90 + 22.5)
-        pts = [(12 + r * math.cos(math.radians(turn + i * 360 / n)), 12 + r * math.sin(math.radians(turn + i * 360 / n))) for i in range(n)]
-        return rounded(pts, 2.2)
-    raise ValueError(shape)
-
-
-def rounded(pts, rad):
-    """A closed polygon with its corners rounded."""
-    out = []
-    n = len(pts)
-    for i in range(n):
-        p0, p1, p2 = pts[i - 1], pts[i], pts[(i + 1) % n]
-        a = _toward(p1, p0, rad)
-        b = _toward(p1, p2, rad)
-        out.append(("M" if i == 0 else "L") + f"{a[0]:.2f} {a[1]:.2f}")
-        out.append(f"Q{p1[0]:.2f} {p1[1]:.2f} {b[0]:.2f} {b[1]:.2f}")
-    return "".join(out) + "Z"
-
-
-def _toward(p, q, d):
-    dx, dy = q[0] - p[0], q[1] - p[1]
-    length = math.hypot(dx, dy)
-    return (p[0] + dx / length * d, p[1] + dy / length * d)
-
-
 SPARKLE = "M0-2.6Q.35-.35 2.6 0Q.35.35 0 2.6Q-.35.35-2.6 0Q-.35-.35 0-2.6Z"
 
 
-def badge(name, shape, palette, glyph, *, scale=0.6, sparkles=0, stroke=2.5):
-    top, bottom, rim, ink, shadow = PALETTES[palette]
+def badge(name, palette, glyph, *, sparkles=0, stroke=2.3):
     gid = name.replace("-", "")
     if palette == "prism":
-        fill = f"""<linearGradient id="{gid}p" x1="3" y1="2" x2="21" y2="22" gradientUnits="userSpaceOnUse">
-      <stop offset="0" stop-color="#ff8ac4"/><stop offset=".45" stop-color="#9b6bff"/><stop offset="1" stop-color="#3fc8ff"/>
+        ink = f"""<linearGradient id="{gid}p" x1="3" y1="2" x2="21" y2="22" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#ff1585"/><stop offset=".5" stop-color="#9767ff"/><stop offset="1" stop-color="#0f8ec7"/>
     </linearGradient>"""
     else:
-        fill = f"""<linearGradient id="{gid}p" x1="12" y1="1" x2="12" y2="23" gradientUnits="userSpaceOnUse">
+        top, bottom = PALETTES[palette]
+        ink = f"""<linearGradient id="{gid}p" x1="12" y1="2" x2="12" y2="22" gradientUnits="userSpaceOnUse">
       <stop offset="0" stop-color="{top}"/><stop offset="1" stop-color="{bottom}"/>
     </linearGradient>"""
-    outline = plate(shape)
+    # closed outlines get a tint inside, so a thin icon still has body at 20 px;
+    # an open line would fill across its chord
+    tints = "".join(f'<path d="{d}"/>' for d in LUCIDE[glyph] if d.strip()[-1] in "zZ")
+    lines = "".join(f'<path d="{d}"/>' for d in LUCIDE[glyph])
+    # a higher tier's sparkles sit in the corners, the icon drawn a little smaller to clear them
+    scale = 0.86 if sparkles else 1
     off = 12 - 12 * scale
-    paths = "".join(f'<path d="{d}"/>' for d in LUCIDE[glyph])
-    lines = f'stroke-width="{stroke}" stroke-linecap="round" stroke-linejoin="round" fill="none"'
+    place = f'transform="translate({off:.2f} {off + (0.8 if sparkles else 0):.2f}) scale({scale})"'
     twinkles = ""
-    for x, y, s in [(19.2, 5.2, 0.75), (4.6, 18.6, 0.55)][:sparkles]:
-        twinkles += f'<path transform="translate({x} {y}) scale({s})" d="{SPARKLE}" fill="#ffffff"/>'
+    for x, y, s in [(20.9, 3.1, 1.0), (3.1, 3.6, 0.72)][:sparkles]:
+        twinkles += f'<path transform="translate({x} {y}) scale({s})" d="{SPARKLE}" fill="url(#{gid}p)"/>'
     return f"""<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24">
   <defs>
-    {fill}
-    <linearGradient id="{gid}g" x1="12" y1="1" x2="12" y2="12" gradientUnits="userSpaceOnUse">
-      <stop offset="0" stop-color="#ffffff" stop-opacity=".55"/><stop offset="1" stop-color="#ffffff" stop-opacity="0"/>
-    </linearGradient>
-    <clipPath id="{gid}c"><path d="{outline}"/></clipPath>
+    {ink}
   </defs>
-  <path d="{outline}" fill="url(#{gid}p)"/>
-  <g clip-path="url(#{gid}c)"><ellipse cx="12" cy="3.2" rx="13" ry="8.2" fill="url(#{gid}g)"/></g>
-  <path d="{outline}" fill="none" stroke="{rim}" stroke-opacity=".7" stroke-width="1"/>
-  <g transform="translate({off:.2f} {off + 0.55:.2f}) scale({scale})" stroke="{shadow}" stroke-opacity=".45" {lines}>{paths}</g>
-  <g transform="translate({off:.2f} {off:.2f}) scale({scale})" stroke="{ink}" {lines}>{paths}</g>
+  <g {place} fill="url(#{gid}p)" fill-opacity=".22">{tints}</g>
+  <g {place} stroke="url(#{gid}p)" stroke-width="{stroke}" stroke-linecap="round" stroke-linejoin="round" fill="none">{lines}</g>
   {twinkles}
 </svg>
 """
 
 
 def all_badges():
-    yield "staff-owner", badge("staff-owner", "square", "staff", "crown")
-    yield "staff-developer", badge("staff-developer", "square", "staff", "code-xml")
-    yield "staff-admin", badge("staff-admin", "square", "staff", "hammer")
-    yield "staff-mod", badge("staff-mod", "square", "staff", "shield-check")
-    yield "staff-helper", badge("staff-helper", "square", "staff", "life-buoy")
-    yield "plan-supporter", badge("plan-supporter", "circle", "supporter", "heart")
-    yield "plan-pro", badge("plan-pro", "circle", "pro", "gem", sparkles=1)
-    yield "og", badge("og", "circle", "og", "star")
-    yield "years", badge("years", "circle", "years", "cake")
-    yield "contributor", badge("contributor", "square", "contributor", "wrench")
-    yield "app-developer", badge("app-developer", "square", "dev", "bot")
+    yield "staff-owner", badge("staff-owner", "staff", "crown")
+    yield "staff-developer", badge("staff-developer", "staff", "code-xml")
+    yield "staff-admin", badge("staff-admin", "staff", "hammer")
+    yield "staff-mod", badge("staff-mod", "staff", "shield-check")
+    yield "staff-helper", badge("staff-helper", "staff", "life-buoy")
+    yield "plan-supporter", badge("plan-supporter", "supporter", "heart")
+    yield "plan-pro", badge("plan-pro", "pro", "gem", sparkles=1)
+    yield "og", badge("og", "og", "star")
+    yield "years", badge("years", "years", "cake")
+    yield "contributor", badge("contributor", "contributor", "wrench")
+    yield "app-developer", badge("app-developer", "dev", "bot")
     for i, tier in enumerate(TIERS, 1):
         sparkles = 0 if i < 4 else i - 3
-        yield f"bug-{i}", badge(f"bug-{i}", "hexagon", tier, "bug", scale=0.58, sparkles=sparkles)
-        yield f"ideas-{i}", badge(f"ideas-{i}", "octagon", tier, "lightbulb", scale=0.6, sparkles=sparkles)
+        yield f"bug-{i}", badge(f"bug-{i}", tier, "bug", sparkles=sparkles)
+        yield f"ideas-{i}", badge(f"ideas-{i}", tier, "lightbulb", sparkles=sparkles)
     for i, tier in enumerate(TIERS[:3], 1):
-        yield f"gift-{i}", badge(f"gift-{i}", "circle", tier, "gift")
+        yield f"gift-{i}", badge(f"gift-{i}", tier, "gift")
 
 
 def main():
