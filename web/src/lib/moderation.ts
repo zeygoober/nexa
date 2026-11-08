@@ -128,6 +128,8 @@ export function actionLabel(action: string): string {
       return t("moderation.log.accountView");
     case "owner_join":
       return t("moderation.log.ownerJoin");
+    case "server_preview":
+      return t("moderation.log.serverPreview");
     case "gift_link_create":
       return t("moderation.log.giftCreate");
     case "gift_link_revoke":
@@ -402,6 +404,7 @@ export function logDetail(e: ModLogEntry): string {
     }
     case "discovery_restore":
     case "owner_join":
+    case "server_preview":
       return d.server_name ? `“${d.server_name}”` : "";
     case "gift_link_create":
     case "gift_link_revoke": {
@@ -460,7 +463,7 @@ export const LOG_GROUPS: Record<string, string[]> = {
   punishments: ["message_remove", "avatar_remove", "field_reset", "server_reset", "expression_takedown", "mute", "ban", "delete", "account_delete_profile"],
   lifts: ["unmute", "unban", "expression_relist", "discovery_restore"],
   announcements: ["announcement", "announcement_delete"],
-  access: ["rank_change", "admin_grant", "admin_revoke", "account_disable", "account_enable", "account_view", "owner_join", "gift_link_create", "gift_link_revoke"],
+  access: ["rank_change", "admin_grant", "admin_revoke", "account_disable", "account_enable", "account_view", "owner_join", "server_preview", "gift_link_create", "gift_link_revoke"],
   badges: ["badge_change", "badge_create", "badge_edit", "badge_delete"],
   games: ["game_list", "game_reject", "game_forget"],
 };

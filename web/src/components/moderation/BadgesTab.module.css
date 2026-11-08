@@ -460,3 +460,104 @@
   color: var(--text-muted);
   background: var(--bg-input);
 }
+
+/* the owner's server preview: channels as a server's list has them, roles as dots with names */
+.previewList {
+  display: flex;
+  flex-direction: column;
+  /* the dialog's body spaces its children 18px apart, too far from a list's own title */
+  margin-top: -12px;
+  padding: 6px;
+  border-radius: var(--radius-md);
+  background: var(--bg-input);
+}
+/* under a list's title, where the dialog's 18px would leave it floating */
+.previewHint {
+  margin: -12px 0 0 2px;
+  font-size: 13px;
+  color: var(--text-muted);
+}
+.previewCategory {
+  padding: 10px 8px 4px;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text-muted);
+  overflow-wrap: anywhere;
+}
+.previewChannel {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 30px;
+  padding: 0 8px;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text-normal);
+}
+.previewChannel > span:last-child {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.previewPrivate {
+  color: var(--text-muted);
+}
+.previewRoles {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: -12px 0 0;
+  padding: 0;
+  list-style: none;
+}
+.previewRole {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  max-width: 100%;
+  min-height: 26px;
+  padding: 0 10px 0 8px;
+  border-radius: var(--radius-pill);
+  background: var(--bg-input);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-normal);
+}
+.previewRole > span:last-child {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.previewDot {
+  flex: none;
+  width: 10px;
+  height: 10px;
+  border-radius: 999px;
+  background: var(--dot);
+}
+.previewMember {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  min-height: 44px;
+  padding: 4px 8px;
+  border-radius: var(--radius-xs);
+  text-align: start;
+}
+.previewMember:hover {
+  background: var(--bg-hover);
+}
+.previewMember .recordText {
+  flex: 1;
+}
+.previewMemberName {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-strong);
+}

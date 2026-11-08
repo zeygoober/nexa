@@ -16,6 +16,7 @@ func TestOwnerToolsRefuseEveryOtherRank(t *testing.T) {
 	for _, c := range [][2]string{
 		{"GET", "/api/v1/moderation/users/" + bobID + "/account"},
 		{"POST", "/api/v1/moderation/servers/1/join"},
+		{"GET", "/api/v1/moderation/servers/1/preview"},
 		{"GET", "/api/v1/moderation/gift-links"},
 		{"POST", "/api/v1/moderation/gift-links"},
 		{"DELETE", "/api/v1/moderation/gift-links/abc"},
@@ -40,6 +41,47 @@ func TestAccountDetailsAreLogged(t *testing.T) {
 	}
 	if _, log := do(t, ts, "GET", "/api/v1/moderation/log?action=account_view", ownTok, nil); !strings.Contains(fmt.Sprint(log), "bobby") {
 		t.Fatalf("the view is not in the log: %v", log)
+	}
+}
+
+// A preview goes in the log, adds nobody to the server, and names only what a
+// new member could see.
+func TestServerPreviewIsLoggedAndShowsNoMore(t *testing.T) {
+	_, ts := newTestServer(t)
+	ownTok, ownID := register(t, ts, "theowner")
+	bobTok, _ := register(t, ts, "bobby")
+	_, sv := do(t, ts, "POST", "/api/v1/servers", bobTok, map[string]any{"name": "Quiet Place"})
+	sid := sv["id"].(string)
+	_, ch := do(t, ts, "POST", "/api/v1/servers/"+sid+"/channels", bobTok, map[string]any{"name": "secret-plans", "type": "text", "topic": "the hidden topic"})
+	cid := ch["id"].(string)
+	if res, body := do(t, ts, "PUT", "/api/v1/channels/"+cid+"/permissions/"+sid, bobTok, map[string]any{"type": "role", "allow": "0", "deny": "1024"}); res.StatusCode >= 300 {
+		t.Fatalf("hiding the channel: %d %v", res.StatusCode, body)
+	}
+	_, open := do(t, ts, "POST", "/api/v1/servers/"+sid+"/channels", bobTok, map[string]any{"name": "lobby-chat", "type": "text", "topic": "an open topic"})
+	if open["id"] == nil {
+		t.Fatalf("no open channel: %v", open)
+	}
+	res, body := do(t, ts, "GET", "/api/v1/moderation/servers/"+sid+"/preview", ownTok, nil)
+	if res.StatusCode != 200 {
+		t.Fatalf("preview: %d %v", res.StatusCode, body)
+	}
+	said := fmt.Sprint(body)
+	if !strings.Contains(said, "lobby-chat") || !strings.Contains(said, "bobby") {
+		t.Fatalf("preview is missing what it should show: %v", body)
+	}
+	for _, kept := range []string{"secret-plans", "hidden topic", "open topic", "overwrites", "last_message_id", "key_conv_id"} {
+		if strings.Contains(said, kept) {
+			t.Fatalf("preview shows %q: %v", kept, body)
+		}
+	}
+	if n, _ := body["private_channels"].(float64); n != 1 {
+		t.Fatalf("private channels counted: %v", body["private_channels"])
+	}
+	if res, _ := do(t, ts, "GET", "/api/v1/servers/"+sid+"/members/"+ownID, bobTok, nil); res.StatusCode != 404 {
+		t.Fatalf("the preview joined the owner: %d", res.StatusCode)
+	}
+	if _, log := do(t, ts, "GET", "/api/v1/moderation/log?action=server_preview", ownTok, nil); !strings.Contains(fmt.Sprint(log), "Quiet Place") {
+		t.Fatalf("the preview is not in the log: %v", log)
 	}
 }
 

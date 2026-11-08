@@ -45,6 +45,17 @@ export function BadgeMark({ look, size = 20 }: { look: BadgeLook; size?: number 
   );
 }
 
+/** What a badge's tooltip shows: the badge large, its name, and what it means. */
+function BadgeCard({ look }: { look: BadgeLook }) {
+  return (
+    <span className={s.card}>
+      {look.art ? <img className={s.cardArt} src={look.art} alt="" draggable={false} /> : <BadgeMark look={look} size={64} />}
+      <span className={s.cardName} dir="auto">{look.label}</span>
+      {look.tip ? <span className={s.cardTip} dir="auto">{look.tip}</span> : null}
+    </span>
+  );
+}
+
 /**
  * One badge: its picture (assets/badges, written by tools/badge_art.py), or
  * for an event badge staff made, its mark (BadgeMark). The tooltip gives its
@@ -77,7 +88,7 @@ export function BadgePill({ badge, user, still, named }: { badge: Badge; user: W
       </span>
     );
   }
-  return still ? mark : <Tooltip text={text} side="top">{mark}</Tooltip>;
+  return still ? mark : <Tooltip text={text} side="top" card={<BadgeCard look={look} />}>{mark}</Tooltip>;
 }
 
 /**

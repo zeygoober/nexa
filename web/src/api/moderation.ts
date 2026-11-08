@@ -540,6 +540,16 @@ export const nexa = {
 };
 
 /** What only the owner can read about an account (GET /moderation/users/{id}/account). */
+/** A server's layout as a new member would see it, with the channels already in order. */
+export interface ModServerPreview {
+  channels: { id: Snowflake; server_id: Snowflake; type: string; name: string; position: number; parent_id: Snowflake | null }[];
+  private_channels: number;
+  roles: { id: Snowflake; name: string; color: number }[];
+  members: { user_id: Snowflake; nickname: string }[];
+  member_count: number;
+  people: People;
+}
+
 export interface ModAccount {
   created_at: number;
   plan: string;
@@ -610,6 +620,10 @@ export const moderation = {
   /** The owner's: reading this writes a line in the log. */
   account(id: Snowflake): Promise<ModAccount> {
     return api.request("GET", `/moderation/users/${id}/account`);
+  },
+  /** The owner's: reading this writes a line in the log. */
+  serverPreview(id: Snowflake): Promise<ModServerPreview> {
+    return api.request("GET", `/moderation/servers/${id}/preview`);
   },
   joinServer(id: Snowflake): Promise<{ server: { id: Snowflake }; users: unknown[] }> {
     return api.request("POST", `/moderation/servers/${id}/join`, {});

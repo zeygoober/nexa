@@ -58,6 +58,10 @@ fun Modifier.shadowMedium(shape: Shape, c: NexaColors) =
 fun Modifier.shadowHigh(shape: Shape, c: NexaColors) =
     shadowLayer(shape, 2f, 6f, 0f, c.shadeAt(0.40f)).shadowLayer(shape, 18f, 48f, -10f, c.shadeAt(0.80f))
 
+/** A Popup's card: small enough to end inside 12 dp, since a Popup's own window cuts off whatever goes past it. */
+fun Modifier.shadowInPopup(shape: Shape, c: NexaColors) =
+    shadowLayer(shape, 2f, 6f, 0f, c.shadeAt(0.40f)).shadowLayer(shape, 3f, 9f, -1f, c.shadeAt(0.50f))
+
 fun Modifier.shadowPanel(shape: Shape, c: NexaColors) =
     shadowLayer(shape, 1f, 3f, 0f, c.shadeAt(0.50f)).shadowLayer(shape, 10f, 30f, -12f, c.shadeAt(0.60f))
 

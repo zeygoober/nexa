@@ -250,7 +250,13 @@ holds them. Once joined, the owner can read what a new member can read, includin
 earlier messages. Channels with their own keys that a new member cannot see stay
 closed. Direct messages and group chats cannot be joined this way.
 
-Implementation: [panel join](internal/api/moderation_owner.go) and
+The owner can also preview a server without joining it. A preview is built only
+from what the server already holds readable: the names of the channels a new
+member could see, a count of the others, roles and up to 200 members. Nobody in
+the server is told, and the moderation log records every preview. It involves no
+messages and no keys, so it does not touch encryption.
+
+Implementation: [panel join and preview](internal/api/moderation_owner.go) and
 [how a new member gets keys](internal/api/key_handlers.go).
 
 ## Checking identities and understanding server trust

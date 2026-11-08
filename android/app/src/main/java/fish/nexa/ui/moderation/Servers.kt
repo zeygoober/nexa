@@ -49,6 +49,7 @@ import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
 import fish.nexa.Nexa
 import fish.nexa.data.ModEvent
@@ -111,6 +112,96 @@ private fun JoinFromPanel(server: ModServer) {
             }
         }
     }, kind = ButtonKind.SECONDARY, size = ButtonSize.TOUCH, icon = "LogIn")
+}
+
+/**
+ * A server's layout for the owner, without joining (web ServerPreviewModal):
+ * the channels a new member could see, its roles and its first members.
+ * Asking for it writes a line in the log, so it is asked for only here.
+ */
+private fun openServerPreview(server: ModServer) {
+    var data by mutableStateOf<fish.nexa.data.ModServerPreview?>(null)
+    var error by mutableStateOf<String?>(null)
+    openModSheet(
+        "server-preview",
+        top = { close ->
+            ModSheetTop(t("moderation.preview.title", "name" to server.name), close, leading = { ServerIcon(server.id, server.iconId, server.name, 40.dp) }) {
+                Txt(t("moderation.servers.members", "count" to server.memberCount), style = Nx.type.bodySmall.copy(fontSize = Nx.type.sp(13.5f)), color = Nx.colors.textMuted, maxLines = 1)
+            }
+        },
+        foot = { close ->
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) { NxButton(t("moderation.alts.close"), close, kind = ButtonKind.GHOST) }
+        },
+    ) {
+        val c = Nx.colors
+        LaunchedEffect(Unit) {
+            try {
+                data = Moderation.serverPreview(server.id)
+            } catch (e: Exception) {
+                if (e is kotlinx.coroutines.CancellationException) throw e
+                error = describeError(e, t("moderation.loadFailed"))
+            }
+        }
+        NoteBox(t("moderation.preview.note"))
+        error?.let { e -> DangerBox { Txt(e, style = Nx.type.bodySmall.copy(fontSize = Nx.type.sp(14f)), color = c.text) } }
+        val d = data
+        if (d == null && error == null) LoadingRow()
+        if (d != null) {
+            val listTitle = Nx.type.hint.copy(fontSize = Nx.type.sp(12f), fontWeight = FontWeight(700), letterSpacing = 0.5.sp)
+            val shape = RoundedCornerShape(14.dp)
+            val line = Nx.type.bodySmall.copy(fontSize = Nx.type.sp(14f), fontWeight = FontWeight(500))
+            Txt(t("moderation.preview.channels").uppercase(), Modifier.padding(start = 2.dp), style = listTitle, color = c.textMuted)
+            Column(Modifier.fillMaxWidth().background(c.bgInput, shape).padding(6.dp)) {
+                for (ch in d.channels) {
+                    if (ch.isCategory) {
+                        Txt(ch.name, Modifier.padding(start = 8.dp, end = 8.dp, top = 10.dp, bottom = 4.dp), style = Nx.type.hint.copy(fontSize = Nx.type.sp(12f), fontWeight = FontWeight(700)), color = c.textMuted)
+                    } else {
+                        Row(Modifier.fillMaxWidth().heightIn(min = 30.dp).padding(horizontal = 8.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            fish.nexa.ui.shell.ChannelGlyph(ch, 18.dp, c.textMuted, cut = c.bgInput)
+                            Txt(ch.name, style = line, color = c.text, maxLines = 1)
+                        }
+                    }
+                }
+                if (d.channels.isEmpty()) Txt(t("moderation.preview.noChannels"), Modifier.padding(8.dp), style = line, color = c.textMuted)
+                if (d.privateChannels > 0) {
+                    Row(Modifier.fillMaxWidth().heightIn(min = 30.dp).padding(horizontal = 8.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Icon("Lock", c.textMuted, size = 16.dp)
+                        Txt(t("moderation.preview.private", "count" to d.privateChannels.toString()), style = line, color = c.textMuted)
+                    }
+                }
+            }
+            if (d.roles.isNotEmpty()) {
+                Txt(t("moderation.preview.roles").uppercase(), Modifier.padding(start = 2.dp), style = listTitle, color = c.textMuted)
+                androidx.compose.foundation.layout.FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    for (r in d.roles) {
+                        Row(Modifier.heightIn(min = 26.dp).background(c.bgInput, CircleShape).padding(start = 8.dp, end = 10.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                            Box(Modifier.size(10.dp).background(if (r.color != 0) Color(0xFF000000 or (r.color.toLong() and 0xFFFFFF)) else c.textMuted, CircleShape))
+                            Txt(r.name, style = Nx.type.bodySmall.copy(fontSize = Nx.type.sp(13f), fontWeight = FontWeight(600)), color = c.text, maxLines = 1)
+                        }
+                    }
+                }
+            }
+            Txt(t("moderation.preview.members").uppercase(), Modifier.padding(start = 2.dp), style = listTitle, color = c.textMuted)
+            if (d.memberCount > d.members.size) Txt(t("moderation.preview.firstMembers", "shown" to d.members.size.toString(), "total" to d.memberCount.toString()), style = Nx.type.hint.copy(fontSize = Nx.type.sp(13f)), color = c.textMuted)
+            Column(Modifier.fillMaxWidth().background(c.bgInput, shape).padding(6.dp)) {
+                for (m in d.members) {
+                    val who = d.people[m.userId]
+                    val name = m.nickname.ifEmpty { nameOf(who) }
+                    Row(
+                        Modifier.fillMaxWidth().heightIn(min = 44.dp).clip(RoundedCornerShape(6.dp)).pressable(remember { MutableInteractionSource() }) { goPanel("users/${m.userId}") }.padding(horizontal = 8.dp, vertical = 4.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(10.dp),
+                    ) {
+                        fish.nexa.ui.components.Avatar(m.userId, name, who?.avatarId, 32.dp)
+                        Column(Modifier.weight(1f)) {
+                            Txt(name, style = Nx.type.bodySmall.copy(fontSize = Nx.type.sp(14f), fontWeight = FontWeight(600)), color = c.textStrong, maxLines = 1)
+                            Txt("@" + (who?.username ?: ""), style = Nx.type.hint.copy(fontSize = Nx.type.sp(12.5f)), color = c.textMuted, maxLines = 1)
+                        }
+                    }
+                }
+            }
+        }
+    }
 }
 
 /** A server the staff hid from Discover is shown again, after asking; it goes in the log, with no case. */
@@ -357,7 +448,10 @@ fun StaffServerPage(serverId: String) {
             title = server.name,
             sub = listOf(t("moderation.servers.members", "count" to server.memberCount), t("moderation.servers.channels", "count" to server.channelCount), t("moderation.casesCount", "count" to d.cases.size)).joinToString(" · "),
             actions = {
-                if (fish.nexa.data.StaffRanks.can(fish.nexa.data.StaffCan.OWNER_TOOLS)) JoinFromPanel(server)
+                if (fish.nexa.data.StaffRanks.can(fish.nexa.data.StaffCan.OWNER_TOOLS)) {
+                    NxButton(t("moderation.servers.preview"), { openServerPreview(server) }, kind = ButtonKind.GHOST, size = ButtonSize.TOUCH, icon = "Eye")
+                    JoinFromPanel(server)
+                }
                 NxButton(t("moderation.moderate"), { openModerateServer(server, null) { load() } }, size = ButtonSize.TOUCH, icon = "Gavel", enabled = serverBlocked.isEmpty())
             },
         )

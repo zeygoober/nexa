@@ -903,7 +903,10 @@ it:
   dialog opens, web `AccountDetailsModal.tsx`, Android `openAccountDetails`); Join Server on a server's page (`POST
   /moderation/servers/{id}/join`, `Store.JoinFromPanel`, join method `staff`, logged as `owner_join`): an ordinary visible member,
   who gets keys through the usual `keys_needed`, so a new member's view and no more; the server's ban still holds, paused
-  invites do not, and DMs and group chats cannot be joined; Gift Links (`/moderation/gift-links`, the panel's `gifts` place, web
+  invites do not, and DMs and group chats cannot be joined; Preview on a server's page (`GET /moderation/servers/{id}/preview`,
+  logged as `server_preview` before anything is read, asked for only when the dialog opens, web `ServerPreviewModal.tsx`, Android
+  `openServerPreview`): the channels a new member could see by name, a count of the rest, roles and 200 members, never messages,
+  topics or keys, so it never shows more than a join would; Gift Links (`/moderation/gift-links`, the panel's `gifts` place, web
   `GiftLinksTab.tsx`, Android `ui/moderation/GiftLinks.kt`): free links in `gift_links` claimed at the usual `/gift/<code>`, whose
   `session_id` starts `owner:` (`ownerGiftPrefix`) and whose `plan_gifts` row starts `owner-link:` (`ownerGiftClaim`), which keeps
   them out of the Your Links list and out of the Gift Giver badge. Nexa collects no email address, so there is none to show.
@@ -1006,8 +1009,8 @@ up; a person's page sets them all at once (web `GrantBadgesModal.tsx`, Android `
 badge has a description (its tooltip and toast, at most 120 characters), one or two colours and any Lucide icon or an uploaded picture (public blob of kind `badge`). Every badge, staff ranks and plans included, is a
 bare coloured icon with nothing behind it: an SVG in `web/src/assets/badges/` written by `tools/badge_art.py` (Android copies the same files and
 takes them over the air), each colour held to a luminance that reads on Dark and Light alike; an event badge is drawn from its look on both clients, its colour pulled towards the text colour (`--badge-ink-mix`, Android the same numbers). The `shape` and `glyph` stored on a badge only serve APKs from before icon-only badges, which still draw them; their editor controls are gone. A profile draws
-all its badges in one pill on the username line, each saying its name and meaning (a tooltip, a toast on
-Android). `/users/@me/badges` stays open to muted and
+all its badges in one pill on the username line. Hovering one, or tapping it on a touch screen, opens a card with the badge
+large, its name and its meaning (web `BadgeCard` through `Tooltip`'s `card`, Android `BadgeCardPopup`). `/users/@me/badges` stays open to muted and
 banned accounts. Web `lib/badges.ts`, `components/badges/Badges.tsx`, `moderation/BadgesTab.tsx`; Android
 `data/Badges`, `ui/profile/Badges.kt`, `ui/moderation/BadgeTab.kt`. The event icon list and every icon the search offers must be ones both
 lucide-react and Android's `lucide.json` have.
@@ -1393,7 +1396,7 @@ MIT copyright line in `LICENSE` stays as it is. `lib/legal.ts` also holds `LEGAL
 them from the file. A change to what the documents say bumps `LEGAL_EFFECTIVE`, which asks every account to
 agree again, and adds a `legal.new*` line (English in every locale) at the top of `LegalChanges` (web
 `LegalContent.tsx`, Android `Legal.kt`), with the older lines kept behind their version checks. 2026-11-07
-added `legal.newOwner`: zey, nexa.pm, and the server in France; 2026-11-08 added `legal.newOwnerAccess`: the owner's tools. The homepage names open source in its
+added `legal.newOwner`: zey, nexa.pm, and the server in France; 2026-11-08 added `legal.newOwnerAccess`: the owner's tools, and its second version that day `legal.newOwnerPreview`: Preview. The homepage names open source in its
 introduction and as the first of its five promises and links GitHub; Settings has a GitHub shortcut on every
 platform; the About page and Settings, About explain the MIT license and invite contributions. README.md uses
 the synthetic `web/public/home/app.png`, which holds no personal conversations.

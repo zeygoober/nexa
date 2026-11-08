@@ -23,6 +23,11 @@ under data protection law, including the GDPR (sections 9 to 11).
   moderation log records it. As a member, the owner can read what a
   new member can read there, earlier messages included. Direct
   messages and group chats cannot be joined this way (section 3n).
+- The owner can also preview a server from the moderation panel
+  without joining it: the channels a new member could see, by name,
+  its roles and its first members. Nobody in the server is told, the
+  moderation log records every preview, and a preview shows no
+  messages (section 3n).
 - What the owner and staff can see is your public profile, what
   servers show everyone, public images, the delivery details the
   server needs (who sent what, where, and when), bug reports you send,
@@ -107,7 +112,8 @@ a) Profile information (public by design, typed by you): username,
    checked. Servers are public in the same way: a server's name, icon,
    banner, description, and tag, its owner, and when it was made.
    Staff see these with how many members and channels a server has
-   (the numbers, not the channels), but never what is said inside it.
+   (the numbers, not the channels; the owner's preview in section 3n
+   is the exception), but never what is said inside it.
 
 b) Public images (stored readable, can be handed over if ordered):
    profile pictures, banners, server icons and banners, group chat
@@ -379,6 +385,15 @@ n) What only the owner can do, each written to the moderation log:
      and its keys rotate when they do.
    - Direct messages and group chats cannot be joined this way, and
      their contents stay out of reach.
+   - Previewing a server: from the moderation panel, the owner can open
+     a server's layout without joining it. It lists the names of the
+     channels a new member could see, how many other channels there
+     are (not their names), its roles, and up to 200 of its members
+     with their nicknames. Nobody in the server is told and the owner
+     is not added to its member list, but every time the owner opens
+     this the moderation log records it. A preview contains no
+     messages, files, channel topics or keys, and it works the same
+     on a server that has banned the owner's account.
    - Gift links: the owner can make links that give a plan for free.
      Who claimed one is kept with the link (section 3k).
 

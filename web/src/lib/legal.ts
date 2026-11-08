@@ -18,7 +18,7 @@ export const LEGAL_EFFECTIVE = "2026-11-08";
  * day's wording. Changing it asks every account again, so it moves with any
  * change to what the documents say.
  */
-export const LEGAL_VERSION = `${LEGAL_EFFECTIVE}.1`;
+export const LEGAL_VERSION = `${LEGAL_EFFECTIVE}.2`;
 
 /**
  * The owner's address, or "" while there is none: then every contact link

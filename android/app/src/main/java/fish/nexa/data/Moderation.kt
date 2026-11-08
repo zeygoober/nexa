@@ -160,6 +160,23 @@ data class ModAccount(
     val subscription: ModAccountSubscription? = null,
 )
 
+@Serializable
+data class ModPreviewRole(val id: String, val name: String = "", val color: Int = 0)
+
+@Serializable
+data class ModPreviewMember(@SerialName("user_id") val userId: String, val nickname: String = "")
+
+/** A server's layout as a new member would see it, the channels already in order; asking for it writes a line in the log. */
+@Serializable
+data class ModServerPreview(
+    val channels: List<fish.nexa.net.Channel> = emptyList(),
+    @SerialName("private_channels") val privateChannels: Int = 0,
+    val roles: List<ModPreviewRole> = emptyList(),
+    val members: List<ModPreviewMember> = emptyList(),
+    @SerialName("member_count") val memberCount: Int = 0,
+    val people: Map<String, NexaPerson> = emptyMap(),
+)
+
 /** The owner's answer to joining a server from the panel. */
 @Serializable
 data class ModJoined(val server: fish.nexa.net.ServerView, val users: List<fish.nexa.net.PublicUser> = emptyList())
@@ -699,6 +716,9 @@ object Moderation {
     /** Lets a server the staff hid from Discover show up there again. */
     /** Writes a line in the log, so it is asked for only when the sheet opens. */
     suspend fun account(id: String): ModAccount = wireJson.decodeFromJsonElement(ModAccount.serializer(), Nexa.api.get("/moderation/users/$id/account"))
+
+    /** The owner's look at a server's layout without joining it; logged. */
+    suspend fun serverPreview(id: String): ModServerPreview = wireJson.decodeFromJsonElement(ModServerPreview.serializer(), Nexa.api.get("/moderation/servers/$id/preview"))
 
     /** The owner joins a server as an ordinary member, visibly and logged. */
     suspend fun joinServer(id: String): ModJoined {

@@ -25,6 +25,7 @@ import { ExpressionPic, PackRows } from "./ExpressionsTab";
 import { ModerateEmojiModal } from "./ModerateEmojiModal";
 import { ModerateServerModal } from "./ModerateServerModal";
 import { ServerIcon } from "./ProfileSheet";
+import { ServerPreviewModal } from "./ServerPreviewModal";
 import { serverBlockedText } from "./ServersTab";
 import m from "./Moderation.module.css";
 import p from "./Sheet.module.css";
@@ -54,6 +55,7 @@ export function ServerPage() {
   const [packs, setPacks] = useState<ModPack[]>([]);
   const [picked, setPicked] = useState<string[]>([]);
   const [takingEmoji, setTakingEmoji] = useState(false);
+  const [previewing, setPreviewing] = useState(false);
   const member = useServers((st) => !!st.byId[serverId]);
   const join = () =>
     openModal("confirm", {
@@ -187,6 +189,11 @@ export function ServerPage() {
           </div>
         </div>
         <div className={m.userActions}>
+          {can(mine, "ownerTools") ? (
+            <Button size="sm" variant="ghost" onClick={() => setPreviewing(true)} data-testid="server-preview">
+              <Eye size={15} aria-hidden="true" /> {t("moderation.servers.preview")}
+            </Button>
+          ) : null}
           {can(mine, "ownerTools") ? (
             <Button size="sm" variant="secondary" onClick={member ? () => nav(`/channels/${serverId}`) : join} data-testid="server-join">
               <LogIn size={15} aria-hidden="true" /> {member ? t("moderation.servers.joinOpen") : t("moderation.servers.join")}
@@ -365,6 +372,7 @@ export function ServerPage() {
         </div>
       </div>
       {moderating ? <ModerateServerModal server={server} owner={owner} preset={moderating} onClose={() => setModerating(null)} onDone={() => void load()} /> : null}
+      {previewing ? <ServerPreviewModal server={server} onClose={() => setPreviewing(false)} /> : null}
       {takingEmoji ? (
         <ModerateEmojiModal
           server={{ id: server.id, name: server.name, icon_id: server.icon_id, owner_id: server.owner_id }}

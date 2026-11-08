@@ -3,21 +3,24 @@ package api
 import (
 	"errors"
 	"net/http"
+	"sort"
 	"strings"
 
 	"evilion.xyz/chat/internal/auth"
 	"evilion.xyz/chat/internal/ids"
+	"evilion.xyz/chat/internal/perms"
 	"evilion.xyz/chat/internal/store"
 )
 
 // What only the owner does from the panel (the owner's decision, 2026-11-08):
 // reading an account's addresses and sessions, joining a server without an
-// invite, and making gift links without paying. Each is written to mod_log, and
+// invite, previewing a server's layout, and making gift links without paying. Each is written to mod_log, and
 // the Privacy Policy, the Terms and ENCRYPTION.md say that they exist.
 
 func (s *Server) modOwnerRoutes(mux *http.ServeMux) {
 	mux.Handle("GET /api/v1/moderation/users/{id}/account", s.staff(rankOwner, s.handleModAccount))
 	mux.Handle("POST /api/v1/moderation/servers/{id}/join", s.staff(rankOwner, s.handleModServerJoin))
+	mux.Handle("GET /api/v1/moderation/servers/{id}/preview", s.staff(rankOwner, s.handleModServerPreview))
 	mux.Handle("GET /api/v1/moderation/gift-links", s.staff(rankOwner, s.handleModGiftLinks))
 	mux.Handle("POST /api/v1/moderation/gift-links", s.staff(rankOwner, s.handleModGiftLinkCreate))
 	mux.Handle("DELETE /api/v1/moderation/gift-links/{code}", s.staff(rankOwner, s.handleModGiftLinkRevoke))
@@ -119,6 +122,127 @@ func (s *Server) handleModServerJoin(w http.ResponseWriter, r *http.Request) {
 		s.Bcast.EmitUsers([]ids.ID{me.ID}, "server_create", serverCreateEvent{view, users})
 	}
 	WriteJSON(w, status, map[string]any{"server": view, "users": users})
+}
+
+// previewMembers is how many members a preview lists, oldest accounts first.
+const previewMembers = 200
+
+// previewChannel is all a preview says about a channel: never its topic, its
+// overwrites or when something was last said in it.
+type previewChannel struct {
+	ID       ids.ID  `json:"id"`
+	ServerID ids.ID  `json:"server_id"`
+	Type     string  `json:"type"`
+	Name     string  `json:"name"`
+	Position int     `json:"position"`
+	ParentID *ids.ID `json:"parent_id"`
+}
+
+// previewChannels lays out what a new member could see, channels without a
+// category first and each category then followed by its own, and counts the
+// rest without naming them. So a preview shows no more than joining would.
+func previewChannels(serverID ids.ID, roles []*store.Role, all []*store.Channel) ([]previewChannel, int) {
+	pr := make([]perms.Role, len(roles))
+	for i, ro := range roles {
+		pr[i] = perms.Role{ID: ro.ID, Position: ro.Position, Permissions: ro.Permissions}
+	}
+	open := func(c *store.Channel) bool {
+		if c.KeyConvID == c.ID {
+			return false
+		}
+		po := make([]perms.Overwrite, len(c.Overwrites))
+		for i, ow := range c.Overwrites {
+			po[i] = perms.Overwrite{TargetID: ow.TargetID, Kind: ow.TargetType, Allow: ow.Allow, Deny: ow.Deny}
+		}
+		return perms.Compute(serverID, pr, perms.Member{}, false, po).Has(perms.ViewChannel)
+	}
+	view := func(c *store.Channel) previewChannel {
+		return previewChannel{c.ID, serverID, c.Type, c.Name, c.Position, c.ParentID}
+	}
+	shown := map[ids.ID]bool{}
+	for _, c := range all {
+		if c.Type == "category" && open(c) {
+			shown[c.ID] = true
+		}
+	}
+	top, under, hidden := []previewChannel{}, map[ids.ID][]previewChannel{}, 0
+	for _, c := range all {
+		switch {
+		case c.Type == "category":
+		case !open(c):
+			hidden++
+		case c.ParentID != nil && shown[*c.ParentID]:
+			under[*c.ParentID] = append(under[*c.ParentID], view(c))
+		default:
+			v := view(c)
+			v.ParentID = nil
+			top = append(top, v)
+		}
+	}
+	out := top
+	for _, c := range all {
+		// a category nothing is listed under says nothing worth saying
+		if kids := under[c.ID]; c.Type == "category" && len(kids) > 0 {
+			out = append(append(out, view(c)), kids...)
+		}
+	}
+	return out, hidden
+}
+
+// handleModServerPreview shows the owner a server's layout without joining it:
+// the channels a new member could see, its roles and its first members, all of
+// which the server holds readable. It carries no messages and no keys. Nobody in
+// the server is told, so it is logged before anything is read, and the Privacy
+// Policy, the Terms and ENCRYPTION.md say it exists.
+func (s *Server) handleModServerPreview(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	me := auth.UserFrom(ctx)
+	m := s.modServerFor(w, r)
+	if m == nil {
+		return
+	}
+	if err := s.Store.AppendModLog(ctx, &store.ModLogEntry{Action: store.LogServerPreview, ModeratorID: me.ID, ModeratorUsername: me.Username, TargetID: &m.OwnerID, Details: mustJSON(map[string]string{"server_name": m.Name})}); err != nil {
+		WriteError(w, err)
+		return
+	}
+	roles, err := s.Store.Roles(ctx, m.ID)
+	if err != nil {
+		WriteError(w, err)
+		return
+	}
+	all, err := s.Store.ServerChannels(ctx, m.ID)
+	if err != nil {
+		WriteError(w, err)
+		return
+	}
+	members, err := s.Store.Members(ctx, m.ID, 0, previewMembers, "")
+	if err != nil {
+		WriteError(w, err)
+		return
+	}
+	type role struct {
+		ID    ids.ID `json:"id"`
+		Name  string `json:"name"`
+		Color int    `json:"color"`
+	}
+	type member struct {
+		UserID   ids.ID `json:"user_id"`
+		Nickname string `json:"nickname"`
+	}
+	sort.SliceStable(roles, func(i, j int) bool { return roles[i].Position > roles[j].Position })
+	rs := make([]role, 0, len(roles))
+	for _, ro := range roles {
+		if ro.ID != m.ID { // @everyone is every member
+			rs = append(rs, role{ro.ID, ro.Name, ro.Color})
+		}
+	}
+	ms, who := make([]member, 0, len(members)), make([]ids.ID, 0, len(members))
+	for _, x := range members {
+		ms = append(ms, member{x.UserID, x.Nickname})
+		who = append(who, x.UserID)
+	}
+	channels, hidden := previewChannels(m.ID, roles, all)
+	WriteJSON(w, http.StatusOK, map[string]any{"channels": channels, "private_channels": hidden, "roles": rs, "members": ms, "member_count": m.MemberCount, "people": s.people(ctx, who...)})
 }
 
 func (s *Server) handleModGiftLinks(w http.ResponseWriter, r *http.Request) {

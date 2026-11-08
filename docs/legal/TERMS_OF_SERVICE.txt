@@ -144,6 +144,12 @@ moderation log, and the owner can then read what a new member can read
 there (the Privacy Policy, section 3n). Direct messages and group
 chats cannot be joined this way.
 
+The owner can also preview a server from the moderation panel without
+joining it: the channel names a new member could see, its roles and
+up to 200 of its members. Nobody in the server is told, every preview
+is written to the moderation log, and a preview shows no messages or
+keys (the Privacy Policy, section 3n).
+
 When a rule is broken, staff can:
 
 - Remove a profile picture or banner.

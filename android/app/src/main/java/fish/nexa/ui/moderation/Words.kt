@@ -40,6 +40,7 @@ fun actionLabel(action: String): String = when (action) {
     "badge_delete" -> t("badges.log.delete")
     "account_view" -> t("moderation.log.accountView")
     "owner_join" -> t("moderation.log.ownerJoin")
+    "server_preview" -> t("moderation.log.serverPreview")
     "gift_link_create" -> t("moderation.log.giftCreate")
     "gift_link_revoke" -> t("moderation.log.giftRevoke")
     "game_list" -> t("moderation.games.logList")
@@ -77,6 +78,7 @@ fun logIcon(action: String): String = when (action) {
     "account_disable" -> "Lock"
     "account_view" -> "Fingerprint"
     "owner_join" -> "LogIn"
+    "server_preview" -> "Eye"
     "gift_link_create", "gift_link_revoke" -> "Gift"
     else -> "KeyRound"
 }
@@ -86,7 +88,7 @@ val LOG_GROUPS: Map<String, List<String>> = mapOf(
     "punishments" to listOf("message_remove", "avatar_remove", "field_reset", "server_reset", "expression_takedown", "mute", "ban", "delete", "account_delete_profile"),
     "lifts" to listOf("unmute", "unban", "expression_relist", "discovery_restore"),
     "announcements" to listOf("announcement", "announcement_delete"),
-    "access" to listOf("rank_change", "admin_grant", "admin_revoke", "account_disable", "account_enable", "account_view", "owner_join", "gift_link_create", "gift_link_revoke"),
+    "access" to listOf("rank_change", "admin_grant", "admin_revoke", "account_disable", "account_enable", "account_view", "owner_join", "server_preview", "gift_link_create", "gift_link_revoke"),
     "badges" to listOf("badge_change", "badge_create", "badge_edit", "badge_delete"),
     "games" to listOf("game_list", "game_reject", "game_forget"),
 )
@@ -136,7 +138,7 @@ fun logDetail(e: ModLogEntry): String {
             ).joinToString("; ")
         }
         "badge_create", "badge_delete" -> d.str("name")?.let { "“$it”" } ?: ""
-        "owner_join" -> d.str("server_name")?.let { "“$it”" } ?: ""
+        "owner_join", "server_preview" -> d.str("server_name")?.let { "“$it”" } ?: ""
         "gift_link_create" -> d.str("plan")?.let { fish.nexa.ui.support.planName(it) } ?: ""
         "game_list", "game_reject" -> d.str("process")?.let { "$it: “${d.str("name") ?: ""}”" } ?: ""
         "game_forget" -> d.str("process") ?: ""

@@ -58,6 +58,7 @@ const (
 	// What only the owner does (api/moderation_owner.go).
 	LogAccountView    = "account_view"
 	LogOwnerJoin      = "owner_join"
+	LogServerPreview  = "server_preview"
 	LogGiftLinkCreate = "gift_link_create"
 	LogGiftLinkRevoke = "gift_link_revoke"
 )

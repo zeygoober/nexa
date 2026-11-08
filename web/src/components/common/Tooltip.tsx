@@ -12,6 +12,8 @@ interface Props {
   /** The keys that do the same, shown quietly after the words: "Ctrl+Shift+M". */
   keys?: string;
   side?: Side;
+  /** Drawn instead of the words, which stay the trigger's name for a screen reader. On a touch screen a card opens on a tap. */
+  card?: ReactNode;
   children: ReactNode;
   className?: string;
   delay?: number;
@@ -90,7 +92,7 @@ function place(anchor: DOMRect, box: DOMRect, wanted: Side): { left: number; top
  * labels. A message row clips what paints outside it, so a bubble rendered in
  * place there is simply never seen.
  */
-export function Tooltip({ text, keys, side = "top", children, className, delay = 250 }: Props) {
+export function Tooltip({ text, keys, side = "top", card, children, className, delay = 250 }: Props) {
   const wrap = useRef<HTMLSpanElement>(null);
   const bubble = useRef<HTMLSpanElement>(null);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -137,6 +139,21 @@ export function Tooltip({ text, keys, side = "top", children, className, delay =
     return () => document.removeEventListener("keydown", onKey);
   }, [open, hide]);
 
+  // A card that a tap opened goes with the next press anywhere else, or a scroll, as nothing hovers there to end it.
+  const tapped = !!card && coarsePointer();
+  useEffect(() => {
+    if (!open || !tapped) return;
+    const away = (e: Event) => {
+      if (!wrap.current?.contains(e.target as Node)) hide();
+    };
+    document.addEventListener("pointerdown", away, true);
+    window.addEventListener("scroll", hide, true);
+    return () => {
+      document.removeEventListener("pointerdown", away, true);
+      window.removeEventListener("scroll", hide, true);
+    };
+  }, [open, tapped, hide]);
+
   // The bubble is an orphan in a portal unless something points at it. Where
   // the trigger has no name of its own the tooltip *is* its name; where it
   // already says the same thing, saying it twice is worse than not linking it.
@@ -159,8 +176,8 @@ export function Tooltip({ text, keys, side = "top", children, className, delay =
       onMouseLeave={hide}
       onFocus={show}
       onBlur={hide}
-      onPointerDown={hide}
-      onClick={hide}
+      onPointerDown={tapped ? undefined : hide}
+      onClick={tapped ? () => (open ? hide() : setOpen(true)) : hide}
     >
       {child}
       {open
@@ -171,6 +188,7 @@ export function Tooltip({ text, keys, side = "top", children, className, delay =
               className={s.tip}
               role="tooltip"
               data-side={at?.side ?? side}
+              data-card={card ? "" : undefined}
               style={
                 {
                   ...(at ? { left: at.left, top: at.top, "--arrow": `${at.arrow}px` } : { left: -9999, top: -9999 }),
@@ -178,10 +196,12 @@ export function Tooltip({ text, keys, side = "top", children, className, delay =
                 } as React.CSSProperties
               }
             >
-              <span className={s.words}>
-                {text}
-                {keys ? <span className={s.keys} dir="ltr">{keys}</span> : null}
-              </span>
+              {card ?? (
+                <span className={s.words}>
+                  {text}
+                  {keys ? <span className={s.keys} dir="ltr">{keys}</span> : null}
+                </span>
+              )}
             </span>,
             // tooltips come and go too often to each follow full screen; they look where to mount as they open
             portalRoot(),
