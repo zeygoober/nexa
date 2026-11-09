@@ -42,6 +42,8 @@ function verbs(): Record<string, string> {
     role_positions: t("server.auditLog.verb.role_positions"),
     member_update: t("server.auditLog.verb.member_update"),
     member_role_add: t("server.auditLog.verb.member_role_add"),
+    reaction_role_set: t("server.auditLog.verb.reaction_role_set"),
+    reaction_role_remove: t("server.auditLog.verb.reaction_role_remove"),
     member_role_remove: t("server.auditLog.verb.member_role_remove"),
     member_kick: t("server.auditLog.verb.member_kick"),
     member_ban: t("server.auditLog.verb.member_ban"),

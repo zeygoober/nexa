@@ -2,6 +2,7 @@ package api
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 	"strconv"
 	"strings"
@@ -293,6 +294,7 @@ func (s *Server) renderLegalReport(rec *store.AccountRecord, by *store.User) str
 	legalSessions(d, rec)
 	legalMFA(d, rec)
 	legalDiscordLink(d, rec)
+	legalLastfmLink(d, rec)
 	legalSettings(d, rec)
 	legalRelationships(d, rec)
 	legalCommunities(d, rec)
@@ -309,6 +311,7 @@ func (s *Server) renderLegalReport(rec *store.AccountRecord, by *store.User) str
 	legalCrashes(d, rec)
 	legalBugReports(d, rec)
 	legalSharedGames(d, rec)
+	legalBadgeProgress(d, rec)
 	legalUnavailable(d)
 	legalNotCollected(d)
 	s.legalProvenance(d, rec, by)
@@ -430,6 +433,17 @@ func legalMFA(d *legalDoc, rec *store.AccountRecord) {
 	d.note("The authenticator seed is stored sealed with a key that exists only on this")
 	d.note("server, and the backup codes are stored as keyed hashes. Neither is produced:")
 	d.note("they are credentials for getting into the account, not records of its use.")
+	d.blank()
+}
+
+func legalLastfmLink(d *legalDoc, rec *store.AccountRecord) {
+	d.head("LINKED LAST.FM ACCOUNT", "lastfm_links")
+	if rec.Lastfm == nil {
+		d.empty("No Last.fm account is linked; no row exists.")
+		return
+	}
+	d.field("Last.fm username:", legalText(rec.Lastfm.Username))
+	d.field("Listening shown as activity:", fmt.Sprint(rec.Lastfm.Show))
 	d.blank()
 }
 
@@ -928,6 +942,20 @@ func legalSharedGames(d *legalDoc, rec *store.AccountRecord) {
 	d.capped(len(rec.SharedGames))
 	d.note("A shared game is a program file name and a game name the member chose to")
 	d.note("send from the desktop app. It goes once staff have reviewed that program.")
+}
+
+func legalBadgeProgress(d *legalDoc, rec *store.AccountRecord) {
+	d.head("BADGE PROGRESS", "badge_progress")
+	p := rec.BadgeProgress
+	if p.LastDay == 0 && p.CallSeconds == 0 {
+		d.empty("No badge progress is recorded for this account.")
+		return
+	}
+	d.item(fmt.Sprintf("Longest run of consecutive days: %d (current run: %d)", p.BestStreak, p.Streak))
+	d.item(fmt.Sprintf("Total time in calls with someone else: %d seconds", p.CallSeconds))
+	d.note("One record for the account, kept only to award badges: the last UTC day it was")
+	d.note("open, the run of days up to it, and a running total of call time. Neither says")
+	d.note("who a call was with or when it took place.")
 }
 
 func legalBugReports(d *legalDoc, rec *store.AccountRecord) {

@@ -1,6 +1,7 @@
 import { Suspense, startTransition, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Spinner } from "@/components/common/Spinner";
+import { useIsMobile } from "@/hooks/useIsMobile";
 import { readyPage, type ReadyPage } from "@/lib/lazyChunk";
 import { P } from "@/lib/perms";
 import { useAuth } from "@/stores/auth";
@@ -56,15 +57,21 @@ export default function ServerSettingsModal({ onClose, serverId, page: initial }
   ];
   const allowed = pages.filter((p) => p.ok);
   const [page, setShown] = useState(initial && allowed.some((p) => p.id === initial) ? initial : (allowed[0]?.id ?? "members"));
-  // Another page keeps the one on screen until its file is here, rather than
-  // blanking the panel to a spinner for the moment it takes.
-  const setPage = (id: string) => startTransition(() => setShown(id));
+  const mobile = useIsMobile();
+  // Beside the nav, another page keeps the one on screen until its file is
+  // here, rather than blanking the panel to a spinner for the moment it takes.
+  // A phone has just slid over to the page asked for, so the old page there
+  // would be the wrong page under the new page's place, for as long as a slow
+  // line takes.
+  const setPage = (id: string) => (mobile ? setShown(id) : startTransition(() => setShown(id)));
+  const [opening] = useState(page);
   useEffect(() => {
     if (!st) onClose();
   }, [st, onClose]);
   if (!st) return null;
-  // the frame waits for the page it opens on, so both show at once (the dialog's place is held meanwhile)
-  PAGES[page]?.ready();
+  // the frame waits for the page it opens on, so both show at once (the dialog's place is held meanwhile);
+  // a phone opened as a whole opens on the list, which has no such page to wait for
+  if (!mobile || initial) PAGES[opening]?.ready();
   const groups: NavGroup[] = [
     { head: st.server.name, items: allowed.filter((p) => p.group === 0).map((p) => ({ id: p.id, label: p.label })) },
     { head: t("server.serverSettings.moderation"), items: allowed.filter((p) => p.group === 1).map((p) => ({ id: p.id, label: p.label })) },

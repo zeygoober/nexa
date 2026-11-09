@@ -395,6 +395,9 @@ func (s *Store) hydrate(ctx context.Context, msgs []*Message, forUser ids.ID) er
 	if err := rows.Err(); err != nil {
 		return err
 	}
+	if err := s.fillReactionRoles(ctx, byID, ph, list); err != nil {
+		return err
+	}
 	args := append([]any{int64(forUser)}, idArgs(list)...)
 	rrows, err := s.db.R.QueryContext(ctx, `SELECT message_id, emoji, count(*), max(CASE WHEN user_id = ? THEN 1 ELSE 0 END)
 		FROM reactions WHERE message_id IN (`+ph+`)

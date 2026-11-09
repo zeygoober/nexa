@@ -235,6 +235,7 @@ private fun FriendsHeader(tab: Tab, pending: Int, onTab: (Tab) -> Unit) {
                 Icon("Users", c.textBrand, size = 22.dp)
                 Txt(t("sidebar.dMSidebar.friends"), style = Nx.type.headerTitle.copy(fontSize = Nx.type.sp(16.5f), fontWeight = FontWeight(680)), color = c.textStrong, maxLines = 1)
                 // after the title, as the web's header orders it
+                IconButton("Lightbulb", t("suggestions.suggest"), { fish.nexa.ui.bugs.openBugReport("friends", "suggestion") }, tint = c.icon, size = 40.dp, iconSize = 22.dp)
                 IconButton("Bug", t("bugs.report"), { fish.nexa.ui.bugs.openBugReport("friends") }, tint = c.icon, size = 40.dp, iconSize = 22.dp)
             }
             AddTab(selected = tab == Tab.ADD) { onTab(Tab.ADD) }

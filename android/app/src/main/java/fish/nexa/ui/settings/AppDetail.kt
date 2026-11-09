@@ -379,6 +379,14 @@ private fun BotTab(form: PortalEditing.Form) {
     }
     SectionHeading(t("apps.portal.whoCanAdd"))
     ToggleRow(t("apps.portal.public"), form.bool("bot_public", app.botPublic), { form.set("bot_public", JsonPrimitive(it)) }, t("apps.portal.publicHint"))
+    val public = form.bool("bot_public", app.botPublic)
+    ToggleRow(
+        t("apps.portal.discovery"),
+        form.bool("discoverable", app.discoverable) && public && !app.discoveryHidden,
+        { form.set("discoverable", JsonPrimitive(it)) },
+        t(if (app.discoveryHidden) "apps.portal.discoveryHidden" else if (public) "apps.portal.discoveryHint" else "apps.portal.discoveryNeedsPublic"),
+        enabled = public && !app.discoveryHidden,
+    )
     ToggleRow(t("apps.portal.codeGrant"), form.bool("bot_require_code_grant", app.botRequireCodeGrant), { form.set("bot_require_code_grant", JsonPrimitive(it)) }, t("apps.portal.codeGrantHint"))
     SectionHeading(t("apps.portal.privileged"))
     ToggleRow(t("apps.portal.presence"), intent("presence", app.intents.presence), { setIntent("presence", it) }, t("apps.portal.presenceHint"))

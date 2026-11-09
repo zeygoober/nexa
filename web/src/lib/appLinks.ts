@@ -139,6 +139,7 @@ export function messageTarget(path: string): { channelId: string; messageId: str
 
 /** How many invite cards one message shows at most, how many note cards, profile cards and pack cards. */
 export const MAX_INVITE_CARDS = 3;
+export const MAX_GIFT_CARDS = 3;
 export const MAX_NOTE_CARDS = 3;
 export const MAX_PROFILE_CARDS = 3;
 export const MAX_PACK_CARDS = 3;
@@ -204,6 +205,30 @@ export function inviteLinksIn(nodes: unknown, here: Here = window.location): Inv
       out.push({ code: link.code, hash: link.hash, url });
     }
     return out.length < MAX_INVITE_CARDS;
+  });
+  return out;
+}
+
+/** A gift link found in a message: its code, and the link as written. */
+export interface GiftLinkRef {
+  code: string;
+  url: string;
+}
+
+const GIFT_PATH = /^\/gift\/([A-Za-z0-9_-]{1,64})$/;
+
+/** The gift links a message has, in order and each once. */
+export function giftLinksIn(nodes: unknown, here: Here = window.location): GiftLinkRef[] {
+  const out: GiftLinkRef[] = [];
+  const seen = new Set<string>();
+  eachLink(nodes, (url) => {
+    const link = appLink(url, here);
+    const code = link?.kind === "route" ? GIFT_PATH.exec(link.path.split(/[?#]/)[0]!)?.[1] : undefined;
+    if (code && !seen.has(code)) {
+      seen.add(code);
+      out.push({ code, url });
+    }
+    return out.length < MAX_GIFT_CARDS;
   });
   return out;
 }

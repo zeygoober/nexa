@@ -18,16 +18,18 @@ import (
 // banAllowed is everything a banned account can reach: who it is, its Nexa
 // cases (a ban can be appealed there), and the way out.
 var banAllowed = map[string]bool{
-	"GET /api/v1/users/@me":             true,
-	"GET /api/v1/users/@me/settings":    true,
-	"GET /api/v1/users/@me/badges":      true,
-	"POST /api/v1/auth/logout":          true,
-	"GET /api/v1/auth/sessions":         true,
-	"DELETE /api/v1/auth/sessions/{id}": true,
-	"GET /api/v1/auth/passkeys":         true,
-	"DELETE /api/v1/auth/passkeys/{id}": true,
-	"POST /api/v1/client-errors":        true,
-	"POST /api/v1/perf":                 true,
+	"GET /api/v1/users/@me":                 true,
+	"GET /api/v1/users/@me/settings":        true,
+	"GET /api/v1/users/@me/badges":          true,
+	"GET /api/v1/users/@me/badges/index":    true,
+	"GET /api/v1/users/@me/badges/progress": true,
+	"POST /api/v1/auth/logout":              true,
+	"GET /api/v1/auth/sessions":             true,
+	"DELETE /api/v1/auth/sessions/{id}":     true,
+	"GET /api/v1/auth/passkeys":             true,
+	"DELETE /api/v1/auth/passkeys/{id}":     true,
+	"POST /api/v1/client-errors":            true,
+	"POST /api/v1/perf":                     true,
 	// a subscription can always be seen and cancelled
 	"GET /api/v1/billing":         true,
 	"POST /api/v1/billing/portal": true,

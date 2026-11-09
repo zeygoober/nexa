@@ -42,6 +42,7 @@ fun actionLabel(action: String): String = if (action.startsWith(OWNER_SERVER)) o
     "expression_takedown" -> t("moderation.action.expressionTakedown")
     "expression_relist" -> t("moderation.action.expressionRelist")
     "discovery_restore" -> t("moderation.action.discoveryRestore")
+    "app_discovery_hide" -> t("moderation.action.appDiscoveryHide")
     "mute" -> t("moderation.action.mute")
     "ban" -> t("moderation.action.ban")
     "delete" -> t("moderation.action.delete")
@@ -56,6 +57,7 @@ fun actionLabel(action: String): String = if (action.startsWith(OWNER_SERVER)) o
     "badge_create" -> t("badges.log.create")
     "badge_edit" -> t("badges.log.edit")
     "badge_delete" -> t("badges.log.delete")
+    "badge_index_order" -> t("badges.log.indexOrder")
     "account_view" -> t("moderation.log.accountView")
     "owner_join" -> t("moderation.log.ownerJoin")
     "server_preview" -> t("moderation.log.serverPreview")
@@ -84,6 +86,7 @@ fun logIcon(action: String): String = if (action == "server_manage" || action.st
     "field_reset" -> "Eraser"
     "server_reset" -> "ServerCog"
     "expression_takedown" -> "Sticker"
+    "app_discovery_hide" -> "EyeOff"
     "mute" -> "MessageSquareOff"
     "ban" -> "Ban"
     "delete", "account_delete_profile" -> "UserX"
@@ -91,7 +94,7 @@ fun logIcon(action: String): String = if (action == "server_manage" || action.st
     "announcement", "announcement_delete" -> "Megaphone"
     "admin_grant", "rank_change" -> "ShieldPlus"
     "admin_revoke" -> "ShieldMinus"
-    "badge_change", "badge_create", "badge_edit", "badge_delete" -> "Award"
+    "badge_change", "badge_create", "badge_edit", "badge_delete", "badge_index_order" -> "Award"
     "game_list", "game_reject", "game_forget" -> "Gamepad2"
     "account_disable" -> "Lock"
     "account_view" -> "Fingerprint"
@@ -103,11 +106,11 @@ fun logIcon(action: String): String = if (action == "server_manage" || action.st
 
 /** Log filters as the panel groups them. */
 val LOG_GROUPS: Map<String, List<String>> = mapOf(
-    "punishments" to listOf("message_remove", "avatar_remove", "field_reset", "server_reset", "expression_takedown", "mute", "ban", "delete", "account_delete_profile"),
+    "punishments" to listOf("message_remove", "avatar_remove", "field_reset", "server_reset", "expression_takedown", "app_discovery_hide", "mute", "ban", "delete", "account_delete_profile"),
     "lifts" to listOf("unmute", "unban", "expression_relist", "discovery_restore"),
     "announcements" to listOf("announcement", "announcement_delete"),
     "access" to listOf("rank_change", "admin_grant", "admin_revoke", "account_disable", "account_enable", "account_view", "owner_join", "server_preview", *OWNER_SERVER_ACTIONS.toTypedArray(), "gift_link_create", "gift_link_revoke"),
-    "badges" to listOf("badge_change", "badge_create", "badge_edit", "badge_delete"),
+    "badges" to listOf("badge_change", "badge_create", "badge_edit", "badge_delete", "badge_index_order"),
     "games" to listOf("game_list", "game_reject", "game_forget"),
 )
 
@@ -151,6 +154,7 @@ fun logDetail(e: ModLogEntry): String {
         "expression_takedown" -> expressionSummary(d)
         "expression_relist" -> d.str("pack_name")?.let { "“$it”" } ?: ""
         "discovery_restore" -> d.str("server_name")?.let { "“$it”" } ?: ""
+        "app_discovery_hide" -> d.str("server_name")?.let { "“$it”" } ?: ""
         "delete" -> (d["counts"] as? JsonObject)?.let { cnt ->
             t("moderation.log.deleteCounts", "messages" to (cnt.str("messages")?.toLongOrNull() ?: 0L), "servers" to (cnt.str("owned_servers")?.toLongOrNull() ?: 0L))
         } ?: ""

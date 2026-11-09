@@ -45,6 +45,9 @@ export interface OwnedApp {
   integration_types: IntegrationTypes;
   redirect_uris: string[];
   bot_public: boolean;
+  /** On Discover, by its developer's choice (and public, and not taken off by staff). */
+  discoverable: boolean;
+  discovery_hidden: boolean;
   bot_require_code_grant: boolean;
   /** The Ed25519 key its interactions endpoint checks requests against, in hex. */
   verify_key: string;
@@ -92,6 +95,7 @@ export interface AppPatch {
   integration_types?: IntegrationTypes;
   redirect_uris?: string[];
   bot_public?: boolean;
+  discoverable?: boolean;
   bot_require_code_grant?: boolean;
   event_webhooks_url?: string;
   event_webhooks_enabled?: boolean;

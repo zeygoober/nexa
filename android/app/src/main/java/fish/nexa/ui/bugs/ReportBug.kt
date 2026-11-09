@@ -92,7 +92,7 @@ private object Limits {
 }
 
 /** What was written before the dialog closed without sending, kept while the app runs. */
-private var draft = "" to ""
+private val drafts = mutableMapOf("bug" to ("" to ""), "suggestion" to ("" to ""))
 
 /** One file on its way into a report: shown from this device while it goes up. */
 private class Pending(val uri: Uri, val name: String, val type: String, val size: Long) {
@@ -200,22 +200,26 @@ private fun contextRows(c: Map<String, String>): List<Pair<String, String>> {
  * plainly that reports are not end-to-end encrypted, and once sent, where the
  * answer will come.
  */
-fun openBugReport(from: String) {
+fun openBugReport(from: String, kind: String = "bug") {
     lateinit var layer: Layer
-    layer = Layer("report-bug", canClose = { true }) { close -> ReportBugSheet(layer, from, close) }
+    layer = Layer("report-bug", canClose = { true }) { close -> ReportBugSheet(layer, from, kind, close) }
     Layers.open(layer)
 }
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-private fun ReportBugSheet(layer: Layer, from: String, close: () -> Unit) {
+private fun ReportBugSheet(layer: Layer, from: String, kind: String, close: () -> Unit) {
     val c = Nx.colors
+    val idea = kind == "suggestion"
+    // the words that differ between the two: a key under bugs.form or suggestions.form
+    fun w(key: String, vararg values: Pair<String, Any>) = t("${if (idea) "suggestions" else "bugs"}.form.$key", *values)
+    val draft = drafts.getValue(kind)
     val scope = androidx.compose.runtime.rememberCoroutineScope()
     var subject by remember { mutableStateOf(draft.first) }
     var description by remember { mutableStateOf(draft.second) }
     val files = remember { mutableStateListOf<Pending>() }
     var fileErrors by remember { mutableStateOf(listOf<String>()) }
-    var withContext by remember { mutableStateOf(true) }
+    var withContext by remember { mutableStateOf(!idea) }
     var showFacts by remember { mutableStateOf(false) }
     var tried by remember { mutableStateOf(false) }
     var sending by remember { mutableStateOf(false) }
@@ -225,7 +229,7 @@ private fun ReportBugSheet(layer: Layer, from: String, close: () -> Unit) {
     val facts = remember(context) { contextRows(context) }
 
     // what is written stays for the next time, until it is sent
-    if (sent == null) draft = subject to description
+    if (sent == null) drafts[kind] = subject to description
     // files still going up stop when the dialog does
     androidx.compose.runtime.DisposableEffect(Unit) { onDispose { files.forEach { if (it.state == "uploading") it.job?.cancel() } } }
 
@@ -301,7 +305,7 @@ private fun ReportBugSheet(layer: Layer, from: String, close: () -> Unit) {
         else -> null
     }
     val descriptionProblem = when {
-        descriptionLen < Limits.DESCRIPTION_MIN -> t("bugs.form.descriptionNeeded")
+        descriptionLen < Limits.DESCRIPTION_MIN -> w("descriptionNeeded")
         descriptionLen > Limits.DESCRIPTION_MAX -> t("bugs.form.descriptionLong")
         else -> null
     }
@@ -324,6 +328,7 @@ private fun ReportBugSheet(layer: Layer, from: String, close: () -> Unit) {
                 val body = buildJsonObject {
                     put("subject", subject.trim())
                     put("description", description.trim())
+                    if (idea) put("kind", "suggestion")
                     if (withContext) put("context", buildJsonObject { for ((k, v) in context) put(k, v) })
                     put("attachments", JsonArray(files.map { f -> buildJsonObject { put("id", f.id); put("name", f.name) } }))
                 }
@@ -331,10 +336,10 @@ private fun ReportBugSheet(layer: Layer, from: String, close: () -> Unit) {
                 val report = res?.get("report") as? JsonObject
                 val id = (report?.get("id") as? JsonPrimitive)?.contentOrNull ?: ""
                 val number = (report?.get("number") as? JsonPrimitive)?.contentOrNull?.toLongOrNull() ?: 0
-                draft = "" to ""
+                drafts[kind] = "" to ""
                 sent = id to number
             } catch (e: Exception) {
-                error = problemText(e, t("bugs.form.sendFailed"))
+                error = problemText(e, w("sendFailed"))
             } finally {
                 sending = false
             }
@@ -343,7 +348,7 @@ private fun ReportBugSheet(layer: Layer, from: String, close: () -> Unit) {
 
     val done = sent
     if (done != null) {
-        Sheet(layer, title = t("bugs.form.title"), footer = {
+        Sheet(layer, title = w("title"), footer = {
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.End)) {
                 NxButton(t("bugs.form.done"), close, kind = ButtonKind.SECONDARY)
                 NxButton(t("bugs.form.openThread"), {
@@ -354,40 +359,40 @@ private fun ReportBugSheet(layer: Layer, from: String, close: () -> Unit) {
         }) {
             Column(Modifier.padding(top = 4.dp, bottom = 8.dp).semantics { liveRegion = LiveRegionMode.Polite }, verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 Box(Modifier.size(44.dp).background(c.positive.copy(alpha = 0.14f), CircleShape), contentAlignment = Alignment.Center) { Icon("CircleCheck", c.positive, size = 24.dp) }
-                Txt(t("bugs.form.sentTitle", "number" to t("bugs.number", "number" to done.second)), style = Nx.type.heading.copy(fontSize = Nx.type.sp(18f)), color = c.textStrong, modifier = Modifier.padding(top = 4.dp))
-                Txt(t("bugs.form.sentText"), style = Nx.type.body.copy(fontSize = Nx.type.sp(14.5f), lineHeight = Nx.type.sp(21.75f)), color = c.textSubtle)
+                Txt(w("sentTitle", "number" to t("bugs.number", "number" to done.second)), style = Nx.type.heading.copy(fontSize = Nx.type.sp(18f)), color = c.textStrong, modifier = Modifier.padding(top = 4.dp))
+                Txt(w("sentText"), style = Nx.type.body.copy(fontSize = Nx.type.sp(14.5f), lineHeight = Nx.type.sp(21.75f)), color = c.textSubtle)
             }
         }
         return
     }
 
-    Sheet(layer, title = t("bugs.form.title"), footer = {
+    Sheet(layer, title = w("title"), footer = {
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.End)) {
             NxButton(t("bugs.form.cancel"), close, kind = ButtonKind.SECONDARY)
-            NxButton(t("bugs.form.send"), { send() }, loading = sending)
+            NxButton(w("send"), { send() }, loading = sending)
         }
     }) {
         Column(verticalArrangement = Arrangement.spacedBy(18.dp)) {
-            Txt(t("bugs.form.lead"), style = Nx.type.body.copy(fontSize = Nx.type.sp(14.5f), lineHeight = Nx.type.sp(21.75f)), color = c.textSubtle, modifier = Modifier.padding(top = 0.dp))
+            Txt(w("lead"), style = Nx.type.body.copy(fontSize = Nx.type.sp(14.5f), lineHeight = Nx.type.sp(21.75f)), color = c.textSubtle, modifier = Modifier.padding(top = 0.dp))
             Field(t("bugs.form.subject"), count = if (subjectLen > Limits.SUBJECT_MAX - 20) Limits.SUBJECT_MAX - subjectLen else null) {
                 NxTextField(
                     subject, { subject = it.take(Limits.SUBJECT_MAX + 20) },
-                    placeholder = t("bugs.form.subjectPlaceholder"),
+                    placeholder = w("subjectPlaceholder"),
                     error = if (tried) subjectProblem else null,
                     capitalize = true, autoCorrect = true,
                 )
             }
-            Field(t("bugs.form.description"), count = if (descriptionLen > Limits.DESCRIPTION_MAX - 300) Limits.DESCRIPTION_MAX - descriptionLen else null) {
+            Field(w("description"), count = if (descriptionLen > Limits.DESCRIPTION_MAX - 300) Limits.DESCRIPTION_MAX - descriptionLen else null) {
                 NxTextField(
                     description, { description = it },
-                    placeholder = t("bugs.form.descriptionPlaceholder"),
+                    placeholder = w("descriptionPlaceholder"),
                     error = if (tried) descriptionProblem else null,
-                    hint = if (tried && descriptionProblem != null) null else t("bugs.form.descriptionHint"),
+                    hint = if (tried && descriptionProblem != null) null else w("descriptionHint"),
                     singleLine = false, minLines = 5, capitalize = true, autoCorrect = true,
                     imeAction = androidx.compose.ui.text.input.ImeAction.Default,
                 )
             }
-            Field(t("bugs.form.files")) {
+            Field(w("files")) {
                 if (files.isEmpty()) {
                     // one wide target before there are any files
                     Row(
@@ -402,7 +407,7 @@ private fun ReportBugSheet(layer: Layer, from: String, close: () -> Unit) {
                     ) {
                         Box(Modifier.size(40.dp).background(c.brand.copy(alpha = 0.14f), CircleShape), contentAlignment = Alignment.Center) { Icon("ImagePlus", c.textBrand, size = 20.dp) }
                         Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                            Txt(t("bugs.form.addFiles"), style = Nx.type.body.copy(fontSize = Nx.type.sp(14.5f), fontWeight = FontWeight(600)), color = c.textStrong)
+                            Txt(w("addFiles"), style = Nx.type.body.copy(fontSize = Nx.type.sp(14.5f), fontWeight = FontWeight(600)), color = c.textStrong)
                             Txt(t("bugs.form.filesLimits"), style = Nx.type.bodySmall.copy(fontSize = Nx.type.sp(13f), lineHeight = Nx.type.sp(18.2f)), color = c.textMuted)
                         }
                     }
@@ -431,7 +436,7 @@ private fun ReportBugSheet(layer: Layer, from: String, close: () -> Unit) {
                 val failedLines = files.filter { it.state == "failed" }.map { "${it.name}: ${it.error ?: t("bugs.form.uploadFailed")}" }
                 for (line in fileErrors + failedLines) ErrorLine(line)
             }
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            if (!idea) Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 ToggleLine(t("bugs.form.includeDetails"), withContext, { withContext = it }, description = t("bugs.form.includeDetailsHint"))
                 if (withContext) {
                     Row(
@@ -459,7 +464,7 @@ private fun ReportBugSheet(layer: Layer, from: String, close: () -> Unit) {
             }
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 Box(Modifier.padding(top = 1.dp)) { Icon("ShieldAlert", c.textMuted, size = 16.dp) }
-                Txt(t("bugs.form.notEncrypted"), style = Nx.type.bodySmall.copy(fontSize = Nx.type.sp(13f), lineHeight = Nx.type.sp(18.85f)), color = c.textMuted)
+                Txt(w("notEncrypted"), style = Nx.type.bodySmall.copy(fontSize = Nx.type.sp(13f), lineHeight = Nx.type.sp(18.85f)), color = c.textMuted)
             }
             error?.let {
                 Txt(

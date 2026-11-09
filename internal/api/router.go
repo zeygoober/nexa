@@ -19,6 +19,7 @@ import (
 	"evilion.xyz/chat/internal/games"
 	"evilion.xyz/chat/internal/gateway"
 	"evilion.xyz/chat/internal/ids"
+	"evilion.xyz/chat/internal/lastfm"
 	"evilion.xyz/chat/internal/media"
 	"evilion.xyz/chat/internal/music"
 	"evilion.xyz/chat/internal/objstore"
@@ -182,6 +183,11 @@ type Server struct {
 	// searches (people, GIFs, games), public lookups by IP (invite previews,
 	// profile links, KDF parameters) and building a server's structure
 	limReact *ratelimit.Limiter
+	// limReactRole: roles gained or lost by reacting, per account. Each change
+	// looks through the server's channels and can ask for a new key.
+	limReactRole *ratelimit.Limiter
+	// limLastfm: Last.fm usernames tried, per account
+	limLastfm *ratelimit.Limiter
 	// limUsername: changes of username, per account. A freed name can be
 	// taken by someone else, so changing has to stay rare.
 	limUsername *ratelimit.Limiter
@@ -223,6 +229,9 @@ type Server struct {
 	// Books searches the books people put on their profile widgets, and keeps
 	// their covers (internal/books); nil turns the search off.
 	Books *books.Client
+	// Lastfm answers what linked accounts are listening to; nil without a key.
+	Lastfm    *lastfm.Client
+	lastfmHub *gateway.Hub
 	// Screen searches the shows and films people put on their profile
 	// widgets, and keeps their posters (internal/screen); off without a TMDB key.
 	Screen *screen.Client
@@ -438,17 +447,19 @@ func NewServer(cfg config.Config, st *store.Store, log *slog.Logger, bc Broadcas
 		// using applications, per account: a command, a click, a form
 		limInteract: ratelimit.New(ratelimit.Every(60, time.Minute), 20, 10*time.Minute),
 		// adding or taking back a reaction, per account
-		limReact:    ratelimit.New(ratelimit.Every(60, time.Minute), 20, 10*time.Minute),
-		limUsername: ratelimit.New(ratelimit.Every(2, time.Hour), 2, 2*time.Hour),
-		limFriend:   ratelimit.New(ratelimit.Every(30, time.Hour), 10, 2*time.Hour),
-		limRelate:   ratelimit.New(ratelimit.Every(60, time.Minute), 30, 10*time.Minute),
-		limDM:       ratelimit.New(ratelimit.Every(60, time.Minute), 20, 10*time.Minute),
-		limJoin:     ratelimit.New(ratelimit.Every(30, time.Hour), 10, 2*time.Hour),
-		limPin:      ratelimit.New(ratelimit.Every(30, time.Minute), 10, 10*time.Minute),
-		limTyping:   ratelimit.New(ratelimit.Every(60, time.Minute), 20, 10*time.Minute),
-		limDelete:   ratelimit.New(ratelimit.Every(120, time.Minute), 30, 10*time.Minute),
-		limBilling:  ratelimit.New(ratelimit.Every(20, time.Hour), 10, 2*time.Hour),
-		limManage:   ratelimit.New(ratelimit.Every(120, time.Minute), 60, 10*time.Minute),
+		limReact:     ratelimit.New(ratelimit.Every(60, time.Minute), 20, 10*time.Minute),
+		limReactRole: ratelimit.New(ratelimit.Every(30, time.Hour), 10, 2*time.Hour),
+		limLastfm:    ratelimit.New(ratelimit.Every(10, time.Hour), 5, 2*time.Hour),
+		limUsername:  ratelimit.New(ratelimit.Every(2, time.Hour), 2, 2*time.Hour),
+		limFriend:    ratelimit.New(ratelimit.Every(30, time.Hour), 10, 2*time.Hour),
+		limRelate:    ratelimit.New(ratelimit.Every(60, time.Minute), 30, 10*time.Minute),
+		limDM:        ratelimit.New(ratelimit.Every(60, time.Minute), 20, 10*time.Minute),
+		limJoin:      ratelimit.New(ratelimit.Every(30, time.Hour), 10, 2*time.Hour),
+		limPin:       ratelimit.New(ratelimit.Every(30, time.Minute), 10, 10*time.Minute),
+		limTyping:    ratelimit.New(ratelimit.Every(60, time.Minute), 20, 10*time.Minute),
+		limDelete:    ratelimit.New(ratelimit.Every(120, time.Minute), 30, 10*time.Minute),
+		limBilling:   ratelimit.New(ratelimit.Every(20, time.Hour), 10, 2*time.Hour),
+		limManage:    ratelimit.New(ratelimit.Every(120, time.Minute), 60, 10*time.Minute),
 		// messages and edits per account across every channel, on top of
 		// limMsg's five every five seconds in one channel
 		limMsgAll: ratelimit.New(ratelimit.Every(120, time.Minute), 30, 10*time.Minute),
@@ -486,7 +497,7 @@ func (s *Server) limiters() map[string]*ratelimit.Limiter {
 		"automod": s.limAutomod, "publish": s.limPublish, "thread": s.limThread, "discover": s.limDiscover,
 		"note": s.limNote, "note-save": s.limNoteSave, "note-update": s.limNoteUpdate, "note-invite": s.limNoteInvite, "note-link": s.limNoteLink, "note-presence": s.limNotePresence,
 		"apps": s.limApps, "interact": s.limInteract,
-		"react": s.limReact, "username": s.limUsername, "friend": s.limFriend, "relate": s.limRelate, "dm": s.limDM, "join": s.limJoin, "pin": s.limPin, "typing": s.limTyping, "delete": s.limDelete, "billing": s.limBilling, "manage": s.limManage, "message-all": s.limMsgAll, "forward": s.limForward, "search": s.limSearch, "lookup": s.limLookup, "build": s.limBuild, "game-share": s.limGameShare, "game-lists": s.limGameLists,
+		"react": s.limReact, "react-role": s.limReactRole, "lastfm": s.limLastfm, "username": s.limUsername, "friend": s.limFriend, "relate": s.limRelate, "dm": s.limDM, "join": s.limJoin, "pin": s.limPin, "typing": s.limTyping, "delete": s.limDelete, "billing": s.limBilling, "manage": s.limManage, "message-all": s.limMsgAll, "forward": s.limForward, "search": s.limSearch, "lookup": s.limLookup, "build": s.limBuild, "game-share": s.limGameShare, "game-lists": s.limGameLists,
 		"lookup-captcha": s.stepLookup.solves, "build-captcha": s.stepBuild.solves,
 	}
 	for name, l := range s.botLim.all() {

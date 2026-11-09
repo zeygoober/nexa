@@ -1,7 +1,7 @@
 import { useSettings } from "@/stores/settings";
 import { api } from "./client";
 import type { PurgeCounts } from "./moderation";
-import type { Badge, KdfParamsJson, MeUser, PublicUser, SettingsBlob, Snowflake } from "./types";
+import type { Badge, KdfParamsJson, MeUser, PublicUser, SettingsBlob, Snowflake, BadgeIndex } from "./types";
 import type { TypingStyle } from "@/lib/typingStyle";
 import type { NameStyle } from "@/lib/nameStyle";
 import type { FoundBook, FoundMusic, FoundScreen, MusicWidgetType } from "@/lib/widgets";
@@ -101,6 +101,10 @@ export const users = {
   shareGame(body: { process: string; os: string; name: string; game_id?: string }): Promise<void> {
     return api.request("POST", "/games/shared", body);
   },
+  /** The record behind the Regular and Open Mic badges, for its data export. */
+  badgeProgress(): Promise<{ last_day: number; streak: number; best_streak: number; call_seconds: number }> {
+    return api.request("GET", "/users/@me/badges/progress");
+  },
   /** What this account has shared that staff have not reviewed yet, for its data export. */
   mySharedGames(): Promise<{ games: { process: string; os: string; name: string; game_id?: string; shared_at: number }[] }> {
     return api.request("GET", "/games/shared");
@@ -124,6 +128,10 @@ export const users = {
   /** Every badge this account holds, in its order, the hidden ones marked. */
   myBadges(): Promise<{ badges: Badge[] }> {
     return api.request("GET", "/users/@me/badges");
+  },
+  /** Every badge there is to collect, in a fixed order; one not collected says only what its silhouette is. */
+  badgeIndex(): Promise<BadgeIndex> {
+    return api.request("GET", "/users/@me/badges/index");
   },
   /** Keeps the order of this account's badges and which it hides (never its staff rank). */
   setBadges(order: string[], hidden: string[]): Promise<{ badges: Badge[] }> {

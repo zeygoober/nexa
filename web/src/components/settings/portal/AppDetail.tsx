@@ -355,6 +355,13 @@ function BotTab({ app, draft, setApp, setBot }: TabProps & { setBot: (patch: Dra
       )}
       <h3 className={st.h5}>{t("apps.portal.whoCanAdd")}</h3>
       <Toggle label={t("apps.portal.public")} description={t("apps.portal.publicHint")} checked={v.bot_public ?? app.bot_public} onChange={(on) => setApp({ bot_public: on })} />
+      <Toggle
+        label={t("apps.portal.discovery")}
+        description={app.discovery_hidden ? t("apps.portal.discoveryHidden") : (v.bot_public ?? app.bot_public) ? t("apps.portal.discoveryHint") : t("apps.portal.discoveryNeedsPublic")}
+        checked={(v.discoverable ?? app.discoverable) && (v.bot_public ?? app.bot_public) && !app.discovery_hidden}
+        disabled={app.discovery_hidden || !(v.bot_public ?? app.bot_public)}
+        onChange={(on) => setApp({ discoverable: on })}
+      />
       <Toggle label={t("apps.portal.codeGrant")} description={t("apps.portal.codeGrantHint")} checked={v.bot_require_code_grant ?? app.bot_require_code_grant} onChange={(on) => setApp({ bot_require_code_grant: on })} />
       <h3 className={st.h5}>{t("apps.portal.privileged")}</h3>
       <Toggle label={t("apps.portal.presence")} description={t("apps.portal.presenceHint")} checked={intents.presence} onChange={(on) => setApp({ intents: { ...v.intents, presence: on } })} />

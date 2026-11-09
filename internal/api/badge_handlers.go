@@ -22,6 +22,8 @@ import (
 // profile's answer (handleUserProfile, handleSharedProfile).
 func (s *Server) badgeRoutes(mux *http.ServeMux) {
 	mux.Handle("GET /api/v1/users/@me/badges", s.authed(s.handleMyBadges))
+	mux.Handle("GET /api/v1/users/@me/badges/index", s.authed(s.handleMyBadgeIndex))
+	mux.Handle("GET /api/v1/users/@me/badges/progress", s.authed(s.handleMyBadgeProgress))
 	mux.Handle("PUT /api/v1/users/@me/badges", s.authed(s.handleMyBadgesPut))
 	mux.Handle("GET /api/v1/moderation/badges", s.staff(rankAdmin, s.handleModBadges))
 	mux.Handle("POST /api/v1/moderation/badges", s.staff(rankAdmin, s.handleModBadgeCreate))
@@ -30,6 +32,8 @@ func (s *Server) badgeRoutes(mux *http.ServeMux) {
 	mux.Handle("PUT /api/v1/moderation/badges/{badge}/holders/{uid}", s.staff(rankAdmin, s.handleModBadgeHolderPut))
 	mux.Handle("PATCH /api/v1/moderation/badges/{id}", s.staff(rankAdmin, s.handleModBadgeEdit))
 	mux.Handle("DELETE /api/v1/moderation/badges/{id}", s.staff(rankAdmin, s.handleModBadgeDelete))
+	mux.Handle("GET /api/v1/moderation/badges/index-order", s.staff(rankOwner, s.handleBadgeArrangement))
+	mux.Handle("PUT /api/v1/moderation/badges/index-order", s.staff(rankOwner, s.handleBadgeOrderPut))
 	mux.Handle("GET /api/v1/moderation/users/{id}/badges", s.staff(rankAdmin, s.handleModUserBadges))
 	mux.Handle("PUT /api/v1/moderation/users/{id}/badges", s.staff(rankAdmin, s.handleModUserBadgesPut))
 }
@@ -52,6 +56,56 @@ func (s *Server) handleMyBadges(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	WriteJSON(w, http.StatusOK, map[string]any{"badges": list})
+}
+
+func (s *Server) handleMyBadgeIndex(w http.ResponseWriter, r *http.Request) {
+	index, err := s.Store.MyBadgeIndex(r.Context(), auth.UserFrom(r.Context()))
+	if err != nil {
+		WriteError(w, err)
+		return
+	}
+	WriteJSON(w, http.StatusOK, index)
+}
+
+// handleBadgeArrangement gives the owner every badge of the index to arrange.
+func (s *Server) handleBadgeArrangement(w http.ResponseWriter, r *http.Request) {
+	a, err := s.Store.BadgeArrangement(r.Context())
+	if err != nil {
+		WriteError(w, err)
+		return
+	}
+	WriteJSON(w, http.StatusOK, a)
+}
+
+// handleBadgeOrderPut saves the order everyone's index follows; an empty list goes back to A to Z.
+func (s *Server) handleBadgeOrderPut(w http.ResponseWriter, r *http.Request) {
+	var req struct {
+		Order []string `json:"order"`
+	}
+	if err := ReadJSON(w, r, &req, 64<<10); err != nil {
+		WriteError(w, err)
+		return
+	}
+	if err := s.Store.SetBadgeIndexOrder(r.Context(), req.Order); err != nil {
+		if errors.Is(err, store.ErrBadgeOrder) {
+			WriteError(w, E(http.StatusBadRequest, "badge_order_invalid", "That order names a badge that does not exist."))
+			return
+		}
+		WriteError(w, err)
+		return
+	}
+	s.logBadge(r, store.LogBadgeIndexOrder, nil, map[string]any{"count": len(req.Order)})
+	WriteJSON(w, http.StatusOK, map[string]bool{"ok": true})
+}
+
+// handleMyBadgeProgress is what the data export reads: the record behind Regular and Open Mic.
+func (s *Server) handleMyBadgeProgress(w http.ResponseWriter, r *http.Request) {
+	p, err := s.Store.GetBadgeProgress(r.Context(), auth.UserFrom(r.Context()).ID)
+	if err != nil {
+		WriteError(w, err)
+		return
+	}
+	WriteJSON(w, http.StatusOK, p)
 }
 
 func (s *Server) handleMyBadgesPut(w http.ResponseWriter, r *http.Request) {

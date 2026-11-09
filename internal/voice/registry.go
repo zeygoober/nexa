@@ -190,6 +190,22 @@ func (r *Registry) Count(ch ids.ID) int {
 	return len(r.byChannel[ch])
 }
 
+// InCallTogether lists everyone in a call that has someone else in it too.
+func (r *Registry) InCallTogether() []ids.ID {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+	var out []ids.ID
+	for _, people := range r.byChannel {
+		if len(people) < 2 {
+			continue
+		}
+		for uid := range people {
+			out = append(out, uid)
+		}
+	}
+	return out
+}
+
 // MemberCount is Count without the guests: whether anyone with an account is in the call.
 func (r *Registry) MemberCount(ch ids.ID) int {
 	r.mu.RLock()

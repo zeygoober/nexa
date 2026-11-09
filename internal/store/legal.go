@@ -90,9 +90,12 @@ type AccountRecord struct {
 	BugReports     []LegalBugReport // bug_reports, user_id = them, with bug_attachments
 	BugThreadLines int              // bug_messages in their reports
 
-	SharedGames []SharedGame // game_submissions, user_id = them
+	SharedGames   []SharedGame  // game_submissions, user_id = them
+	BadgeProgress BadgeProgress // badge_progress, user_id = them
 
 	Discord *LegalDiscord // discord_links, user_id = them
+
+	Lastfm *LastfmLink
 
 	CallDays     []CallUsageDay // call_usage, user_id = them, newest first
 	CallSessions int            // realtime_sessions, user_id = them
@@ -431,6 +434,7 @@ func (s *Store) AccountRecord(ctx context.Context, id ids.ID) (*AccountRecord, e
 		(*Store).legalCrashes,
 		(*Store).legalBugReports,
 		(*Store).legalDiscord,
+		(*Store).legalLastfm,
 		(*Store).legalCalls,
 	} {
 		if err := step(s, ctx, rec, uid); err != nil {
@@ -450,6 +454,18 @@ func (s *Store) legalCalls(ctx context.Context, rec *AccountRecord, uid int64) e
 	}
 	rec.RelayCreds, err = s.TurnCredentialCount(ctx, ids.ID(uid))
 	return err
+}
+
+func (s *Store) legalLastfm(ctx context.Context, rec *AccountRecord, uid int64) error {
+	l, err := s.LastfmLinkOf(ctx, ids.ID(uid))
+	if errors.Is(err, ErrNotFound) {
+		return nil
+	}
+	if err != nil {
+		return err
+	}
+	rec.Lastfm = l
+	return nil
 }
 
 func (s *Store) legalDiscord(ctx context.Context, rec *AccountRecord, uid int64) error {
@@ -1010,6 +1026,11 @@ func (s *Store) legalBugReports(ctx context.Context, rec *AccountRecord, uid int
 		return err
 	}
 	rec.SharedGames = shared
+	progress, err := s.GetBadgeProgress(ctx, ids.ID(uid))
+	if err != nil {
+		return err
+	}
+	rec.BadgeProgress = progress
 	rows, err := s.db.R.QueryContext(ctx, `SELECT id, number, subject, status, attachment_count, created_at FROM bug_reports WHERE user_id = ? ORDER BY id DESC LIMIT ?`, uid, LegalListCap)
 	if err != nil {
 		return err

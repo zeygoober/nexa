@@ -168,6 +168,11 @@ export const messageMenu = defineMenu<MessageMenuCtx>("message", [
       disabled: !(msg.payload?.t || msg.payload?.fwd?.comment),
       onSelect: () => void copyText(humanizeMentions([msg.payload?.fwd?.comment, msg.payload?.t].filter(Boolean).join("\n"), useUsers.getState().byId, knownNames()), t("clipboard.textCopied")),
     })),
+    button("reactionRoles", ({ msg }) => {
+      const ch = useChannels.getState().byId[msg.channel_id];
+      if (!ch?.server_id || msg.id.startsWith("tmp") || !canI(useServers.getState().byId[ch.server_id], P.MANAGE_ROLES)) return null;
+      return { id: "reactionRoles", label: t("chat.reactionRoles.title"), onSelect: () => useUI.getState().openModal("reactionRoles", { channelId: msg.channel_id, messageId: msg.id }) };
+    }),
     button("pinMessage", ({ msg }) => {
       if (!canPin(msg)) return null;
       const pinned = (msg.flags & MSG_FLAG_PINNED) !== 0;

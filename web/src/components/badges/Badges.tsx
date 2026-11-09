@@ -1,20 +1,21 @@
-import { lazy, Suspense, useId } from "react";
+import { lazy, Suspense, useId, type CSSProperties } from "react";
 import type { Badge, PublicUser } from "@/api/types";
+import { Modal } from "@/components/common/Modal";
 import { Tooltip } from "@/components/common/Tooltip";
-import { badgeLook, fallbackBadges, hexColour, type BadgeLook } from "@/lib/badges";
+import { t } from "@/i18n";
+import { useUI } from "@/stores/ui";
+import { badgeLook, badgeTones, fallbackBadges, type BadgeLook } from "@/lib/badges";
 import s from "./Badges.module.css";
 
 const EventIcon = lazy(() => import("./EventIcon"));
 
 type Who = Pick<PublicUser, "id" | "flags" | "plan">;
 
-/** A colour staff chose, pulled towards the text colour so it reads on this theme (--badge-ink-mix). */
-const ink = (rgb: number) => `color-mix(in srgb, ${hexColour(rgb)}, var(--text-strong) var(--badge-ink-mix))`;
-
 /**
- * An event badge staff made: just its icon, in its colour (or a gradient to
- * its second), or its uploaded picture whole. Drawn at any [size], so the
- * Badges tab's preview is the badge itself.
+ * An event badge staff made, drawn as the badge art is: the icon in a short
+ * gradient at the art's luminance with a tint inside its shapes, or its
+ * uploaded picture whole. Drawn at any [size], so the Badges tab's preview is
+ * the badge itself.
  */
 export function BadgeMark({ look, size = 20 }: { look: BadgeLook; size?: number }) {
   const id = useId().replace(/:/g, "");
@@ -25,10 +26,9 @@ export function BadgeMark({ look, size = 20 }: { look: BadgeLook; size?: number 
       </span>
     );
   }
-  const from = look.color !== undefined ? ink(look.color) : "var(--brand)";
-  const to = look.color2 !== undefined ? ink(look.color2) : null;
+  const [from, to] = look.color !== undefined ? badgeTones(look.color, look.color2) : ["var(--brand)", null];
   return (
-    <span className={s.mark} style={{ width: size, height: size }}>
+    <span className={s.mark} style={{ width: size, height: size, "--badge-tint": from } as CSSProperties} data-badge-icon={look.iconName}>
       {to && (
         <svg className={s.defs} aria-hidden="true">
           {/* in the icon's own 24 box: a bounding box would lose a straight line's gradient */}
@@ -92,17 +92,47 @@ export function BadgePill({ badge, user, still, named, size = 20 }: { badge: Bad
   return still ? mark : <Tooltip text={text} side="top" card={<BadgeCard look={look} />}>{mark}</Tooltip>;
 }
 
+/** How many badges a profile shows before the rest go behind +x. */
+const SHOWN_BADGES = 5;
+
+/** Every badge a profile has, each with its name and meaning: what +x opens. */
+export function AllBadges({ user, list, onClose }: { user: Who; list: Badge[]; onClose: () => void }) {
+  return (
+    <Modal open onClose={onClose} title={t("badges.all")} width={400}>
+      <ul className={s.allList} data-testid="all-badges">
+        {list.map((b) => {
+          const look = badgeLook(b, user)!;
+          return (
+            <li key={b.id} className={s.allRow}>
+              <BadgePill badge={b} user={user} still size={36} />
+              <span className={s.allText}>
+                <span className={s.allName} dir="auto">{look.label}</span>
+                {look.tip ? <span className={s.allTip} dir="auto">{look.tip}</span> : null}
+              </span>
+            </li>
+          );
+        })}
+      </ul>
+    </Modal>
+  );
+}
+
 /**
  * A profile's badges in its holder's order, all in one pill that sits on the
- * username line beside the pronouns. Until the list arrives, the staff rank
- * and plan come from the account itself.
+ * username line beside the pronouns: the first five, then +x for the rest
+ * ([onMore] says it was pressed, so a popout can get out of the box's way).
+ * Until the list arrives, the staff rank and plan come from the account itself.
  */
-export function BadgeRow({ user, badges, className }: { user: Who; badges: Badge[] | undefined; className?: string }) {
+export function BadgeRow({ user, badges, className, onMore }: { user: Who; badges: Badge[] | undefined; className?: string; onMore?: (() => void) | undefined }) {
   const list = (badges ?? fallbackBadges(user)).filter((b) => !b.hidden && badgeLook(b, user));
   if (!list.length) return null;
+  const rest = list.length - SHOWN_BADGES;
   return (
     <span className={[s.pill, className].filter(Boolean).join(" ")} data-testid="profile-badges">
-      {list.map((b) => <BadgePill key={b.id} badge={b} user={user} size={22} />)}
+      {list.slice(0, SHOWN_BADGES).map((b) => <BadgePill key={b.id} badge={b} user={user} size={22} />)}
+      {rest > 0 ? (
+        <button type="button" className={s.more} aria-label={t("badges.showAll", { count: list.length })} onClick={() => { onMore?.(); useUI.getState().openModal("allBadges", { user, list }); }} data-testid="profile-badges-more">+{rest}</button>
+      ) : null}
     </span>
   );
 }

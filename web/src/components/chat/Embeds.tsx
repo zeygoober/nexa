@@ -387,8 +387,8 @@ function LinkEmbed({ e }: { e: UnfurlResult }) {
 /** Whether a preview is of an invite or profile link the app draws its own card for. */
 function ownCard(e: UnfurlResult): boolean {
   if (!e || typeof e.url !== "string") return false;
-  const kind = appLink(e.url)?.kind;
-  return kind === "invite" || kind === "profile";
+  const link = appLink(e.url);
+  return link?.kind === "invite" || link?.kind === "profile" || (link?.kind === "route" && link.path.startsWith("/gift/"));
 }
 
 /** One preview, drawn the way its kind is, or null when there is nothing to draw. */

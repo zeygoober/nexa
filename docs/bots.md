@@ -35,6 +35,14 @@ People see what an app asks for, and what it can read, before they add it.
 They can take it back at any time: from a server in Server Settings,
 Integrations, and from their account in Settings, Authorized Apps.
 
+### List It on Discover
+
+On the Bot tab, turn on Anyone can add this app, then Show on Discover. Your bot appears
+in Discover's Bots part straight away, with its name, description and tags,
+and anyone can add it from there. Its card says so if it can read every
+message. Making the app private takes it off Discover, and staff can remove a
+listing that breaks the rules.
+
 ## Point Your Library at Nexa
 
 | What | Address |

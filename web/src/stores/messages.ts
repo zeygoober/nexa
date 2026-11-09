@@ -1,7 +1,7 @@
 import { create } from "zustand";
 import { fetchMissingUsers } from "./users";
 import { messages as messagesApi } from "@/api/messages";
-import type { Message, PollTally, ReactionSummary } from "@/api/types";
+import type { Message, PollTally, ReactionRole, ReactionSummary } from "@/api/types";
 import type { MessagePayload } from "@/crypto/message";
 import { decryptForStore, type DecryptedMessage, type DecryptError } from "@/lib/decrypt";
 import { stage as perfStage } from "@/lib/perfReports";
@@ -128,6 +128,7 @@ interface MessagesState {
   remove: (channelId: string, id: string) => void;
   removeMany: (channelId: string, ids: string[]) => void;
   setReaction: (channelId: string, messageId: string, emoji: string, userId: string, add: boolean, isMe: boolean) => void;
+  setReactionRoles: (channelId: string, messageId: string, list: ReactionRole[]) => void;
   /** Takes a message's reactions away: every one, or every one of one emoji. */
   clearReactions: (channelId: string, messageId: string, emoji?: string) => void;
   setDecryption: (channelId: string, id: string, payload: MessagePayload | undefined, error: DecryptError | undefined) => void;
@@ -258,7 +259,7 @@ function arrived(c: ChannelMessages, msgs: DecryptedMessage[]): ChannelMessages 
 async function refreshed(prev: DecryptedMessage, m: Message): Promise<DecryptedMessage> {
   // a webhook's message can change without an edit: its link previews come in after it
   if (prev.edited_at !== m.edited_at || JSON.stringify(prev.ciphertext) !== JSON.stringify(m.ciphertext) || JSON.stringify(prev.webhook) !== JSON.stringify(m.webhook)) return decryptForStore(m);
-  if (prev.flags === m.flags && JSON.stringify(prev.reactions) === JSON.stringify(m.reactions) && JSON.stringify(prev.attachments) === JSON.stringify(m.attachments) && JSON.stringify(prev.poll_results) === JSON.stringify(m.poll_results)) return prev;
+  if (prev.flags === m.flags && JSON.stringify(prev.reactions) === JSON.stringify(m.reactions) && JSON.stringify(prev.reaction_roles) === JSON.stringify(m.reaction_roles) && JSON.stringify(prev.attachments) === JSON.stringify(m.attachments) && JSON.stringify(prev.poll_results) === JSON.stringify(m.poll_results)) return prev;
   const next: DecryptedMessage = { ...m };
   if (prev.payload !== undefined) next.payload = prev.payload;
   if (prev.decryptError !== undefined) next.decryptError = prev.decryptError;
@@ -327,7 +328,7 @@ export const useMessages = create<MessagesState>()((set, get) => ({
         // an app's answer) comes without it, and thread events keep it current.
         // A poll's counts come from the copy, which was counted for nobody, so
         // which answers are this account's comes from the one already here.
-        const next: DecryptedMessage = { ...msg, reactions: prev.reactions, thread: msg.thread ?? prev.thread };
+        const next: DecryptedMessage = { ...msg, reactions: prev.reactions, reaction_roles: prev.reaction_roles, thread: msg.thread ?? prev.thread };
         if (msg.poll_results && prev.poll_results) {
           const mine = new Set(prev.poll_results.answer_counts.filter((a) => a.me_voted).map((a) => a.id));
           next.poll_results = { ...msg.poll_results, answer_counts: msg.poll_results.answer_counts.map((a) => ({ ...a, me_voted: mine.has(a.id) })) };
@@ -357,6 +358,13 @@ export const useMessages = create<MessagesState>()((set, get) => ({
         if (!m) return c;
         const reactions = emoji === undefined ? [] : m.reactions.filter((r) => r.emoji !== emoji);
         return { ...c, byId: { ...c.byId, [messageId]: { ...m, reactions } } };
+      }),
+    ),
+  setReactionRoles: (channelId, messageId, list) =>
+    set((s) =>
+      withChannel(s, channelId, (c) => {
+        const m = c.byId[messageId];
+        return m ? { ...c, byId: { ...c.byId, [messageId]: { ...m, reaction_roles: list } } } : c;
       }),
     ),
   setReaction: (channelId, messageId, emoji, _userId, add, isMe) =>

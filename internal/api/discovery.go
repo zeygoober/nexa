@@ -37,6 +37,7 @@ var discoveryTagChars = regexp.MustCompile(`^[\p{L}\p{N}][\p{L}\p{N} \-]*$`)
 func (s *Server) discoveryRoutes(mux *http.ServeMux) {
 	mux.Handle("GET /api/v1/discovery", s.authed(s.handleDiscover))
 	mux.Handle("GET /api/v1/discovery/categories", s.authed(s.handleDiscoveryCategories))
+	mux.Handle("GET /api/v1/discovery/bots", s.userLimited(s.limSearch, s.handleDiscoverBots))
 	mux.Handle("GET /api/v1/discovery/{id}", s.authed(s.handleDiscoveryServer))
 	mux.Handle("POST /api/v1/discovery/{id}/join", s.userLimited(s.limJoin, s.handleDiscoveryJoin))
 }
@@ -193,6 +194,32 @@ func (s *Server) handleDiscover(w http.ResponseWriter, r *http.Request) {
 	resp := map[string]any{"servers": out, "has_more": more}
 	if more {
 		resp["next_offset"] = dq.Offset + want
+	}
+	WriteJSON(w, http.StatusOK, resp)
+}
+
+// handleDiscoverBots lists the public apps their developers put on Discovery.
+// Adding one goes through the usual consent page. ReadsAll is on the card
+// because that is what someone adding it most needs to know.
+func (s *Server) handleDiscoverBots(w http.ResponseWriter, r *http.Request) {
+	q := r.URL.Query()
+	limit, _ := strconv.Atoi(q.Get("limit"))
+	if limit <= 0 || limit > 48 {
+		limit = 24
+	}
+	offset, _ := strconv.Atoi(q.Get("offset"))
+	list, err := s.Store.DiscoverApps(r.Context(), store.AppDiscoveryQuery{Query: q.Get("q"), Sort: q.Get("sort"), Offset: offset, Limit: limit + 1, Now: time.Now().UnixMilli()})
+	if err != nil {
+		WriteError(w, err)
+		return
+	}
+	more := len(list) > limit
+	if more {
+		list = list[:limit]
+	}
+	resp := map[string]any{"bots": list, "has_more": more}
+	if more {
+		resp["next_offset"] = offset + limit
 	}
 	WriteJSON(w, http.StatusOK, resp)
 }

@@ -626,3 +626,62 @@ func TestAppPicturesSaveAndClear(t *testing.T) {
 		}
 	}
 }
+
+// Discover lists a bot only by its developer's choice, only while it is public,
+// and a listing is staff's to take down, not its developer's to keep up.
+func TestBotDiscoveryListing(t *testing.T) {
+	_, ts := newTestServer(t)
+	owner, _ := register(t, ts, "firstaccount")
+	dev, _ := register(t, ts, "devperson")
+	viewer, _ := register(t, ts, "viewer")
+	made, _ := makeApp(t, ts, dev, "Lister")
+	app := made["id"].(string)
+	listed := func() int {
+		_, body := do(t, ts, "GET", "/api/v1/discovery/bots", viewer, nil)
+		return len(body["bots"].([]any))
+	}
+	patch := func(tok string, b map[string]any) int {
+		res, _ := do(t, ts, "PATCH", "/api/v1/applications/"+app, tok, b)
+		return res.StatusCode
+	}
+	hide := func(tok string, hidden bool) int {
+		res, _ := do(t, ts, "PUT", "/api/v1/moderation/apps/"+app+"/discovery", tok, map[string]any{"hidden": hidden})
+		return res.StatusCode
+	}
+	if code := patch(dev, map[string]any{"bot_public": false}); code != 200 {
+		t.Fatalf("going private: %d", code)
+	}
+	if code := patch(dev, map[string]any{"discoverable": true}); code == 200 {
+		t.Fatal("a private app was listed")
+	}
+	if n := listed(); n != 0 {
+		t.Fatalf("listed before its developer chose to: %d", n)
+	}
+	if code := patch(dev, map[string]any{"bot_public": true, "discoverable": true}); code != 200 {
+		t.Fatalf("listing: %d", code)
+	}
+	if n := listed(); n != 1 {
+		t.Fatalf("not listed: %d", n)
+	}
+	if code := hide(dev, true); code != 403 {
+		t.Fatalf("someone without a rank reached the takedown: %d", code)
+	}
+	if code := hide(owner, true); code/100 != 2 {
+		t.Fatalf("takedown: %d", code)
+	}
+	if n := listed(); n != 0 {
+		t.Fatalf("still listed after the takedown: %d", n)
+	}
+	if code := patch(dev, map[string]any{"discoverable": true}); code/100 == 2 && listed() != 0 {
+		t.Fatal("its developer brought it back")
+	}
+	if code := hide(owner, false); code/100 != 2 {
+		t.Fatalf("allowing it again: %d", code)
+	}
+	if code := patch(dev, map[string]any{"bot_public": false}); code != 200 {
+		t.Fatalf("going private: %d", code)
+	}
+	if n := listed(); n != 0 {
+		t.Fatalf("a private app stayed listed: %d", n)
+	}
+}

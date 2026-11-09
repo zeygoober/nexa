@@ -94,6 +94,7 @@ const (
 	EvMessageDelete     = "message_delete"
 	EvMessageDeleteBulk = "message_delete_bulk"
 	EvReactionAdd       = "reaction_add"
+	EvReactionRoles     = "reaction_roles_update"
 	EvReactionRemove    = "reaction_remove"
 	EvTyping            = "typing"
 	EvChannelCreate     = "channel_create"

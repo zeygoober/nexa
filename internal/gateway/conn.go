@@ -728,6 +728,7 @@ func (c *conn) handle(ctx context.Context, f ClientFrame) {
 	case OpHeartbeat:
 		c.beat.Store(time.Now().UnixMilli())
 		c.enqueue(ServerFrame{T: EvHeartbeatAck})
+		h.markActiveDay(ctx, c)
 	case OpPresence:
 		c.beat.Store(time.Now().UnixMilli())
 		c.queuePresence(ctx, f.D)
@@ -738,7 +739,11 @@ func (c *conn) handle(ctx context.Context, f ClientFrame) {
 			return
 		}
 		before := h.allAway(c.userID)
-		if c.away.Swap(d.Away) == d.Away || h.allAway(c.userID) == before {
+		was := c.away.Swap(d.Away)
+		if !d.Away {
+			h.markActiveDay(ctx, c) // back at the device, however briefly
+		}
+		if was == d.Away || h.allAway(c.userID) == before {
 			return
 		}
 		// only an account showing as online goes idle by itself
@@ -752,6 +757,7 @@ func (c *conn) handle(ctx context.Context, f ClientFrame) {
 			return
 		}
 		c.setRest(ctx, d.Level)
+		h.markActiveDay(ctx, c)
 	case OpActivities:
 		c.beat.Store(time.Now().UnixMilli())
 		var d activitiesData

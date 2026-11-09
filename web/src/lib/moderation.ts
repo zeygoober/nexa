@@ -3,7 +3,7 @@
  * the ban screen and the staff's panel all describe the same action the same
  * way — in the reader's language.
  */
-import { Award, Ban, Eraser, Gamepad2, ImageOff, KeyRound, Lock, LockOpen, Megaphone, MessageSquareOff, ServerCog, Settings2, ShieldMinus, ShieldPlus, Sticker, UserX, type LucideIcon } from "lucide-react";
+import { Award, Ban, Eraser, EyeOff, Gamepad2, ImageOff, KeyRound, Lock, LockOpen, Megaphone, MessageSquareOff, ServerCog, Settings2, ShieldMinus, ShieldPlus, Sticker, UserX, type LucideIcon } from "lucide-react";
 import type { CaseDetails, CaseMessage, MemberCase, ModAction, ModLogEntry, PackField, People, Person, ResetField, ServerField } from "@/api/moderation";
 import type { BugKind, BugStatus } from "@/api/bugs";
 import { bugStatusLabel } from "@/lib/bugs";
@@ -68,6 +68,8 @@ export function actionIcon(action: string): LucideIcon {
     case "unmute":
     case "unban":
     case "expression_relist":
+    case "app_discovery_hide":
+      return EyeOff;
     case "discovery_restore":
       return LockOpen;
     case "announcement":
@@ -82,6 +84,7 @@ export function actionIcon(action: string): LucideIcon {
     case "badge_create":
     case "badge_edit":
     case "badge_delete":
+    case "badge_index_order":
       return Award;
     case "game_list":
     case "game_reject":
@@ -114,6 +117,8 @@ export function actionLabel(action: string): string {
       return t("moderation.action.expressionTakedown");
     case "expression_relist":
       return t("moderation.action.expressionRelist");
+    case "app_discovery_hide":
+      return t("moderation.action.appDiscoveryHide");
     case "discovery_restore":
       return t("moderation.action.discoveryRestore");
     case "mute":
@@ -154,6 +159,8 @@ export function actionLabel(action: string): string {
       return t("badges.log.edit");
     case "badge_delete":
       return t("badges.log.delete");
+    case "badge_index_order":
+      return t("badges.log.indexOrder");
     case "game_list":
       return t("moderation.games.logList");
     case "game_reject":
@@ -431,6 +438,7 @@ export function logDetail(e: ModLogEntry): string {
       const name = (e.details as { pack_name?: string }).pack_name;
       return name ? `“${name}”` : "";
     }
+    case "app_discovery_hide":
     case "discovery_restore":
     case "owner_join":
     case "server_preview":
@@ -490,11 +498,11 @@ export function expressionSummary(d: CaseDetails): string {
 
 /** Log filters as the panel groups them. */
 export const LOG_GROUPS: Record<string, string[]> = {
-  punishments: ["message_remove", "avatar_remove", "field_reset", "server_reset", "expression_takedown", "mute", "ban", "delete", "account_delete_profile"],
+  punishments: ["message_remove", "avatar_remove", "field_reset", "server_reset", "expression_takedown", "app_discovery_hide", "mute", "ban", "delete", "account_delete_profile"],
   lifts: ["unmute", "unban", "expression_relist", "discovery_restore"],
   announcements: ["announcement", "announcement_delete"],
   access: ["rank_change", "admin_grant", "admin_revoke", "account_disable", "account_enable", "account_view", "owner_join", "server_preview", ...OWNER_SERVER_ACTIONS, "gift_link_create", "gift_link_revoke"],
-  badges: ["badge_change", "badge_create", "badge_edit", "badge_delete"],
+  badges: ["badge_change", "badge_create", "badge_edit", "badge_delete", "badge_index_order"],
   games: ["game_list", "game_reject", "game_forget"],
 };
 

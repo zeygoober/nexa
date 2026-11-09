@@ -122,14 +122,15 @@ fun ReactionsRow(cm: ChatMessage, ctx: ListCtx) {
         for (r in reactions) androidx.compose.runtime.key(r.emoji) {
             val fresh = remember { (r.emoji !in seen).also { seen.add(r.emoji) } }
             androidx.compose.runtime.DisposableEffect(Unit) { onDispose { seen.remove(r.emoji) } }
-            ReactionPill(cm, ctx, r.emoji, r.count, r.me, locked = !can && !r.me, fresh = fresh)
+            val gives = cm.m.reactionRoles.firstOrNull { it.emoji == r.emoji }?.let { ctx.server?.roles?.get(it.roleId)?.name }
+            ReactionPill(cm, ctx, r.emoji, r.count, r.me, locked = !can && !r.me, fresh = fresh, gives = gives)
         }
         if (can) AddReactionPill(cm, ctx)
     }
 }
 
 @Composable
-private fun ReactionPill(cm: ChatMessage, ctx: ListCtx, emoji: String, count: Int, me: Boolean, locked: Boolean, fresh: Boolean = false) {
+private fun ReactionPill(cm: ChatMessage, ctx: ListCtx, emoji: String, count: Int, me: Boolean, locked: Boolean, fresh: Boolean = false, gives: String? = null) {
     val c = Nx.colors
     val interaction = remember { MutableInteractionSource() }
     val pressed by interaction.collectIsPressedAsState()
@@ -152,7 +153,7 @@ private fun ReactionPill(cm: ChatMessage, ctx: ListCtx, emoji: String, count: In
     val ref = remember { AnchorRef() }
     val shape = RoundedCornerShape(999.dp)
     val bg = if (me) mixSrgb(c.bgSurface, c.brand, 0.20f) else c.bgSurface
-    val showWho by androidx.compose.runtime.rememberUpdatedState({ openReactors(cm, emoji, count, me, ref) })
+    val showWho by androidx.compose.runtime.rememberUpdatedState({ openReactors(cm, emoji, count, me, ref, gives) })
     Row(
         Modifier
             .anchor(ref)
@@ -174,7 +175,7 @@ private fun ReactionPill(cm: ChatMessage, ctx: ListCtx, emoji: String, count: In
                 enabled = true,
                 onLongClick = {
                     haptics.performHapticFeedback(HapticFeedbackType.LongPress)
-                    openReactors(cm, emoji, count, me, ref)
+                    openReactors(cm, emoji, count, me, ref, gives)
                 },
             ) {
                 if (!locked) {
@@ -205,6 +206,7 @@ private fun ReactionPill(cm: ChatMessage, ctx: ListCtx, emoji: String, count: In
                 modifier = Modifier.graphicsLayer { alpha = tick.value; translationY = (1f - tick.value) * tickFrom * 0.45f * size.height },
             )
         }
+        if (gives != null) Icon("Tag", c.textSubtle, size = 12.dp)
     }
 }
 
@@ -228,7 +230,7 @@ private fun AddReactionPill(cm: ChatMessage, ctx: ListCtx) {
 private const val REACTORS_SHOWN = 20
 
 /** ReactorsPopover: who reacted with this emoji, the first twenty and how many more. */
-private fun openReactors(cm: ChatMessage, emoji: String, count: Int, me: Boolean, ref: AnchorRef) {
+private fun openReactors(cm: ChatMessage, emoji: String, count: Int, me: Boolean, ref: AnchorRef, gives: String? = null) {
     openPopout("reactors", ref.rect, 260.dp) { _ ->
         val c = Nx.colors
         var ids by remember { mutableStateOf<List<String>?>(null) }
@@ -249,6 +251,7 @@ private fun openReactors(cm: ChatMessage, emoji: String, count: Int, me: Boolean
                 Txt(customOf(emoji)?.let { ":${it.name}:" } ?: "", style = Nx.type.label, color = c.textMuted, modifier = Modifier.weight(1f), maxLines = 1)
                 Txt(count.toString(), style = Nx.type.label.copy(fontWeight = FontWeight(700)), color = c.textStrong)
             }
+            if (gives != null) Txt(t("chat.reactionRoles.gives", "role" to gives), style = Nx.type.hint.copy(fontSize = Nx.type.sp(13f)), color = c.textMuted, modifier = Modifier.padding(start = 12.dp, end = 12.dp, bottom = 8.dp))
             Box(Modifier.fillMaxWidth().height(1.dp).background(c.borderSubtle))
             Column(Modifier.padding(6.dp).verticalScroll(rememberScrollState())) {
                 val list = ids

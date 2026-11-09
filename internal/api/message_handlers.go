@@ -992,17 +992,13 @@ func (s *Server) reactionTarget(w http.ResponseWriter, r *http.Request, need str
 	return ch, me, m, emoji
 }
 
-func (s *Server) handleReactionAdd(w http.ResponseWriter, r *http.Request) {
-	// Reacting needs Read Message History; a new reaction needs Add Reactions
-	// too, while adding oneself to one already there does not
-	ch, me, m, emoji := s.reactionTarget(w, r, NeedHistory)
-	if ch == nil || s.dmBlocked(w, r, ch, me) {
-		return
-	}
+// mayAddReaction answers whether this person may put this emoji on the message,
+// having refused the request when not.
+func (s *Server) mayAddReaction(w http.ResponseWriter, r *http.Request, ch *store.Channel, me *store.User, m *store.Message, emoji string) bool {
 	if !hasReaction(m, emoji) {
 		if ok, _ := s.canAccess(r, me, ch, NeedReact); !ok {
 			WriteError(w, E(http.StatusForbidden, "missing_permission", "You cannot add new reactions here."))
-			return
+			return false
 		}
 	}
 	// someone else's emoji from another server, where the server allows it;
@@ -1010,8 +1006,25 @@ func (s *Server) handleReactionAdd(w http.ResponseWriter, r *http.Request) {
 	if !s.isDM(ch) && s.externalEmoji(r.Context(), ch, emoji) && !hasReaction(m, emoji) {
 		if ok, _ := s.canAccess(r, me, ch, NeedExternalEmoji); !ok {
 			WriteError(w, E(http.StatusForbidden, "external_emoji", "This server does not allow emoji from other servers."))
-			return
+			return false
 		}
+	}
+	return true
+}
+
+func (s *Server) handleReactionAdd(w http.ResponseWriter, r *http.Request) {
+	// Reacting needs Read Message History; a new reaction needs Add Reactions
+	// too, while adding oneself to one already there does not
+	ch, me, m, emoji := s.reactionTarget(w, r, NeedHistory)
+	if ch == nil || s.dmBlocked(w, r, ch, me) {
+		return
+	}
+	if !s.mayAddReaction(w, r, ch, me, m, emoji) {
+		return
+	}
+	role, ok := s.reactionRoleOf(w, r, ch, me, m, emoji, true)
+	if !ok {
+		return
 	}
 	added, err := s.Store.AddReaction(r.Context(), m.ID, me.ID, emoji)
 	if err != nil {
@@ -1024,6 +1037,7 @@ func (s *Server) handleReactionAdd(w http.ResponseWriter, r *http.Request) {
 	}
 	if added {
 		s.Bcast.EmitChannel(ch.ID, "reaction_add", map[string]any{"channel_id": ch.ID, "message_id": m.ID, "user_id": me.ID, "emoji": emoji})
+		s.setRoleByReaction(r, ch, me, role, true)
 	}
 	w.WriteHeader(http.StatusNoContent)
 }
@@ -1033,6 +1047,10 @@ func (s *Server) handleReactionRemove(w http.ResponseWriter, r *http.Request) {
 	if ch == nil {
 		return
 	}
+	role, ok := s.reactionRoleOf(w, r, ch, me, m, emoji, false)
+	if !ok {
+		return
+	}
 	removed, err := s.Store.RemoveReaction(r.Context(), m.ID, me.ID, emoji)
 	if err != nil {
 		WriteError(w, err)
@@ -1040,6 +1058,7 @@ func (s *Server) handleReactionRemove(w http.ResponseWriter, r *http.Request) {
 	}
 	if removed {
 		s.Bcast.EmitChannel(ch.ID, "reaction_remove", map[string]any{"channel_id": ch.ID, "message_id": m.ID, "user_id": me.ID, "emoji": emoji})
+		s.setRoleByReaction(r, ch, me, role, false)
 	}
 	w.WriteHeader(http.StatusNoContent)
 }

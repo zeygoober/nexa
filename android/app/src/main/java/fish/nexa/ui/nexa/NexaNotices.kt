@@ -90,12 +90,12 @@ object NexaAlerts {
             }
             is NexaInbox.Alert.BugReply -> {
                 val path = "/channels/@me/nexa/bugs/${a.report.id}"
-                Notifier.simple("ec-bug-${a.report.id}", "nexa", "message", "Nexa", t("bugs.feed.replied", "number" to t("bugs.number", "number" to a.report.number)), path, viewing(path))
+                Notifier.simple("ec-bug-${a.report.id}", "nexa", "message", "Nexa", t("${bugFeedWords(a.report.kind)}.replied", "number" to t("bugs.number", "number" to a.report.number)), path, viewing(path))
             }
             is NexaInbox.Alert.ReportReviewed -> Notifier.simple("ec-report-${a.report.id}", "nexa", "message", "Nexa", t("reports.outcome.notify"), "/channels/@me/nexa", viewing("/channels/@me/nexa"))
             is NexaInbox.Alert.BugStatus -> {
                 val path = "/channels/@me/nexa/bugs/${a.report.id}"
-                Notifier.simple("ec-bug-${a.report.id}", "nexa", "message", "Nexa", t("bugs.feed.statusChanged", "number" to t("bugs.number", "number" to a.report.number), "status" to bugStatusLabel(a.status)), path, viewing(path))
+                Notifier.simple("ec-bug-${a.report.id}", "nexa", "message", "Nexa", t("${bugFeedWords(a.report.kind)}.statusChanged", "number" to t("bugs.number", "number" to a.report.number), "status" to bugStatusLabel(a.status, a.report.kind)), path, viewing(path))
             }
         }
     }

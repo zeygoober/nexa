@@ -73,9 +73,9 @@ Testing):
 
 Open follow-ups, web first by the owner's choice (remove each when done):
 
-- Suggestions on Android (2026-11-07): the server and web have them (Nexa, moderation and safety). Android
-  needs the Suggest a Feature button on the Nexa page, the form with `kind: "suggestion"`, the staff tab and
-  the thread without device details, using the existing `suggestions.*` strings.
+- Suggestions on Android (2026-11-07): members can send them from the Friends page and read their threads
+  (`openBugReport(from, kind)`, `MemberBug.kind`). Still needed: the Suggest a Feature button on the Nexa page
+  and the staff tab, using the existing `suggestions.*` strings.
 
 Passing unit tests do not replace looking at the screens.
 
@@ -237,7 +237,8 @@ Work that goes with certain changes:
   test vectors (`android/tools/*_vectors.ts`) and make the Kotlin port pass them. URL oracle entries depend on
   Node/ICU: check a changed expectation against current Chromium too before updating it, and never weaken host
   checks just to match a stale vector.
-- lucide-react upgraded: `python3 android/tools/lucide_assets.py`. emojibase-data or `@twemoji/svg` upgraded:
+- lucide-react upgraded: `python3 android/tools/lucide_assets.py` (it also works out which open paths enclose a shape, into `bodies` in lucide.json and
+  `web/src/components/badges/iconBodies.css`, for a badge's tint), then `python3 tools/badge_art.py`. emojibase-data or `@twemoji/svg` upgraded:
   `node android/tools/emoji_assets.mjs`, `tools/twemoji_sprites.py`, `tools/twemoji_font.py`, then
   `tools/twemoji_font_check.py`.
 
@@ -450,6 +451,7 @@ serves until SIGINT or SIGTERM.
 | `games`, `music`, `books`, `screen` | IGDB, Deezer, Open Library and TMDB for profile widgets; art kept, previews streamed through. `games` also holds the hand-written known game list and builds the hashed name index (Desktop app, Game detection) |
 | `gateway` | the WebSocket hub: connections, presence, typing, voice signalling, fan-out |
 | `ids` | snowflakes (41 bits of milliseconds, 10 of node, 12 of sequence), decimal strings in JSON |
+| `lastfm` | the one Last.fm call (a user's latest track); goes through the egress proxy |
 | `media` | blob storage, upload validation, sized variants, metadata scrub; bucket attachments (`remote.go`, `relay.go`) |
 | `objstore` | a small S3 client for the R2 bucket, standard library only; `objstore/memstore` is an in-memory bucket for tests |
 | `perf` | the always-on profiler: routes, queries, the writer, the gateway, the runtime and the apps' reports, summed into `DATA_DIR/perf` (Profiling, below) |
@@ -486,7 +488,7 @@ serves until SIGINT or SIGTERM.
   `limReact`, `limMsgAll` (beside per-channel `limMsg`), `limSearch`, `limLookup` (signed-out lookups, per
   address), `limBuild` (things people create, servers included), `limForward`, `limReport`, `limTurn`, `limUsername` (two real
   changes an hour; a taken or unchanged name spends nothing), `limFriend`, `limRelate`, `limDM`, `limJoin`, `limPin`,
-  `limTyping`, `limDelete`, `limBilling` and `limManage` (server management). `limLookup` and
+  `limTyping`, `limDelete`, `limBilling`, `limManage` (server management), `limReactRole` (roles gained or lost by reacting) and `limLastfm` (usernames tried). `limLookup` and
   `limBuild` step up (`stepup.go`): past the free allowance a captcha (action `lookup` or `build`) buys a
   batch, those captchas capped per address and per account; batches are in memory, per process. A server holds
   at most 500 channels and 250 roles (`store.MaxServerChannels`, `MaxServerRoles`, counted in the creating
@@ -527,6 +529,11 @@ serves until SIGINT or SIGTERM.
   (`unfurlWebhookMessage`).
 - `static.go` serves `web/dist` (hashed assets immutable, `index.html` for any other path), its own page heads
   for link previews, and the CSP (plugins load from `blob:`, Turnstile from `challenges.cloudflare.com`).
+- Bots on Discovery (`GET /api/v1/discovery/bots`, signed in, `Store.DiscoverApps`; web `discovery/BotDiscovery.tsx`, Android
+  `ui/discovery/BotDiscovery.kt`): an app is listed from the moment its developer turns on `applications.discoverable` (migration
+  0057; Show on Discover on the Bot tab, captcha `discovery_list`), only while it is public (`app_not_public` otherwise). Admins take
+  a listing down with `PUT /moderation/apps/{id}/discovery` (`discovery_hidden`, logged as `app_discovery_hide`). Cards say when a
+  bot reads every message.
 - Vanity links (`vanity.go`) are invite rows with `invites.vanity` = 1, at most one per server (a partial
   unique index): 3 to 32 of a-z, 0-9 and hyphens with a letter or number at each end, minus `reservedVanity`.
   One never expires or runs out, is found in any case by `InviteByCodeAny` after an exact match, and stays out
@@ -583,13 +590,13 @@ serves until SIGINT or SIGTERM.
   `passkeys`, `user_sounds`, `username_holds`), people (`relationships`), conversations (`channels` for every
   kind, `dm_participants`, `channel_overwrites`, `channel_unlocks`, `thread_members`, `channel_follows`,
   `crossposts`), messages (`messages` with `ciphertext`, and `plain` for webhook and system text;
-  `attachments`, `reactions`, `pins`, `read_states`, `polls`, `poll_votes`), keys (`key_epochs`, `key_grants`,
+  `attachments`, `reactions`, `reaction_roles`, `pins`, `read_states`, `polls`, `poll_votes`), keys (`key_epochs`, `key_grants`,
   `key_flags`, `key_rejections`), servers (`servers`, `server_members`, `roles`, `member_roles`, `invites`, `bans`, `audit_log`,
   `automod_rules`, `automod_events`), plans (`billing`, `server_boosts`, `plan_gifts`, `gift_links`,
   `users.plan`, `servers.boosts`), expressions (`emojis`, `sticker_packs`, `stickers`, `sticker_installs`,
   `recent_stickers`, `blocked_images`), games people share (`game_submissions`, `known_games`), files (`blobs`, `uploads`, `remote_blobs`, `storage_usage`), calls
   (`guest_links`, `guests`, `realtime_usage`, `realtime_measurements`, `realtime_sessions`, `call_usage`,
-  `turn_credentials`), integrations (`webhooks`, `discord_links`), notes (`notes`, `note_members`,
+  `turn_credentials`), integrations (`webhooks`, `discord_links`, `lastfm_links`), notes (`notes`, `note_members`,
   `note_invites`, `note_links`, `note_files`, `note_versions`, `note_version_files`, `note_keys`,
   `note_updates`, `note_uploads`), Nexa and moderation (`mod_cases`, `mod_messages`, `mod_message_files`,
   `mod_restrictions`, `mod_announcements`, `mod_log`, `mod_reads`, `nexa_reads`, `bug_reports` (bugs and suggestions, by `kind`),
@@ -599,7 +606,7 @@ serves until SIGINT or SIGTERM.
   `application_guild_installs`, `application_user_installs`, `oauth_codes`, `oauth_tokens` (gone with its
   refresh token, 90 days unused), `interactions` and `ephemeral_messages` (15 minutes), `ephemeral_files`,
   `interaction_files` (a day), `bot_copies`, `roles.managed_by`), badges (`badge_defs`, `user_badges`,
-  `badge_overrides`, `badge_prefs`), the instance (`instance_settings`).
+  `badge_overrides`, `badge_prefs`, `badge_progress`), the instance (`instance_settings`).
 - Channel types: `dm`, `group_dm`, `subchat`, `text`, `voice`, `category`, `announcement`, `forum`, `media`,
   `link`, `thread`, `private_thread`. `store.IsForum` is forum or media (posts only), `store.HoldsNoMessages`
   is category or link (no messages, invites, read states, mentions or own key). A channel's `key_conv_id`
@@ -729,6 +736,11 @@ it:
   widget kept out of sight (web `profile/soundcloudWidget.ts`, Android `ui/profile/SoundCloudWidget.kt`);
   other Spotify and SoundCloud links open their own player, which stops any preview. Bandcamp and Tidal stay
   ordinary link cards.
+- Last.fm (`internal/lastfm`, `api/lastfm.go`, table `lastfm_links`, migration 0060; off without `LASTFM_API_KEY`, and the apps then hide the section): someone links by username alone, which proves
+  nothing about whose account it is, under Settings, Activity (web `settings/LastfmSection.tsx`, `stores/lastfm.ts`, Android `LastfmSection` in `ui/settings/ActivityPage.kt`). `StartLastfm` asks every
+  `lastfmEvery` for those connected, and what is playing becomes an activity with `source: "lastfm"` through `Hub.SetListening`, unless something that knows more already says what they hear. Only the
+  username is stored; it is in the data export and the legal report. Last.fm's terms forbid using its artwork and want a credit and link back (Powered by AudioScrobbler in Settings), and free API use is
+  for non-commercial purposes.
 - Other sites' players are served through this server by `api/frame_proxy.go`: YouTube at `/yt/`, Spotify at
   `/sp/`, SoundCloud at `/sc/`. Tokens are signed per site, so one site's token opens no other. The apps frame
   them sandboxed without `allow-same-origin` (Android in a WebView whose page holds the same sandboxed frame).
@@ -963,11 +975,11 @@ it:
 - Suggestions (added 2026-11-07) are bug reports with `bug_reports.kind = 'suggestion'` (migration 0054;
   every older row is `'bug'`): the same table, numbers, statuses, thread, files and notifications, sent with
   `kind` on `POST /bugs` and listed with `?kind=suggestion`; `/moderation/summary` returns `suggestions`
-  counts beside `bugs`. Members send one from the Nexa page (`SuggestButton`, `openSuggest`, ReportBugModal
-  with `kind`); staff work them in the Suggestions tab (`/channels/@admin/suggestions`, BugsTab with `kind`),
+  counts beside `bugs`. Members send one from the Nexa page or the Friends page beside the bug button (`SuggestButton`, `openSuggest`,
+  ReportBugModal with `kind`); staff work them in the Suggestions tab (`/channels/@admin/suggestions`, BugsTab with `kind`),
   which every rank that sees Bug Reports sees. Words come from `suggestions.*`, and a suggestion's thread
-  shows no device details (`bugKind` in `lib/bugs.ts`). Android does not have Suggestions yet: it is the
-  open follow-up (see Web and mobile), and Android lists and threads must show `kind` once it does.
+  shows no device details (`bugKind` in `lib/bugs.ts`). Android members can send and follow them (Friends page, `MemberBug.kind`); the rest is the open follow-up (see
+  Web and mobile).
 - Case threads and bug reports are conversations with private blobs of kind `case` and `bug`. A closed case,
   or a bug report set to resolved, won't fix or closed, takes nothing from anyone, staff included, until staff
   reopen it. `mod_reads` keeps what each member of staff has read.
@@ -1039,22 +1051,51 @@ it:
 
 Badge ids: `staff` (never hideable), `plan`, `og` (account made before `OGCutoff`), `years`, `bug_hunter`
 and `ideas` (bug reports and suggestions staff resolved, five levels at `ReportTiers`), `app_developer`
-(`AppDeveloperServers`), `gift_giver` (three levels, `GiftTiers`), and the two staff give by hand in
+(shown as Bot Maker, three levels at `AppDeveloperTiers`, by the servers its bots are in), `gift_giver` (three levels, `GiftTiers`),
+`friendly` (friends who are people, `FriendlyTiers`), `host` (people in the largest server the account owns, `HostTiers`), `booster`
+(boosting any server), `regular` (best run of consecutive UTC days, `RegularTiers`), `open_mic` (lifetime call hours with someone else
+present, `OpenMicTiers`), and the two staff give by hand in
 `user_badges`: `contributor` and `event:<badge_defs id>`. Earned badges are worked out when asked for, never
 stored; bots, Nexa's accounts and deleted accounts have none. Staff can override an earned badge (`og`, `years`,
-`bug_hunter`, `ideas`, `app_developer`, `gift_giver`) for one account in `badge_overrides` (migration 0055): no row
+`bug_hunter`, `ideas`, `app_developer`, `gift_giver`, `friendly`, `host`, `booster`, `regular`, `open_mic`) for one account in `badge_overrides` (migration 0055): no row
 follows the account, level 0 takes it away, above 0 gives it at that tier, and it holds until cleared. Rank and plan
 badges come with the account and cannot be overridden. Every badge has a holders list, with give and take where staff can set it
 (`/moderation/badges/{badge}/holders`, web `moderation/BadgeHoldersModal.tsx`, Android `openHoldersSheet`), Admin and
 up; a person's page sets them all at once (web `GrantBadgesModal.tsx`, Android `openGiveBadgesSheet`). A staff-made
 badge has a description (its tooltip and toast, at most 120 characters), one or two colours and any Lucide icon or an uploaded picture (public blob of kind `badge`). Every badge, staff ranks and plans included, is a
 bare coloured icon with nothing behind it: an SVG in `web/src/assets/badges/` written by `tools/badge_art.py` (Android copies the same files and
-takes them over the air), each colour held to a luminance that reads on Dark and Light alike; an event badge is drawn from its look on both clients, its colour pulled towards the text colour (`--badge-ink-mix`, Android the same numbers). The `shape` and `glyph` stored on a badge only serve APKs from before icon-only badges, which still draw them; their editor controls are gone. A profile draws
-all its badges in one pill on the username line, at 22 px. On a two-colour profile the pill's backing is opaque and made from the card's own top colour, darker on a card with light text and paler on one with dark text (`--badge-pill` in `Profile.module.css`, Android `ProfileTokens.badgePill`), since a see-through one vanished on saturated cards. Hovering one, or tapping it on a touch screen, opens a card with the badge
+takes them over the air), each colour held to a luminance that reads on Dark and Light alike, every shape in the icon tinted faintly inside, open or closed, as long as it encloses something; an event badge is drawn from its look on both clients, its colours moved to the art's same luminances and closed shapes given the art's faint tint (web `badgeTones`, Android `badgeTone`), so it reads like the built-in ones. The `shape` and `glyph` stored on a badge only serve APKs from before icon-only badges, which still draw them; their editor controls are gone. A profile draws
+its first five badges in one pill (the holder's order; `SHOWN_BADGES` on both clients, then +x, which opens All Badges: web `AllBadges`, Android `openAllBadges`) on the username line, at 22 px. On a two-colour profile the pill's backing is opaque and made from the card's own top colour, darker on a card with light text and paler on one with dark text (`--badge-pill` in `Profile.module.css`, Android `ProfileTokens.badgePill`), since a see-through one vanished on saturated cards. Hovering one, or tapping it on a touch screen, opens a card with the badge
 large, its name and its meaning (web `BadgeCard` through `Tooltip`'s `card`, Android `BadgeCardPopup`). `/users/@me/badges` stays open to muted and
 banned accounts. Web `lib/badges.ts`, `components/badges/Badges.tsx`, `moderation/BadgesTab.tsx`; Android
 `data/Badges`, `ui/profile/Badges.kt`, `ui/moderation/BadgeTab.kt`. The event icon list and every icon the search offers must be ones both
 lucide-react and Android's `lucide.json` have.
+
+No badge has an account-age rule except OG and Years (the owner's decision, 2026-11-09). Tips for Friendly, Regular and Open Mic state only
+the level's threshold, since an exact friend count, streak or call hours says too much in public; `naturalLevels` gives them no `count`.
+`badge_progress` (migration 0058, `store/badge_progress.go`) holds what cannot be worked out afterwards, one row per person (guests, bots and
+deleted accounts write nothing), and goes with the account. A day counts only with real use (the owner's decision, 2026-11-09): `Hub.markActiveDay`, from a gateway heartbeat, a `rest` op or `away: false`, never at
+`RestDeep` or while the connection says it is away, so neither a resting phone nor a tab left open earns anything (with Idle by itself off an app never says away, so its open tab does); `Store.MarkActiveDay` writes once per
+account per UTC day. `StartBadgeProgress` (`api/badge_progress.go`) counts call seconds from `voice.InCallTogether` each minute, written every
+five. `GET /users/@me/badges/progress` gives the person their own row for the data export (`badge-progress.json`), and the legal report prints
+it. Blacked out art for a face, a robot and a mic keeps those shapes hollow (`LOCKED_HOLLOW` in `tools/badge_art.py`), or they turn into a disc, a pot and a leaf.
+
+The Badge Index (`GET /users/@me/badges/index`, `Store.MyBadgeIndex`; web `settings/BadgeIndexPage.tsx`, Android
+`ui/settings/BadgeIndexPage.kt`, Settings, under Profiles, own account only) counts each level of a tiered badge as its own badge
+and leaves out staff ranks. For what an account lacks the answer carries only what draws the black shape (`art`, `icon` or `image`),
+never a name or how to earn it: keep it that way, the apps cannot hide what they are sent. `Badge.count` is the number behind a badge for its tooltip (`naturalLevels`): OG's place in joining, "32nd" in English and the plain number in other languages (`joinPlace` on both clients)
+(people only, deleted accounts included since they keep their row, so nobody's number moves), and the real count for Bug Hunter, Ideas, Gift Giver and App
+Developer; a badge staff overrode has none. Entries the account has collected come first, then what it lacks, each part A to Z by English name unless the owner's order below holds the collected ones (`heldThenLocked`,
+sorted on the server because the answer must not carry a locked badge's name; a new built-in badge needs its name in `badgeIndexNames`). A locked tile is the same tile as a collected one and only its mark
+differs: flat black with no edge, in a heavier line (the owner rejected a light rim, 2026-11-09). Built-in art has a `<name>-locked.svg` from `tools/badge_art.py`, and a badge staff
+made is drawn black in the same line on both clients.
+
+The owner can arrange the index for everyone (the owner's request, 2026-11-09; `ownerTools` on both apps, the Arrange button on the page, web
+`settings/BadgeArrange.tsx`, Android `Arrange` in `BadgeIndexPage.kt`). `GET` and `PUT /moderation/badges/index-order` (`rankOwner`) read and set the instance
+setting `badge_index_order`, a JSON list of entry keys (an entry's `art`, or a staff badge's `event:<id>`); an empty list goes back to A to Z, and what the
+list does not name (a badge made since) follows it, A to Z. Only the owner's `GET` names every badge; `/users/@me/badges/index` stays as above, and
+`TestBadgeIndexOrderIsTheOwnersAlone` holds that. Use A to Z Order (`a_to_z` in the answer) only fills the grid, and Save applies it. Tiles on the web are `touch-action: none`, since a browser
+takes back a held touch it might scroll, so a swipe that starts on one scrolls the page by hand. Saving logs `badge_index_order`.
 
 ### Profile widgets (`api/widgets.go`, web `lib/widgets.ts`, Android `ui/profile/Widgets.kt`)
 
@@ -1156,11 +1197,22 @@ several games with exactly one name, the most rated wins (`mostRated`): IGDB lis
   makes the apps leave download, save, copy and open buttons off (web `lib/mediaDownloads.ts`, Android
   `data/MediaDownloads`); a forum never keeps it.
 
+### Reaction roles (`api/reaction_roles.go`, `store/reaction_roles.go`)
+
+A reaction on a server message can give a role (table `reaction_roles`, migration 0059, sent as `reaction_roles` on the message). `PUT` and `DELETE
+/api/v1/channels/{id}/messages/{mid}/reaction-roles/{emoji}` need Manage Roles on the server and the usual role hierarchy, under `limManage`, are written to the audit log
+(`reaction_role_set`, `reaction_role_remove`) and emit `reaction_roles_update`. Setting one adds the setter's own reaction, so the emoji is there to press, and that gives them
+nothing. Reacting gives the role and taking the reaction off takes it away, for people only (bots never), under `limReactRole`; the reaction itself stands whatever happens to the
+role. What must not break: a role holding any of `reactionRoleUnsafe` (moderation or management permissions; web `REACTION_ROLE_UNSAFE`) cannot be given this way, checked again at
+each press since a role can gain them later, and @everyone and managed roles never. Web `modals/ReactionRolesModal.tsx`, Android `ui/chat/ReactionRoles.kt`, from the message menu.
+
 ### Messages: links, forwarding and voice messages
 
 - A bare link to a channel or message on this instance that this account can see is drawn as a pill (web
   `jumpTarget` in `lib/appLinks.ts`, Android `AppLinks.jumpTarget`); otherwise it stays a plain link. No
   preview is fetched for these links, and previews older apps sent for them are not drawn.
+- A gift link is drawn as a card in the invite's own frame (web `chat/GiftCards.tsx` over `invite/InviteView`, `lib/giftPreviews.ts`; Android `GiftCards` in `ui/chat/LinkCards.kt`, `data/GiftPreviews`),
+  claimed from the card, and the plain preview of that link is left out.
 - Forwarding (`body.forward`; web `lib/forward.ts`, Android `data/Forward`): the server checks the source as a
   reader, lets the new message carry the source's files without owning them (no upload, no allowance spent),
   clears mentions, sets flag 1 << 14 and has its own limit. Android draws the forwarded bar after layout
@@ -1230,7 +1282,7 @@ it off), `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`, `R2_ENDPOINT` for tests, `R
 `TURN_USERNAME`, `TURN_CREDENTIAL`, `TURN_KEY_ID`, `TURN_API_TOKEN`), outbound (`EGRESS_PROXY`,
 `WARP_PROXY_PORT`), integrations (`KLIPY_API_KEY`, `IGDB_CLIENT_ID`, `IGDB_CLIENT_SECRET`, `TMDB_API_KEY`,
 `TELEGRAM_BOT_TOKEN`, `DISCORD_CLIENT_ID`, `DISCORD_CLIENT_SECRET`, `DISCORD_BOT_TOKEN`,
-`DISCORD_ACTIVITY_GUILD_ID`, `DISCORD_REDIRECT_URL` left empty, `DISCORD_API_URL` for the fake), payments
+`DISCORD_ACTIVITY_GUILD_ID`, `DISCORD_REDIRECT_URL` left empty, `DISCORD_API_URL` for the fake, `LASTFM_API_KEY`, `LASTFM_API_URL` for a fake), payments
 (`STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `STRIPE_API_URL` for a fake), logging (`LOG_LEVEL`,
 `LOG_FILE`), optional host maintenance (`MAINTENANCE_FILE`). A new setting goes in `config.go`,
 `chatd.env.example` and this list.
@@ -1337,7 +1389,9 @@ React 18, TypeScript, Vite, zustand and react-router; `@/` is `web/src`. `main.t
 workers: `sw.ts` (no fetch handler; a new copy taking over means a deploy, which `lib/appUpdate.ts` offers)
 and `download-sw.ts` (scoped to `/__download/`; streams and decrypts large downloads and videos). Pages load
 lazily (`lib/lazyChunk.ts`); a dialog with lazy pages makes them with `readyPage` and switches inside
-`startTransition`, so frame and page show together.
+`startTransition`, so frame and page show together. On a phone Server Settings opens its list without waiting for a page, and a tapped page shows at once with a spinner.
+`readyPage` and `lazyDialog` never reject when a file does not arrive (React keeps a rejected lazy for good, and the app-wide boundary would restart everything): the page becomes
+`common/FailedPage.tsx`'s Try Again, and only that button may reload onto a new build.
 
 - Routes are in `routes.tsx`. `api/` is the typed REST client (`api/client.ts`, `api/types.ts`);
   `gateway/client.ts` keeps the socket, `gateway/session.ts` starts it, `gateway/dispatch.ts` applies events

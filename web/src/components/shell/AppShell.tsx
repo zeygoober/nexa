@@ -1,3 +1,4 @@
+import { installLastfm } from "@/stores/lastfm";
 import { Suspense, useEffect, useRef, useState, type ReactNode, type TouchEvent } from "react";
 import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import { Rail } from "@/components/rail/Rail";
@@ -139,6 +140,7 @@ export function AppShell({ children }: { children: ReactNode }) {
     installVoice();
     installAway();
     installDiscord();
+    installLastfm();
     installSearchIndex();
   }, []);
 

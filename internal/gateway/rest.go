@@ -127,6 +127,20 @@ func (c *conn) flushHeld(now bool) {
 	c.lastSent = time.Now()
 }
 
+// markActiveDay counts today towards Regular for someone using Nexa. A phone
+// resting out of sight has it running, not in use, and neither has a device
+// its person left alone (the away op), such as a tab left open. A new
+// connection starts out present, so nothing counts until its first heartbeat,
+// by which time an app that was left alone has said so again.
+func (h *Hub) markActiveDay(ctx context.Context, c *conn) {
+	if c.guest != nil || c.away.Load() || c.rest.Load() == RestDeep {
+		return
+	}
+	if err := h.st.MarkActiveDay(ctx, c.userID, time.Now()); err != nil && ctx.Err() == nil {
+		h.log.Warn("badge progress", "user", c.userID, "err", err)
+	}
+}
+
 // setRest changes how much of the connection this device wants.
 func (c *conn) setRest(ctx context.Context, level int32) {
 	if level < RestNone || level > RestDeep {

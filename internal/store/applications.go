@@ -47,6 +47,8 @@ type Application struct {
 	RedirectURIs        []string
 	Flags               int64
 	BotPublic           bool
+	Discoverable        bool `json:"-"`
+	DiscoveryHidden     bool `json:"-"`
 	BotRequireCodeGrant bool
 	TokenHash           string
 	SecretHash          string
@@ -60,17 +62,17 @@ type Application struct {
 	UpdatedAt           int64
 }
 
-const applicationCols = `id, owner_id, name, description, icon_id, cover_id, tags, terms_url, privacy_url, interactions_url, role_connections_url, custom_install_url, install_params, integration_types, redirect_uris, flags, bot_public, bot_require_code_grant, token_hash, secret_hash, verify_key, sign_key_sealed, bot_key_sealed, event_webhooks_url, event_webhooks_status, event_webhooks_types, created_at, updated_at`
+const applicationCols = `id, owner_id, name, description, icon_id, cover_id, tags, terms_url, privacy_url, interactions_url, role_connections_url, custom_install_url, install_params, integration_types, redirect_uris, flags, bot_public, bot_require_code_grant, token_hash, secret_hash, verify_key, sign_key_sealed, bot_key_sealed, event_webhooks_url, event_webhooks_status, event_webhooks_types, created_at, updated_at, discoverable, discovery_hidden`
 
 func scanApplication(r rowScanner) (*Application, error) {
 	var a Application
 	var icon, cover sql.NullInt64
 	var tags, integration, redirects, eventTypes string
 	var install sql.NullString
-	var public, codeGrant int64
+	var public, codeGrant, discoverable, discoveryHidden int64
 	if err := r.Scan(&a.ID, &a.OwnerID, &a.Name, &a.Description, &icon, &cover, &tags, &a.TermsURL, &a.PrivacyURL, &a.InteractionsURL, &a.RoleConnectionsURL,
 		&a.CustomInstallURL, &install, &integration, &redirects, &a.Flags, &public, &codeGrant, &a.TokenHash, &a.SecretHash, &a.VerifyKey,
-		&a.SignKeySealed, &a.BotKeySealed, &a.EventWebhooksURL, &a.EventWebhooksStatus, &eventTypes, &a.CreatedAt, &a.UpdatedAt); err != nil {
+		&a.SignKeySealed, &a.BotKeySealed, &a.EventWebhooksURL, &a.EventWebhooksStatus, &eventTypes, &a.CreatedAt, &a.UpdatedAt, &discoverable, &discoveryHidden); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, ErrNotFound
 		}
@@ -78,6 +80,7 @@ func scanApplication(r rowScanner) (*Application, error) {
 	}
 	a.IconID, a.CoverID = idPtr(icon), idPtr(cover)
 	a.BotPublic, a.BotRequireCodeGrant = public == 1, codeGrant == 1
+	a.Discoverable, a.DiscoveryHidden = discoverable == 1, discoveryHidden == 1
 	a.Tags = jsonStrings(tags)
 	a.RedirectURIs = jsonStrings(redirects)
 	a.EventWebhooksTypes = jsonStrings(eventTypes)
@@ -181,11 +184,11 @@ func (s *Store) CreateApplication(ctx context.Context, a *Application, bot *User
 		if n, _ := res.RowsAffected(); n == 0 {
 			return ErrUsernameTaken
 		}
-		_, err = tx.ExecContext(ctx, `INSERT INTO applications (`+applicationCols+`) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+		_, err = tx.ExecContext(ctx, `INSERT INTO applications (`+applicationCols+`) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
 			int64(a.ID), int64(a.OwnerID), a.Name, a.Description, nullID(a.IconID), nullID(a.CoverID), stringsJSON(a.Tags), a.TermsURL, a.PrivacyURL,
 			a.InteractionsURL, a.RoleConnectionsURL, a.CustomInstallURL, install, string(integration), stringsJSON(a.RedirectURIs), a.Flags,
 			boolInt(a.BotPublic), boolInt(a.BotRequireCodeGrant), a.TokenHash, a.SecretHash, a.VerifyKey, a.SignKeySealed, a.BotKeySealed,
-			a.EventWebhooksURL, a.EventWebhooksStatus, stringsJSON(a.EventWebhooksTypes), a.CreatedAt, a.UpdatedAt)
+			a.EventWebhooksURL, a.EventWebhooksStatus, stringsJSON(a.EventWebhooksTypes), a.CreatedAt, a.UpdatedAt, boolInt(a.Discoverable), boolInt(a.DiscoveryHidden))
 		return err
 	})
 }
@@ -242,6 +245,8 @@ type ApplicationPatch struct {
 	RedirectURIs        *[]string
 	BotPublic           *bool
 	BotRequireCodeGrant *bool
+	Discoverable        *bool
+	DiscoveryHidden     *bool
 	EventWebhooksURL    *string
 	EventWebhooksStatus *int
 	EventWebhooksTypes  *[]string
@@ -256,6 +261,12 @@ func (s *Store) UpdateApplication(ctx context.Context, id ids.ID, p ApplicationP
 	set := func(col string, v any) { sets = append(sets, col+" = ?"); args = append(args, v) }
 	if p.Name != nil {
 		set("name", *p.Name)
+	}
+	if p.Discoverable != nil {
+		set("discoverable", boolInt(*p.Discoverable))
+	}
+	if p.DiscoveryHidden != nil {
+		set("discovery_hidden", boolInt(*p.DiscoveryHidden))
 	}
 	if p.Description != nil {
 		set("description", *p.Description)

@@ -33,7 +33,25 @@ export interface DiscordState {
   bot?: { configured: boolean; connected: boolean; guild_id?: string; error?: string; redirect?: string; redirect_listed?: boolean };
 }
 
+export interface LastfmState {
+  /** This server has a Last.fm key. */
+  available: boolean;
+  linked: { username: string; show: boolean; url: string } | null;
+}
+
 export const connections = {
+  lastfm(): Promise<LastfmState> {
+    return api.request<LastfmState>("GET", "/connections/lastfm");
+  },
+  linkLastfm(username: string, show: boolean): Promise<LastfmState> {
+    return api.request<LastfmState>("PUT", "/connections/lastfm", { username, show });
+  },
+  setLastfmShow(show: boolean): Promise<LastfmState> {
+    return api.request<LastfmState>("PATCH", "/connections/lastfm", { show });
+  },
+  unlinkLastfm(): Promise<LastfmState> {
+    return api.request<LastfmState>("DELETE", "/connections/lastfm");
+  },
   discord(): Promise<DiscordState> {
     return api.request<DiscordState>("GET", "/connections/discord");
   },

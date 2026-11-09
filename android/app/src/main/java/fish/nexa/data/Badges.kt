@@ -41,6 +41,8 @@ object Badges {
         val dark: Boolean = false,
         val shape: String = "circle",
         val image: String? = null,
+        /** How many reports a Bug Hunter badge stands for. */
+        val count: Int? = null,
     ) {
         val isEvent get() = id.startsWith(EVENT_PREFIX)
     }
@@ -73,6 +75,7 @@ object Badges {
             dark = s("glyph") == "dark",
             shape = s("shape")?.takeIf { it in SHAPES } ?: "circle",
             image = s("image"),
+            count = i("count"),
         )
     }
 
@@ -80,7 +83,7 @@ object Badges {
     val SHAPES = listOf("circle", "rounded", "shield", "hexagon", "star", "diamond", "seal", "ribbon")
 
     /** The badges staff can give or take against what an account earned, with their top level (store.OverridableBadges). */
-    val OVERRIDABLE = linkedMapOf("og" to 1, "years" to 50, "bug_hunter" to 5, "ideas" to 5, "app_developer" to 1, "gift_giver" to 3)
+    val OVERRIDABLE = linkedMapOf("og" to 1, "years" to 50, "bug_hunter" to 5, "ideas" to 5, "app_developer" to 3, "gift_giver" to 3, "friendly" to 3, "host" to 3, "booster" to 1, "regular" to 4, "open_mic" to 3)
 
     /**
      * How a badge looks (web badgeLook): its picture's name under badges/ (written by
@@ -105,6 +108,20 @@ object Badges {
 
     private val GIFT_TONES = listOf("bronze", "silver", "gold")
 
+    /** What each level needs (the server's tiers of the same names). */
+    private val BOT_MAKER_TIERS = listOf(10, 100, 1000)
+    private val FRIENDLY_TIERS = listOf(5, 25, 100)
+    private val HOST_TIERS = listOf(10, 100, 1000)
+    private val REGULAR_TIERS = listOf(7, 30, 100, 365)
+    private val OPEN_MIC_TIERS = listOf(10, 100, 1000)
+
+    /** "32nd" in English; other languages' sentences take the plain number. */
+    private fun joinPlace(n: Int): String {
+        if (fish.nexa.ui.I18n.tag != "en") return n.toString()
+        val end = if (n % 100 in 11..13) "th" else when (n % 10) { 1 -> "st"; 2 -> "nd"; 3 -> "rd"; else -> "th" }
+        return "$n$end"
+    }
+
     /** The look of a badge; null for ids this app does not know, and for staff or a plan the account no longer has. */
     fun look(b: Badge, userId: String, flags: Long, plan: String): Look? = when (b.id) {
         "staff" -> StaffRanks.of(userId, flags)?.let { Look("staff-${it.key}", it.label, it.tip) }
@@ -113,12 +130,18 @@ object Badges {
             "supporter" -> Look("plan-supporter", t("support.plan.supporter"), t("support.badge.supporterTip"))
             else -> null
         }
-        "og" -> Look("og", t("badges.og"), t("badges.ogTip"))
+        "og" -> Look("og", t("badges.og"), if (b.count != null && b.count > 0) t("badges.ogTipPlace", "place" to joinPlace(b.count)) else t("badges.ogTip"))
         "years" -> b.level.coerceAtLeast(1).let { n -> Look("years", t("badges.years", "count" to n), t("badges.yearsTip", "count" to n)) }
-        "bug_hunter" -> b.level.coerceIn(1, 5).let { n -> Look("bug-$n", t("badges.bug.l$n"), t("badges.bugTip.l$n")) }
-        "ideas" -> b.level.coerceIn(1, 5).let { n -> Look("ideas-$n", t("badges.ideas.l$n"), t("badges.ideasTip.l$n")) }
-        "app_developer" -> Look("app-developer", t("badges.appDeveloper"), t("badges.appDeveloperTip"))
-        "gift_giver" -> b.level.coerceIn(1, 3).let { n -> Look("gift-$n", t("badges.giftGiver"), t("badges.giftGiverTip.${GIFT_TONES[n - 1]}")) }
+        "bug_hunter" -> b.level.coerceIn(1, 5).let { n -> Look("bug-$n", t("badges.bug.l$n"), if (b.count != null && b.count > 0) t("badges.bugTipCount", "count" to b.count) else t("badges.bugTip.l$n")) }
+        "ideas" -> b.level.coerceIn(1, 5).let { n -> Look("ideas-$n", t("badges.ideas.l$n"), if (b.count != null && b.count > 0) t("badges.ideasTipCount", "count" to b.count) else t("badges.ideasTip.l$n")) }
+        "app_developer" -> b.level.coerceIn(1, 3).let { n -> Look("bot-maker-$n", t("badges.botMaker.l$n"), if (b.count != null && b.count > 0) t("badges.appDeveloperTipCount", "count" to b.count) else t("badges.botMakerTip", "count" to BOT_MAKER_TIERS[n - 1])) }
+        "gift_giver" -> b.level.coerceIn(1, 3).let { n -> Look("gift-$n", t("badges.giftGiver"), if (b.count != null && b.count > 0) t("badges.giftGiverTipCount", "count" to b.count) else t("badges.giftGiverTip.${GIFT_TONES[n - 1]}")) }
+        // friends, hours and streaks stay private: these say the level reached, never the holder's number
+        "friendly" -> b.level.coerceIn(1, 3).let { n -> Look("friendly-$n", t("badges.friendly.l$n"), t("badges.friendlyTip", "count" to FRIENDLY_TIERS[n - 1])) }
+        "host" -> b.level.coerceIn(1, 3).let { n -> Look("host-$n", t("badges.host.l$n"), t("badges.hostTip", "count" to HOST_TIERS[n - 1])) }
+        "booster" -> Look("booster", t("badges.booster"), t("badges.boosterTip"))
+        "regular" -> b.level.coerceIn(1, 4).let { n -> Look("regular-$n", t("badges.regular.l$n"), t("badges.regularTip", "count" to REGULAR_TIERS[n - 1])) }
+        "open_mic" -> b.level.coerceIn(1, 3).let { n -> Look("open-mic-$n", t("badges.openMic.l$n"), t("badges.openMicTip", "count" to OPEN_MIC_TIERS[n - 1])) }
         CONTRIBUTOR -> Look("contributor", t("badges.contributor"), t("badges.contributorTip"))
         // a badge staff made says what they wrote for it
         else -> if (b.isEvent && b.name != null) Look(null, b.name, b.description ?: "", b.icon ?: "award", b.color, b.color2, b.dark, b.shape, b.image) else null

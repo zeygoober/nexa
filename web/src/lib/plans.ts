@@ -1,5 +1,6 @@
 import type { Plan, PlanLimits, PlansInfo } from "@/api/types";
 import type { ShareAllowance } from "@/voice/shareQuality";
+import { t } from "@/i18n";
 import { useAuth } from "@/stores/auth";
 import { useChannels } from "@/stores/channels";
 import { useServers } from "@/stores/servers";
@@ -97,4 +98,8 @@ export function centsOf(text: string): number | null {
   const m = /^\s*\$?\s*(\d{1,9})(?:[.,](\d{0,2}))?\s*$/.exec(text);
   if (!m) return null;
   return Number(m[1]) * 100 + Number((m[2] ?? "").padEnd(2, "0"));
+}
+
+export function planName(plan: Plan): string {
+  return plan === "pro" ? t("support.plan.pro") : plan === "supporter" ? t("support.plan.supporter") : t("support.plan.free");
 }

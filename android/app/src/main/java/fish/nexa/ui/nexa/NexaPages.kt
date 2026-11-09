@@ -698,7 +698,7 @@ private fun FeedEntry(it: FeedItem) {
         is FeedItem.News -> t("nexa.kind.announcement")
         is FeedItem.Lift -> t("nexa.kind.update")
         is FeedItem.Notice -> t("nexa.kind.notice")
-        is FeedItem.Bug -> t("bugs.feed.kindReport")
+        is FeedItem.Bug -> t(if (it.bug.kind == "suggestion") "suggestions.feed.kind" else "bugs.feed.kindReport")
         is FeedItem.BugLine -> if (it.status) t("bugs.feed.kindUpdate") else t("bugs.feed.kindReply")
         is FeedItem.Report -> t(if (it.outcome) "reports.feed.kindOutcome" else "reports.feed.kindReport")
     }
@@ -768,11 +768,11 @@ private fun AnnouncementCard(a: fish.nexa.data.Announcement) {
 // ---------------------------------------------------------------------------
 // bug reports in the conversation (BugFeed.tsx) and at the top of their thread (BugReportCard.tsx)
 
-fun bugStatusLabel(s: String): String = when (s) {
+fun bugStatusLabel(s: String, kind: String = "bug"): String = when (s) {
     "open" -> t("bugs.status.open")
-    "in_progress" -> t("bugs.status.inProgress")
-    "resolved" -> t("bugs.status.resolved")
-    "wont_fix" -> t("bugs.status.wontFix")
+    "in_progress" -> t(if (kind == "suggestion") "suggestions.status.planned" else "bugs.status.inProgress")
+    "resolved" -> t(if (kind == "suggestion") "suggestions.status.done" else "bugs.status.resolved")
+    "wont_fix" -> t(if (kind == "suggestion") "suggestions.status.wontDo" else "bugs.status.wontFix")
     else -> t("bugs.status.closed")
 }
 
@@ -785,9 +785,12 @@ private fun bugStatusTone(s: String): String = when (s) {
 
 internal fun bugNumber(n: Long) = t("bugs.number", "number" to n)
 
+/** Where a report's lines in the conversation are worded: a suggestion has its own. */
+internal fun bugFeedWords(kind: String) = if (kind == "suggestion") "suggestions.feed" else "bugs.feed"
+
 /** A report's status, as a small coloured label with its dot; [small] as a list row's (`.rowStatus`). */
 @Composable
-fun BugStatusChip(status: String, small: Boolean = false) {
+fun BugStatusChip(status: String, small: Boolean = false, kind: String = "bug") {
     val c = Nx.colors
     val (fg, bg) = when (bugStatusTone(status)) {
         "info" -> c.textBrand to c.brand.copy(alpha = 0.16f)
@@ -801,7 +804,7 @@ fun BugStatusChip(status: String, small: Boolean = false) {
         horizontalArrangement = Arrangement.spacedBy(5.dp),
     ) {
         Box(Modifier.size(7.dp).background(fg, CircleShape))
-        Txt(bugStatusLabel(status), style = Nx.type.hint.copy(fontSize = Nx.type.sp(if (small) 11f else 12f), fontWeight = FontWeight(if (small) 700 else 600)), color = fg, maxLines = 1)
+        Txt(bugStatusLabel(status, kind), style = Nx.type.hint.copy(fontSize = Nx.type.sp(if (small) 11f else 12f), fontWeight = FontWeight(if (small) 700 else 600)), color = fg, maxLines = 1)
     }
 }
 
@@ -814,6 +817,7 @@ private fun BugFeedEntry(it: FeedItem, onOpen: (String) -> Unit) {
         is FeedItem.BugLine -> it.bug
         else -> return
     }
+    val f = bugFeedWords(b.kind)
     if (it is FeedItem.BugLine && it.status) {
         val done = bugStatusTone(it.message.body) == "done"
         FlowRow(
@@ -827,10 +831,10 @@ private fun BugFeedEntry(it: FeedItem, onOpen: (String) -> Unit) {
             itemVerticalAlignment = Alignment.CenterVertically,
         ) {
             Icon("CircleDot", if (done) c.positive else c.textMuted, size = 18.dp)
-            Txt(t("bugs.feed.statusChanged", "number" to bugNumber(b.number), "status" to bugStatusLabel(it.message.body)), style = Nx.type.bodySmall.copy(fontSize = Nx.type.sp(14f)), color = c.text)
+            Txt(t("$f.statusChanged", "number" to bugNumber(b.number), "status" to bugStatusLabel(it.message.body, b.kind)), style = Nx.type.bodySmall.copy(fontSize = Nx.type.sp(14f)), color = c.text)
             PersonChip(it.message.authorId, 16.dp)
             Txt(
-                t("bugs.feed.view"), style = Nx.type.bodySmall.copy(fontSize = Nx.type.sp(14f), fontWeight = FontWeight(600)), color = c.link,
+                t("$f.view"), style = Nx.type.bodySmall.copy(fontSize = Nx.type.sp(14f), fontWeight = FontWeight(600)), color = c.link,
                 modifier = Modifier.clip(Radii.Xs).pressable(remember { MutableInteractionSource() }) { onOpen(b.id) }.padding(vertical = 4.dp),
             )
         }
@@ -841,7 +845,7 @@ private fun BugFeedEntry(it: FeedItem, onOpen: (String) -> Unit) {
         verticalArrangement = Arrangement.spacedBy(10.dp),
     ) {
         if (it is FeedItem.BugLine) {
-            Txt(t("bugs.feed.replied", "number" to bugNumber(b.number)), style = Nx.type.body.copy(fontSize = Nx.type.sp(15.5f), fontWeight = FontWeight(700)), color = c.textStrong)
+            Txt(t("$f.replied", "number" to bugNumber(b.number)), style = Nx.type.body.copy(fontSize = Nx.type.sp(15.5f), fontWeight = FontWeight(700)), color = c.textStrong)
             Txt(b.subject, style = Nx.type.bodySmall.copy(fontSize = Nx.type.sp(13f)), color = c.textMuted, maxLines = 1, modifier = Modifier.padding(top = 0.dp))
             Txt(
                 Markdown.plainText(Markdown.parse(it.message.body), fish.nexa.ui.chat.AppNames),
@@ -855,11 +859,11 @@ private fun BugFeedEntry(it: FeedItem, onOpen: (String) -> Unit) {
         } else {
             Row(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.Top) {
                 Txt(b.subject, style = Nx.type.body.copy(fontSize = Nx.type.sp(15.5f), fontWeight = FontWeight(700), lineHeight = Nx.type.sp(20.9f)), color = c.textStrong, modifier = Modifier.weight(1f), maxLines = 2)
-                BugStatusChip(b.status)
+                BugStatusChip(b.status, kind = b.kind)
             }
             Txt(Markdown.plainText(Markdown.parse(b.description), fish.nexa.ui.chat.AppNames), style = Nx.type.bodySmall.copy(fontSize = Nx.type.sp(14f), lineHeight = Nx.type.sp(20.3f)), color = c.textSubtle, maxLines = 2)
             FlowRow(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp), itemVerticalAlignment = Alignment.CenterVertically) {
-                Txt(t("bugs.feed.youSent", "number" to bugNumber(b.number)), style = Nx.type.bodySmall.copy(fontSize = Nx.type.sp(13f)), color = c.textMuted)
+                Txt(t("$f.youSent", "number" to bugNumber(b.number)), style = Nx.type.bodySmall.copy(fontSize = Nx.type.sp(13f)), color = c.textMuted)
                 if (b.attachments.isNotEmpty()) Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                     Icon("Paperclip", c.textMuted, size = 13.dp)
                     Txt(t("bugs.card.files", "count" to b.attachments.size), style = Nx.type.bodySmall.copy(fontSize = Nx.type.sp(13f)), color = c.textMuted)
@@ -985,9 +989,9 @@ fun NexaBugPage(reportId: String) {
         val r = thread?.report
         NexaHeader(
             back = true,
-            title = r?.let { t("bugs.page.title", "number" to bugNumber(it.number)) } ?: t("bugs.page.titleLoading"),
+            title = r?.let { t(if (it.kind == "suggestion") "suggestions.page.title" else "bugs.page.title", "number" to bugNumber(it.number)) } ?: t("bugs.page.titleLoading"),
             sub = r?.subject ?: "",
-        ) { r?.let { BugStatusChip(it.status) } }
+        ) { r?.let { BugStatusChip(it.status, kind = it.kind) } }
         val mine = me
         when {
             thread != null && r != null && mine != null -> {
@@ -997,12 +1001,12 @@ fun NexaBugPage(reportId: String) {
                     staff = false,
                     fileKind = "bugs",
                     placeholder = t("bugs.thread.placeholder"),
-                    intro = { ThreadIntro({ NexaAvatar(80.dp) }, t("bugs.page.title", "number" to bugNumber(r.number)), r.subject, t("nexa.chat.reportStart")) },
-                    opener = ThreadOpener(mine.id, r.createdAt) { ReportOpener(r.subject, r.description, r.attachments, r.context, null) },
+                    intro = { ThreadIntro({ NexaAvatar(80.dp) }, t(if (r.kind == "suggestion") "suggestions.page.title" else "bugs.page.title", "number" to bugNumber(r.number)), r.subject, t(if (r.kind == "suggestion") "suggestions.chat.start" else "nexa.chat.reportStart")) },
+                    opener = ThreadOpener(mine.id, r.createdAt) { ReportOpener(r.subject, r.description, r.attachments, r.context, null, facts = r.kind != "suggestion") },
                     onSend = if (finished) null else ({ body, files -> NexaInbox.replyBug(reportId, body, files) }),
                     uploadPath = "/bugs/attachments",
                     locked = {
-                        LockNote(t("nexa.chat.reportFinished", "status" to bugStatusLabel(r.status))) {
+                        LockNote(t(if (r.kind == "suggestion") "suggestions.chat.finished" else "nexa.chat.reportFinished", "status" to bugStatusLabel(r.status, r.kind))) {
                             NxButton(t("bugs.report"), { openBugReport("nexa") }, kind = ButtonKind.SECONDARY, size = ButtonSize.SM)
                         }
                     },

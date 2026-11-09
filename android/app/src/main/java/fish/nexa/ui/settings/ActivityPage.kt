@@ -1,6 +1,10 @@
 package fish.nexa.ui.settings
 
 import android.content.Intent
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.ui.text.input.ImeAction
+import fish.nexa.ui.components.NxTextField
+import fish.nexa.ui.components.pressable
 import android.net.Uri
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -65,6 +69,8 @@ private fun JsonObject?.n(k: String) = (this?.get(k) as? JsonPrimitive)?.longOrN
 object ActivitySync {
     /** GET /connections/discord, null until asked; the discord_link event replaces it. */
     val discord = MutableStateFlow<JsonObject?>(null)
+    /** GET /connections/lastfm, null until asked or on a server without the route. */
+    val lastfm = MutableStateFlow<JsonObject?>(null)
 
     private const val AWAY_AFTER = 10 * 60_000L
     @Volatile private var lastUse = System.currentTimeMillis()
@@ -87,17 +93,28 @@ object ActivitySync {
 
     suspend fun load() {
         discord.value = runCatching { Nexa.api.get("/connections/discord") as? JsonObject }.getOrNull()
+        lastfm.value = runCatching { Nexa.api.get("/connections/lastfm") as? JsonObject }.getOrNull()
         align()
     }
 
     /** A linked Discord account shows its activity only while sharing is on. */
     suspend fun align() {
+        alignLastfm()
         val st = discord.value ?: return
         val linked = st["linked"] as? JsonObject ?: return
         if (!Nexa.settings.loaded.value) return
         val share = sharing()
         if (linked.b("show") == share) return
         runCatching { Nexa.api.request("PATCH", "/connections/discord", buildJsonObject { put("show", share) }) as? JsonObject }.getOrNull()?.let { discord.value = it }
+    }
+
+    /** What Last.fm says is shown by the server, so it is told when sharing changes. */
+    private suspend fun alignLastfm() {
+        val linked = lastfm.value?.get("linked") as? JsonObject ?: return
+        if (!Nexa.settings.loaded.value) return
+        val share = sharing()
+        if (linked.b("show") == share) return
+        runCatching { Nexa.api.request("PATCH", "/connections/lastfm", buildJsonObject { put("show", share) }) as? JsonObject }.getOrNull()?.let { lastfm.value = it }
     }
 
     fun start() {
@@ -259,6 +276,83 @@ fun ActivityPage() {
             val bot = st["bot"] as? JsonObject
             if (admin && bot.b("configured")) BotBox(bot!!)
         }
+    }
+    LastfmSection(share)
+}
+
+/** Showing what a Last.fm account is playing. Not there unless this server has a key. */
+@Composable
+private fun LastfmSection(share: Boolean) {
+    val c = Nx.colors
+    val ctx = LocalContext.current
+    val scope = rememberCoroutineScope()
+    val st by ActivitySync.lastfm.collectAsState()
+    var name by remember { mutableStateOf("") }
+    var error by remember { mutableStateOf<String?>(null) }
+    var busy by remember { mutableStateOf(false) }
+    if (st?.b("available") != true) return
+    val credit = @Composable {
+        Txt(
+            t("settings.activity.lastfmPowered"),
+            style = Nx.type.bodySmall.copy(fontSize = Nx.type.sp(14f)), color = c.textBrand,
+            modifier = Modifier.pressable(remember { MutableInteractionSource() }) { ctx.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://www.last.fm/api"))) },
+        )
+    }
+    SectionHeading(t("settings.activity.lastfm"), Modifier.settingAnchor("lastfm"))
+    val linked = st?.get("linked") as? JsonObject
+    if (linked == null) {
+        fun connect() {
+            if (name.isBlank() || busy) return
+            busy = true
+            error = null
+            scope.launch {
+                try {
+                    (Nexa.api.request("PUT", "/connections/lastfm", buildJsonObject { put("username", name.trim()); put("show", share) }) as? JsonObject)?.let { ActivitySync.lastfm.value = it }
+                    name = ""
+                } catch (e: Exception) {
+                    if (e is kotlinx.coroutines.CancellationException) throw e
+                    error = when ((e as? ApiError)?.code) {
+                        "lastfm_not_found" -> t("settings.activity.lastfmNotFound")
+                        "lastfm_private" -> t("settings.activity.lastfmPrivate")
+                        else -> describeError(e, t("settings.activity.lastfmFailed"))
+                    }
+                } finally {
+                    busy = false
+                }
+            }
+        }
+        SettingsCard {
+            Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                Txt(t("settings.activity.lastfmIntro"), style = Nx.type.body.copy(fontWeight = FontWeight(600)), color = c.textStrong)
+                Hint(t("settings.activity.lastfmHow"))
+                NxTextField(name, { name = it.take(15) }, label = t("settings.activity.lastfmUsername"), error = error, imeAction = ImeAction.Done, onIme = { connect() })
+                NxButton(t("settings.activity.lastfmConnect"), { connect() }, enabled = name.isNotBlank(), loading = busy)
+                credit()
+            }
+        }
+    } else {
+        Row(Modifier.fillMaxWidth().padding(bottom = 10.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            Column(Modifier.weight(1f).pressable(remember { MutableInteractionSource() }) { linked.s("url")?.let { ctx.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(it))) } }) {
+                Txt(linked.s("username") ?: "", style = Nx.type.body.copy(fontWeight = FontWeight(650)), color = c.textStrong, maxLines = 1)
+                Txt(t("settings.activity.lastfm"), style = Nx.type.bodySmall, color = c.textMuted, maxLines = 1)
+            }
+            NxButton(t("settings.activity.disconnect"), {
+                busy = true
+                scope.launch {
+                    try {
+                        (Nexa.api.request("DELETE", "/connections/lastfm") as? JsonObject)?.let { ActivitySync.lastfm.value = it }
+                        Nexa.ui.toast(t("settings.activity.lastfmUnlinked"), "success")
+                    } catch (e: Exception) {
+                        if (e is kotlinx.coroutines.CancellationException) throw e
+                        Nexa.ui.toast(describeError(e, t("settings.activity.lastfmFailed")), "error")
+                    } finally {
+                        busy = false
+                    }
+                }
+            }, kind = ButtonKind.SECONDARY, size = ButtonSize.SM, icon = "Unplug", loading = busy)
+        }
+        Hint(t("settings.activity.lastfmPrivacy"), Modifier.padding(top = 4.dp))
+        Box(Modifier.padding(top = 8.dp)) { credit() }
     }
 }
 

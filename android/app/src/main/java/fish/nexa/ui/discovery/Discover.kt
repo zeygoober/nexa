@@ -318,19 +318,20 @@ fun DiscoverPage(section: String = "servers") {
         }
         Box(Modifier.fillMaxWidth().padding(start = 12.dp, end = 12.dp, top = 12.dp)) {
             fish.nexa.ui.settings.Segmented(
-                listOf(t("discovery.tab.servers") to "servers", t("pickers.expressionPicker.stickers") to "stickers", t("modals.customStatus.emoji") to "emoji"),
+                listOf(t("discovery.tab.servers") to "servers", t("pickers.expressionPicker.stickers") to "stickers", t("modals.customStatus.emoji") to "emoji", t("discovery.tab.bots") to "bots"),
                 open,
                 { open = it },
                 label = t("discovery.title"),
             )
         }
         Box(Modifier.weight(1f).fillMaxWidth()) {
-            for (id in listOf("servers", "stickers", "emoji")) if (id in seen) {
+            for (id in listOf("servers", "stickers", "emoji", "bots")) if (id in seen) {
                 // what is not open keeps its place and draws nothing
                 Box(if (open == id) Modifier.fillMaxSize() else Modifier.size(0.dp).clipToBounds()) {
                     when (id) {
                         "servers" -> ServerDiscovery()
                         "stickers" -> PackDiscovery("sticker")
+                        "bots" -> BotDiscovery()
                         else -> PackDiscovery("emoji")
                     }
                 }

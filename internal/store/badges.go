@@ -27,9 +27,14 @@ const (
 	BadgeYears        = "years"         // whole years on Nexa, from one
 	BadgeBugHunter    = "bug_hunter"    // staff resolved their bug reports; Level by ReportTiers
 	BadgeIdeas        = "ideas"         // staff resolved their suggestions; Level by ReportTiers
-	BadgeAppDeveloper = "app_developer" // one of their apps' bots is in AppDeveloperServers servers they do not own
+	BadgeAppDeveloper = "app_developer" // Bot Maker: their apps' bots are in servers they do not own; Level by AppDeveloperTiers
 	BadgeGiftGiver    = "gift_giver"    // they paid for a plan someone else got; Level by GiftTiers
 	BadgeContributor  = "contributor"   // given by staff to people whose code Nexa merged
+	BadgeFriendly     = "friendly"      // friends who are people; Level by FriendlyTiers
+	BadgeHost         = "host"          // people in the largest server they own; Level by HostTiers
+	BadgeBooster      = "booster"       // they boost a server now
+	BadgeRegular      = "regular"       // their longest run of consecutive days; Level by RegularTiers
+	BadgeOpenMic      = "open_mic"      // hours in calls with someone else; Level by OpenMicTiers
 	EventBadgePrefix  = "event:"        // given by staff: "event:<badge_defs id>"
 )
 
@@ -37,9 +42,19 @@ const (
 // before it, the day badges arrived, are OG.
 const OGCutoff int64 = 1793610000000
 
-// AppDeveloperServers is how many servers, not the developer's own, one of
-// their bots must be in: a test app in their own server does not count.
-const AppDeveloperServers = 5
+// AppDeveloperTiers are the servers, not the developer's own, their bots must
+// be in for each level of Bot Maker: a test app in their own server does not count.
+var AppDeveloperTiers = [3]int{10, 100, 1000}
+
+// FriendlyTiers, HostTiers, RegularTiers and OpenMicTiers are what each level
+// of those badges needs: friends, people in one server, consecutive days and
+// hours. Any account can reach them, however new; only bots are not counted.
+var (
+	FriendlyTiers = [3]int{5, 25, 100}
+	HostTiers     = [3]int{10, 100, 1000}
+	RegularTiers  = [4]int{7, 30, 100, 365}
+	OpenMicTiers  = [3]int{10, 100, 1000}
+)
 
 // ReportTiers are the resolved bug reports (Bug Hunter) or suggestions
 // (Ideas) each of the five tiers needs.
@@ -49,14 +64,13 @@ var ReportTiers = [5]int{1, 3, 10, 25, 50}
 var GiftTiers = [3]int{1, 5, 20}
 
 // defaultBadgeOrder is where a badge goes when its holder has not placed it.
-var defaultBadgeOrder = []string{BadgeStaff, BadgePlan, BadgeOG, BadgeYears, BadgeContributor, BadgeBugHunter, BadgeIdeas, BadgeAppDeveloper, BadgeGiftGiver}
+var defaultBadgeOrder = []string{BadgeStaff, BadgePlan, BadgeOG, BadgeYears, BadgeContributor, BadgeBugHunter, BadgeIdeas, BadgeAppDeveloper, BadgeGiftGiver, BadgeFriendly, BadgeHost, BadgeBooster, BadgeRegular, BadgeOpenMic}
 
 // Badge is one badge on a profile. Staff and plan carry nothing more: the
 // clients draw them from the account itself.
 type Badge struct {
 	ID string `json:"id"`
-	// Level is Gift Giver's tier (1 bronze, 2 silver, 3 gold), Bug Hunter's
-	// and Ideas' (1 to 5, by ReportTiers) or the years on Nexa.
+	// Level is the tier of a badge with levels, from 1, or the years on Nexa.
 	Level int `json:"level,omitempty"`
 	// Name, Description (its tooltip), Icon (a Lucide icon's name), Color and
 	// Color2 (a gradient's second colour), Glyph ("dark" for a dark icon),
@@ -72,6 +86,10 @@ type Badge struct {
 	Image       string `json:"image,omitempty"`
 	// Hidden is set only in a person's own list.
 	Hidden bool `json:"hidden,omitempty"`
+	// Count is the number behind Bug Hunter, Ideas, Gift Giver, Bot Maker and OG;
+	// missing when staff set the level by hand, so the clients say the tier's.
+	// Friends, hours and streaks never get one: a badge says only the tier reached.
+	Count int `json:"count,omitempty"`
 }
 
 // BadgeDef is a badge staff made for an event.
@@ -115,7 +133,7 @@ func (d *BadgeDef) badge() Badge {
 
 // OverridableBadges are the earned badges staff can give or take regardless of
 // what the account earned, each with its highest level.
-var OverridableBadges = map[string]int{BadgeOG: 1, BadgeYears: 50, BadgeBugHunter: 5, BadgeIdeas: 5, BadgeAppDeveloper: 1, BadgeGiftGiver: 3}
+var OverridableBadges = map[string]int{BadgeOG: 1, BadgeYears: 50, BadgeBugHunter: 5, BadgeIdeas: 5, BadgeAppDeveloper: 3, BadgeGiftGiver: 3, BadgeFriendly: 3, BadgeHost: 3, BadgeBooster: 1, BadgeRegular: 4, BadgeOpenMic: 3}
 
 // Limits on what staff make and what a person's preferences hold.
 const (
@@ -182,7 +200,7 @@ func (s *Store) earnedBadges(ctx context.Context, u *User, now time.Time) ([]Bad
 	if u.Plan == "supporter" || u.Plan == "pro" {
 		out = append(out, Badge{ID: BadgePlan})
 	}
-	levels, err := s.naturalLevels(ctx, u, now)
+	levels, counts, err := s.naturalLevels(ctx, u, now)
 	if err != nil {
 		return nil, err
 	}
@@ -199,6 +217,10 @@ func (s *Store) earnedBadges(ctx context.Context, u *User, now time.Time) ([]Bad
 			if withLevel {
 				b.Level = l
 			}
+			// a badge staff set says nothing of the number behind it
+			if _, set := over[id]; !set {
+				b.Count = counts[id]
+			}
 			out = append(out, b)
 		}
 	}
@@ -213,8 +235,13 @@ func (s *Store) earnedBadges(ctx context.Context, u *User, now time.Time) ([]Bad
 	}
 	add(BadgeBugHunter, true)
 	add(BadgeIdeas, true)
-	add(BadgeAppDeveloper, false)
+	add(BadgeAppDeveloper, true)
 	add(BadgeGiftGiver, true)
+	add(BadgeFriendly, true)
+	add(BadgeHost, true)
+	add(BadgeBooster, false)
+	add(BadgeRegular, true)
+	add(BadgeOpenMic, true)
 	// event badges, oldest given first
 	var events []ids.ID
 	for id := range granted {
@@ -240,39 +267,91 @@ func (s *Store) earnedBadges(ctx context.Context, u *User, now time.Time) ([]Bad
 }
 
 // naturalLevels is what an account earned of each overridable badge, before
-// any override: 1 for a badge without levels, 0 for one it does not hold.
-func (s *Store) naturalLevels(ctx context.Context, u *User, now time.Time) (map[string]int, error) {
+// any override: 1 for a badge without levels, 0 for one it does not hold. The
+// second map is the number behind each one held, which its tooltip shows:
+// which person to join Nexa this was, or how many of the thing they did.
+func (s *Store) naturalLevels(ctx context.Context, u *User, now time.Time) (levels, counts map[string]int, err error) {
 	out := map[string]int{}
+	counts = map[string]int{}
 	if u.CreatedAt < OGCutoff {
 		out[BadgeOG] = 1
+		// a deleted account keeps its row and its place, so nobody's number ever moves
+		var n int
+		if err := s.db.R.QueryRowContext(ctx, `SELECT count(*) FROM users WHERE id <= ? AND flags & ? = 0`, int64(u.ID), int64(NotPeople|FlagBot)).Scan(&n); err != nil {
+			return nil, nil, err
+		}
+		counts[BadgeOG] = n
 	}
 	if y := yearsSince(u.CreatedAt, now); y >= 1 {
 		out[BadgeYears] = y
 	}
 	for _, k := range []struct{ kind, badge string }{{BugKindBug, BadgeBugHunter}, {BugKindSuggestion, BadgeIdeas}} {
-		var n int
-		if err := s.db.R.QueryRowContext(ctx, `SELECT count(*) FROM bug_reports WHERE user_id = ? AND status = ? AND kind = ?`, int64(u.ID), BugResolved, k.kind).Scan(&n); err != nil {
-			return nil, err
+		n, err := s.resolvedReports(ctx, u.ID, k.kind)
+		if err != nil {
+			return nil, nil, err
 		}
 		if level := tierOf(n, ReportTiers[:]); level > 0 {
 			out[k.badge] = level
+			counts[k.badge] = n
 		}
 	}
 	var servers int
 	if err := s.db.R.QueryRowContext(ctx, `SELECT count(DISTINCT m.server_id) FROM applications a JOIN server_members m ON m.user_id = a.id JOIN servers v ON v.id = m.server_id WHERE a.owner_id = ? AND v.owner_id != ?`, int64(u.ID), int64(u.ID)).Scan(&servers); err != nil {
-		return nil, err
+		return nil, nil, err
 	}
-	if servers >= AppDeveloperServers {
-		out[BadgeAppDeveloper] = 1
+	if level := tierOf(servers, AppDeveloperTiers[:]); level > 0 {
+		out[BadgeAppDeveloper] = level
+		counts[BadgeAppDeveloper] = servers
 	}
 	var gifts int
 	if err := s.db.R.QueryRowContext(ctx, `SELECT count(*) FROM plan_gifts WHERE from_id = ? AND to_id != ? AND session_id NOT LIKE '`+ownerGiftClaim+`%'`, int64(u.ID), int64(u.ID)).Scan(&gifts); err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	if level := giftLevel(gifts); level > 0 {
 		out[BadgeGiftGiver] = level
+		counts[BadgeGiftGiver] = gifts
 	}
-	return out, nil
+	notPeople := int64(NotPeople | FlagBot | FlagDeleted)
+	var friends int
+	if err := s.db.R.QueryRowContext(ctx, `SELECT count(*) FROM relationships r JOIN users t ON t.id = r.target_id WHERE r.user_id = ? AND r.type = 'friend' AND t.flags & ? = 0`, int64(u.ID), notPeople).Scan(&friends); err != nil {
+		return nil, nil, err
+	}
+	if level := tierOf(friends, FriendlyTiers[:]); level > 0 {
+		out[BadgeFriendly] = level
+	}
+	// from the owner's own memberships, which are indexed; a server's owner is always a member
+	var hosted int
+	if err := s.db.R.QueryRowContext(ctx, `SELECT COALESCE(max(n), 0) FROM (SELECT count(*) AS n FROM server_members me JOIN servers v ON v.id = me.server_id AND v.owner_id = me.user_id JOIN server_members m ON m.server_id = v.id JOIN users p ON p.id = m.user_id WHERE me.user_id = ? AND p.flags & ? = 0 GROUP BY v.id) sized`, int64(u.ID), notPeople).Scan(&hosted); err != nil {
+		return nil, nil, err
+	}
+	if level := tierOf(hosted, HostTiers[:]); level > 0 {
+		out[BadgeHost] = level
+	}
+	var boosts int
+	if err := s.db.R.QueryRowContext(ctx, `SELECT count(*) FROM server_boosts WHERE user_id = ?`, int64(u.ID)).Scan(&boosts); err != nil {
+		return nil, nil, err
+	}
+	if boosts > 0 {
+		out[BadgeBooster] = 1
+	}
+	p, err := s.GetBadgeProgress(ctx, u.ID)
+	if err != nil {
+		return nil, nil, err
+	}
+	if level := tierOf(p.BestStreak, RegularTiers[:]); level > 0 {
+		out[BadgeRegular] = level
+	}
+	if level := tierOf(int(p.CallSeconds/3600), OpenMicTiers[:]); level > 0 {
+		out[BadgeOpenMic] = level
+	}
+	return out, counts, nil
+}
+
+// resolvedReports counts an account's reports of a kind that staff resolved.
+func (s *Store) resolvedReports(ctx context.Context, uid ids.ID, kind string) (int, error) {
+	var n int
+	err := s.db.R.QueryRowContext(ctx, `SELECT count(*) FROM bug_reports WHERE user_id = ? AND status = ? AND kind = ?`, int64(uid), BugResolved, kind).Scan(&n)
+	return n, err
 }
 
 // EarnedLevels is what an account earned of each overridable badge, overrides
@@ -281,7 +360,8 @@ func (s *Store) EarnedLevels(ctx context.Context, u *User) (map[string]int, erro
 	if u == nil || u.Flags&(NotPeople|FlagBot|FlagDeleted) != 0 {
 		return map[string]int{}, nil
 	}
-	return s.naturalLevels(ctx, u, time.Now())
+	levels, _, err := s.naturalLevels(ctx, u, time.Now())
+	return levels, err
 }
 
 // BadgeOverrides is what staff set of an account's earned badges: 0 taken
@@ -483,6 +563,26 @@ type BadgeHolder struct {
 // time, with the total; taken lists the accounts staff took an earned badge
 // from (all of them: there are few).
 func (s *Store) BadgeHolders(ctx context.Context, badge string, offset, limit int) (list, taken []BadgeHolder, total int, err error) {
+	all, taken, err := s.allBadgeHolders(ctx, badge)
+	if err != nil {
+		return nil, nil, 0, err
+	}
+	total = len(all)
+	if offset > total {
+		offset = total
+	}
+	end := offset + limit
+	if end > total {
+		end = total
+	}
+	if taken == nil {
+		taken = []BadgeHolder{}
+	}
+	return all[offset:end], taken, total, nil
+}
+
+// allBadgeHolders is everyone holding a badge, and whoever staff took it from.
+func (s *Store) allBadgeHolders(ctx context.Context, badge string) (all, taken []BadgeHolder, err error) {
 	held := map[ids.ID]BadgeHolder{}
 	people := ` AND u.flags & ? = 0`
 	notPeople := int64(NotPeople | FlagBot | FlagDeleted)
@@ -547,14 +647,25 @@ func (s *Store) BadgeHolders(ctx context.Context, badge string, offset, limit in
 		err = collect(`SELECT u.id, count(*) FROM bug_reports b JOIN users u ON u.id = b.user_id WHERE b.status = ? AND b.kind = ?`+people+` GROUP BY u.id`, BugResolved, kind, notPeople)
 		asTier(ReportTiers[:])
 	case badge == BadgeAppDeveloper:
-		err = collect(`SELECT u.id, count(DISTINCT m.server_id) FROM applications a JOIN users u ON u.id = a.owner_id JOIN server_members m ON m.user_id = a.id JOIN servers v ON v.id = m.server_id WHERE v.owner_id != a.owner_id`+people+` GROUP BY u.id HAVING count(DISTINCT m.server_id) >= ?`, notPeople, AppDeveloperServers)
-		for id, h := range held {
-			h.Level = 0
-			held[id] = h
-		}
+		err = collect(`SELECT u.id, count(DISTINCT m.server_id) FROM applications a JOIN users u ON u.id = a.owner_id JOIN server_members m ON m.user_id = a.id JOIN servers v ON v.id = m.server_id WHERE v.owner_id != a.owner_id`+people+` GROUP BY u.id`, notPeople)
+		asTier(AppDeveloperTiers[:])
 	case badge == BadgeGiftGiver:
 		err = collect(`SELECT u.id, count(*) FROM plan_gifts g JOIN users u ON u.id = g.from_id WHERE g.to_id != g.from_id AND g.session_id NOT LIKE '`+ownerGiftClaim+`%'`+people+` GROUP BY u.id`, notPeople)
 		asTier(GiftTiers[:])
+	case badge == BadgeFriendly:
+		err = collect(`SELECT u.id, count(*) FROM relationships r JOIN users u ON u.id = r.user_id JOIN users t ON t.id = r.target_id WHERE r.type = 'friend' AND t.flags & ? = 0`+people+` GROUP BY u.id`, notPeople, notPeople)
+		asTier(FriendlyTiers[:])
+	case badge == BadgeHost:
+		err = collect(`SELECT u.id, max(sized.n) FROM (SELECT v.owner_id AS owner, count(*) AS n FROM servers v JOIN server_members m ON m.server_id = v.id JOIN users p ON p.id = m.user_id WHERE p.flags & ? = 0 GROUP BY v.id, v.owner_id) sized JOIN users u ON u.id = sized.owner WHERE 1 = 1`+people+` GROUP BY u.id`, notPeople, notPeople)
+		asTier(HostTiers[:])
+	case badge == BadgeBooster:
+		err = collect(`SELECT DISTINCT u.id, 0 FROM server_boosts b JOIN users u ON u.id = b.user_id WHERE 1 = 1`+people, notPeople)
+	case badge == BadgeRegular:
+		err = collect(`SELECT u.id, b.best_streak FROM badge_progress b JOIN users u ON u.id = b.user_id WHERE 1 = 1`+people, notPeople)
+		asTier(RegularTiers[:])
+	case badge == BadgeOpenMic:
+		err = collect(`SELECT u.id, b.call_seconds / 3600 FROM badge_progress b JOIN users u ON u.id = b.user_id WHERE 1 = 1`+people, notPeople)
+		asTier(OpenMicTiers[:])
 	case IsGrantableBadge(badge):
 		err = collect(`SELECT u.id, 0 FROM user_badges g JOIN users u ON u.id = g.user_id WHERE g.badge = ?`+people, badge, notPeople)
 		for id, h := range held {
@@ -562,22 +673,22 @@ func (s *Store) BadgeHolders(ctx context.Context, badge string, offset, limit in
 			held[id] = h
 		}
 	default:
-		return nil, nil, 0, ErrBadBadge
+		return nil, nil, ErrBadBadge
 	}
 	if err != nil {
-		return nil, nil, 0, err
+		return nil, nil, err
 	}
 	if top := OverridableBadges[badge]; top > 0 {
 		rows, err := s.db.R.QueryContext(ctx, `SELECT u.id, o.level FROM badge_overrides o JOIN users u ON u.id = o.user_id WHERE o.badge = ?`+people, badge, notPeople)
 		if err != nil {
-			return nil, nil, 0, err
+			return nil, nil, err
 		}
 		for rows.Next() {
 			var id int64
 			var l int
 			if err := rows.Scan(&id, &l); err != nil {
 				rows.Close()
-				return nil, nil, 0, err
+				return nil, nil, err
 			}
 			uid := ids.ID(id)
 			if l == 0 {
@@ -592,27 +703,16 @@ func (s *Store) BadgeHolders(ctx context.Context, badge string, offset, limit in
 		}
 		rows.Close()
 		if err := rows.Err(); err != nil {
-			return nil, nil, 0, err
+			return nil, nil, err
 		}
 	}
-	all := make([]BadgeHolder, 0, len(held))
+	all = make([]BadgeHolder, 0, len(held))
 	for _, h := range held {
 		all = append(all, h)
 	}
 	sort.Slice(all, func(i, j int) bool { return all[i].UserID < all[j].UserID })
 	sort.Slice(taken, func(i, j int) bool { return taken[i].UserID < taken[j].UserID })
-	total = len(all)
-	if offset > total {
-		offset = total
-	}
-	end := offset + limit
-	if end > total {
-		end = total
-	}
-	if taken == nil {
-		taken = []BadgeHolder{}
-	}
-	return all[offset:end], taken, total, nil
+	return all, taken, nil
 }
 
 func giftLevel(gifts int) int { return tierOf(gifts, GiftTiers[:]) }
@@ -813,6 +913,299 @@ func (s *Store) SetBadgePrefs(ctx context.Context, uid ids.ID, p BadgePrefs) err
 		_, err := tx.ExecContext(ctx, `INSERT INTO badge_prefs (user_id, shown, hidden) VALUES (?, ?, ?)`, int64(uid), string(order), string(hid))
 		return err
 	})
+}
+
+// BadgeIndexEntry is one badge to collect. Art is the picture of a built-in
+// badge. Badge is set only once it is collected: until then nothing says what
+// it is or how to get it, and a badge staff made carries only Icon or Image,
+// what its silhouette is drawn from.
+type BadgeIndexEntry struct {
+	Art   string `json:"art,omitempty"`
+	Icon  string `json:"icon,omitempty"`
+	Image string `json:"image,omitempty"`
+	Badge *Badge `json:"badge,omitempty"`
+	// event names a badge staff made, to find how rare it is and its place; never sent
+	event string
+	// name is the staff-made badge's own, for its place among the locked; never sent
+	name string
+}
+
+// key names an entry's place in the order, for the owner's arrangement only.
+func (e BadgeIndexEntry) key() string {
+	if e.event != "" {
+		return e.event
+	}
+	return e.Art
+}
+
+// BadgeIndex is every badge there is to collect and how many of them an
+// account holds. Each level of a badge is a badge of its own, and a staff rank
+// is not one to collect.
+type BadgeIndex struct {
+	Collected int               `json:"collected"`
+	Total     int               `json:"total"`
+	Entries   []BadgeIndexEntry `json:"entries"`
+}
+
+// MyBadgeIndex lays out the index for an account, in the order the owner set,
+// and otherwise the most commonly held badges first and the rarest last, for
+// everyone alike. Badges its holder hid still count.
+func (s *Store) MyBadgeIndex(ctx context.Context, u *User) (*BadgeIndex, error) {
+	list, err := s.earnedBadges(ctx, u, time.Now())
+	if err != nil {
+		return nil, err
+	}
+	held := map[string]Badge{}
+	for _, b := range list {
+		held[b.ID] = b
+	}
+	out, err := s.layBadgeIndex(ctx, held, u.Plan)
+	if err != nil {
+		return nil, err
+	}
+	order, err := s.badgeIndexOrder(ctx)
+	if err != nil {
+		return nil, err
+	}
+	placeBadges(out.Entries, order)
+	heldThenLocked(out.Entries, len(order) > 0)
+	return out, nil
+}
+
+// heldThenLocked puts what the account holds first and what it lacks after it,
+// the locked ones from A to Z, and the held ones too unless heldInPlace keeps
+// them in the owner's order. The names stay here: a locked entry is sent with
+// nothing but its shape, and its place says no more than that.
+func heldThenLocked(entries []BadgeIndexEntry, heldInPlace bool) {
+	sort.SliceStable(entries, func(i, j int) bool {
+		a, b := entries[i], entries[j]
+		if (a.Badge != nil) != (b.Badge != nil) {
+			return a.Badge != nil
+		}
+		if a.Badge != nil && heldInPlace {
+			return false
+		}
+		if x, y := strings.ToLower(a.indexName()), strings.ToLower(b.indexName()); x != y {
+			return x < y
+		}
+		return a.key() < b.key()
+	})
+}
+
+// badgeIndexNames is each built-in entry's English name (web/src/i18n/locales/en.json),
+// which puts the locked ones in order in every language, none of them being shown.
+var badgeIndexNames = map[string]string{
+	"plan-supporter": "Supporter", "plan-pro": "Pro", "og": "OG", "years": "Years on Nexa", "contributor": "Contributor", "booster": "Booster",
+	"bug-1": "Bug Spotter", "bug-2": "Bug Tracker", "bug-3": "Bug Hunter", "bug-4": "Bug Slayer", "bug-5": "Exterminator",
+	"ideas-1": "Spark", "ideas-2": "Idea Maker", "ideas-3": "Visionary", "ideas-4": "Architect", "ideas-5": "Mastermind",
+	"bot-maker-1": "Tinkerer", "bot-maker-2": "Maker", "bot-maker-3": "Whisperer",
+	"gift-1": "Gift Giver", "gift-2": "Gift Giver", "gift-3": "Gift Giver",
+	"friendly-1": "Friendly", "friendly-2": "Butterfly", "friendly-3": "Socialite",
+	"host-1": "Host", "host-2": "Organizer", "host-3": "Mayor",
+	"regular-1": "Regular", "regular-2": "Familiar", "regular-3": "Fixture", "regular-4": "Furniture",
+	"open-mic-1": "Speaker", "open-mic-2": "Verbose", "open-mic-3": "Yapper",
+}
+
+func (e BadgeIndexEntry) indexName() string {
+	if e.event != "" {
+		return e.name
+	}
+	return badgeIndexNames[e.Art]
+}
+
+// everyPlan is layBadgeIndex's plan when both plans count as held.
+const everyPlan = "*"
+
+// layBadgeIndex is every badge, as the account holding held on plan sees it.
+func (s *Store) layBadgeIndex(ctx context.Context, held map[string]Badge, onPlan string) (*BadgeIndex, error) {
+	out := &BadgeIndex{Entries: []BadgeIndexEntry{}}
+	add := func(e BadgeIndexEntry, b *Badge) {
+		e.Badge = b
+		if b != nil {
+			out.Collected++
+		}
+		out.Entries = append(out.Entries, e)
+		out.Total++
+	}
+	one := func(art, id string) {
+		if b, ok := held[id]; ok {
+			add(BadgeIndexEntry{Art: art}, &b)
+		} else {
+			add(BadgeIndexEntry{Art: art}, nil)
+		}
+	}
+	// a level is collected once the badge has reached it; only the highest has the holder's own count
+	levels := func(art, id string, top int) {
+		b, ok := held[id]
+		for n := 1; n <= top; n++ {
+			e := BadgeIndexEntry{Art: art + "-" + strconv.Itoa(n)}
+			if !ok || b.Level < n {
+				add(e, nil)
+				continue
+			}
+			at := Badge{ID: id, Level: n}
+			if n == b.Level {
+				at.Count = b.Count
+			}
+			add(e, &at)
+		}
+	}
+	plan := func(name string) {
+		if _, ok := held[BadgePlan]; ok && (onPlan == name || onPlan == everyPlan) {
+			add(BadgeIndexEntry{Art: "plan-" + name}, &Badge{ID: BadgePlan})
+		} else {
+			add(BadgeIndexEntry{Art: "plan-" + name}, nil)
+		}
+	}
+	plan("supporter")
+	plan("pro")
+	one("og", BadgeOG)
+	one("years", BadgeYears)
+	one("contributor", BadgeContributor)
+	levels("bug", BadgeBugHunter, 5)
+	levels("ideas", BadgeIdeas, 5)
+	levels("bot-maker", BadgeAppDeveloper, 3)
+	levels("gift", BadgeGiftGiver, 3)
+	levels("friendly", BadgeFriendly, 3)
+	levels("host", BadgeHost, 3)
+	one("booster", BadgeBooster)
+	levels("regular", BadgeRegular, 4)
+	levels("open-mic", BadgeOpenMic, 3)
+	defs, err := s.BadgeDefs(ctx)
+	if err != nil {
+		return nil, err
+	}
+	// oldest first, so a new one joins the end
+	for i := len(defs) - 1; i >= 0; i-- {
+		d := defs[i]
+		b := d.badge()
+		e := BadgeIndexEntry{Icon: b.Icon, Image: b.Image, event: b.ID, name: d.Name}
+		if b.Image != "" {
+			e.Icon = ""
+		}
+		if have, ok := held[b.ID]; ok {
+			add(e, &have)
+		} else {
+			add(e, nil)
+		}
+	}
+	return out, nil
+}
+
+// badgeIndexOrderKey is the instance setting holding the owner's order, a JSON
+// list of entry keys; unset, the index goes from A to Z.
+const badgeIndexOrderKey = "badge_index_order"
+
+// ErrBadgeOrder is an order naming a badge that does not exist, or one twice.
+var ErrBadgeOrder = errors.New("badge order names an unknown or repeated badge")
+
+func (s *Store) badgeIndexOrder(ctx context.Context) ([]string, error) {
+	raw, err := s.InstanceSetting(ctx, badgeIndexOrderKey)
+	if err != nil || raw == "" {
+		return nil, err
+	}
+	var order []string
+	if json.Unmarshal([]byte(raw), &order) != nil {
+		return nil, nil
+	}
+	return order, nil
+}
+
+// placeBadges puts what the order names first, in that order. What it does not
+// name (a badge made since, say) follows as it was. Keys of badges since deleted match nothing.
+func placeBadges(entries []BadgeIndexEntry, order []string) {
+	if len(order) == 0 {
+		return
+	}
+	at := make(map[string]int, len(order))
+	for i, k := range order {
+		at[k] = i
+	}
+	rank := func(e BadgeIndexEntry) int {
+		if i, ok := at[e.key()]; ok {
+			return i
+		}
+		return len(order)
+	}
+	sort.SliceStable(entries, func(i, j int) bool { return rank(entries[i]) < rank(entries[j]) })
+}
+
+// BadgeArrangement is the whole index for the owner to arrange, every badge
+// shown as held: Entries as everyone sees it now, AToZ the keys from A to Z.
+type BadgeArrangement struct {
+	Custom  bool               `json:"custom"`
+	Entries []BadgeArrangeItem `json:"entries"`
+	AToZ    []string           `json:"a_to_z"`
+}
+
+// BadgeArrangeItem is one place in the arrangement. Only the owner gets these:
+// the index everyone else reads never names what they lack.
+type BadgeArrangeItem struct {
+	Key   string `json:"key"`
+	Badge Badge  `json:"badge"`
+}
+
+// BadgeArrangement answers what the owner arranges.
+func (s *Store) BadgeArrangement(ctx context.Context) (*BadgeArrangement, error) {
+	held := map[string]Badge{BadgePlan: {ID: BadgePlan}, BadgeContributor: {ID: BadgeContributor}}
+	for id, top := range OverridableBadges {
+		held[id] = Badge{ID: id, Level: top}
+	}
+	held[BadgeYears] = Badge{ID: BadgeYears, Level: 1}
+	defs, err := s.BadgeDefs(ctx)
+	if err != nil {
+		return nil, err
+	}
+	for _, d := range defs {
+		b := d.badge()
+		held[b.ID] = b
+	}
+	index, err := s.layBadgeIndex(ctx, held, everyPlan)
+	if err != nil {
+		return nil, err
+	}
+	heldThenLocked(index.Entries, false)
+	out := &BadgeArrangement{AToZ: make([]string, 0, len(index.Entries))}
+	for _, e := range index.Entries {
+		out.AToZ = append(out.AToZ, e.key())
+	}
+	order, err := s.badgeIndexOrder(ctx)
+	if err != nil {
+		return nil, err
+	}
+	out.Custom = len(order) > 0
+	placeBadges(index.Entries, order)
+	out.Entries = make([]BadgeArrangeItem, 0, len(index.Entries))
+	for _, e := range index.Entries {
+		out.Entries = append(out.Entries, BadgeArrangeItem{Key: e.key(), Badge: *e.Badge})
+	}
+	return out, nil
+}
+
+// SetBadgeIndexOrder saves the owner's order; an empty one goes back to A to Z.
+func (s *Store) SetBadgeIndexOrder(ctx context.Context, order []string) error {
+	if len(order) == 0 {
+		return s.SetInstanceSettings(ctx, [][2]string{{badgeIndexOrderKey, ""}})
+	}
+	now, err := s.BadgeArrangement(ctx)
+	if err != nil {
+		return err
+	}
+	known := make(map[string]bool, len(now.AToZ))
+	for _, k := range now.AToZ {
+		known[k] = true
+	}
+	for _, k := range order {
+		if !known[k] {
+			return ErrBadgeOrder
+		}
+		known[k] = false // a second mention finds it gone
+	}
+	raw, err := json.Marshal(order)
+	if err != nil {
+		return err
+	}
+	return s.SetInstanceSettings(ctx, [][2]string{{badgeIndexOrderKey, string(raw)}})
 }
 
 // --- what staff do ----------------------------------------------------------

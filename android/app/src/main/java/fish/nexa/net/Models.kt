@@ -356,10 +356,18 @@ data class Role(
     @SerialName("icon_id") val iconId: Snowflake? = null,
     /** An emoji for its icon ("custom:<id>" for one of the server's own), or "". */
     @SerialName("icon_emoji") val iconEmoji: String = "",
+    /** The bot this role came with. */
+    @SerialName("managed_by") val managedBy: Snowflake? = null,
     /** With a second colour the name is a gradient; with a third, a shimmer across all three. */
     val color2: Long? = null,
     val color3: Long? = null,
     @SerialName("created_at") val createdAt: Long = 0,
+)
+
+@Serializable
+data class ReactionRole(
+    val emoji: String,
+    @SerialName("role_id") val roleId: Snowflake,
 )
 
 @Serializable
@@ -745,6 +753,8 @@ data class Message(
     @SerialName("mention_everyone") val mentionEveryone: Boolean = false,
     val attachments: List<Attachment> = emptyList(),
     val reactions: List<ReactionSummary> = emptyList(),
+    /** Which reactions on this message give a role. */
+    @SerialName("reaction_roles") val reactionRoles: List<ReactionRole> = emptyList(),
     val flags: Long = 0,
     val nonce: String? = null,
     @SerialName("edited_at") val editedAt: Long? = null,

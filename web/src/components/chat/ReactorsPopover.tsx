@@ -21,12 +21,14 @@ export const REACTORS_SHOWN = 20;
  * a right click on it, or the menu key on it from the keyboard. It was a
  * tooltip filled in on mouse-over, which no phone and no keyboard ever saw.
  */
-export function ReactorsPopover({ anchor, emoji, custom, label, count, ids, onClose }: {
+export function ReactorsPopover({ anchor, emoji, custom, label, count, gives, ids, onClose }: {
   anchor: DOMRect;
   emoji: string;
   custom: { id: string; animated: boolean } | null;
   label: string;
   count: number;
+  /** The role this reaction gives, if it gives one. */
+  gives?: string;
   /** Who reacted, as far as the server says; null while it is being asked. */
   ids: string[] | null;
   onClose: () => void;
@@ -93,6 +95,7 @@ export function ReactorsPopover({ anchor, emoji, custom, label, count, ids, onCl
         <span className={s.headLabel}>{label}</span>
         <span className={s.headCount}>{count}</span>
       </div>
+      {gives ? <p className={s.gives}>{t("chat.reactionRoles.gives", { role: gives })}</p> : null}
       {ids === null ? (
         <div className={s.pending}><Spinner size={18} /></div>
       ) : (

@@ -47,7 +47,7 @@
   --profile-chip: rgba(0, 0, 0, 0.28); --profile-chip-hover: rgba(0, 0, 0, 0.4); --bubble-bg: rgba(14, 10, 24, 0.74);
   --sheet-bg: rgba(0, 0, 0, 0.3);
   --profile-accent: color-mix(in srgb, var(--profile-top), #fff 18%);
-  --badge-pill: color-mix(in oklab, var(--profile-top), #000 70%); --badge-pill-ring: var(--border-subtle); --badge-ink-mix: 12%;
+  --badge-pill: color-mix(in oklab, var(--profile-top), #000 70%); --badge-pill-ring: var(--border-subtle);
 }
 .card[data-themed="dark"] {
   --text: #1d1e22; --text-strong: #000000; --text-subtle: rgba(0, 0, 0, 0.74); --text-muted: rgba(0, 0, 0, 0.62);
@@ -56,7 +56,7 @@
   --profile-chip: rgba(255, 255, 255, 0.55); --profile-chip-hover: rgba(255, 255, 255, 0.78); --bubble-bg: rgba(255, 255, 255, 0.88);
   --sheet-bg: rgba(255, 255, 255, 0.42);
   --profile-accent: color-mix(in srgb, var(--profile-top), #000 45%);
-  --badge-pill: color-mix(in oklab, var(--profile-top), #fff 80%); --badge-pill-ring: var(--border-subtle); --badge-ink-mix: 38%;
+  --badge-pill: color-mix(in oklab, var(--profile-top), #fff 80%); --badge-pill-ring: var(--border-subtle);
 }
 /* the main button is the theme's own colour made deep enough for white text */
 @supports (color: oklch(from red l c h)) {

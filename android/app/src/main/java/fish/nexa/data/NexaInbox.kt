@@ -127,6 +127,8 @@ data class MemberBug(
     val unread: Int = 0,
     @SerialName("last_activity_at") val lastActivityAt: Long = 0,
     @SerialName("created_at") val createdAt: Long = 0,
+    /** "bug" or "suggestion"; a report from before suggestions has none. */
+    val kind: String = "bug",
 )
 
 /** A line of a bug report's thread: the reporter's, the team's, or a status change. */

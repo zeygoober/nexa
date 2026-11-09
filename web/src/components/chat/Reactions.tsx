@@ -1,5 +1,5 @@
 import { useMediaAnimation } from "@/lib/mediaAnimation";
-import { SmilePlus } from "lucide-react";
+import { SmilePlus, Tag } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { messages as messagesApi } from "@/api/messages";
 import { emojiUrl } from "@/api/users";
@@ -32,7 +32,7 @@ export function reactionKeyOf(e: EmojiPick): string {
   return m ? `${m[1]}:${m[2]}:${m[3]}` : e.unicode;
 }
 
-function isCustom(emoji: string): { id: string; name: string; animated: boolean } | null {
+export function customReaction(emoji: string): { id: string; name: string; animated: boolean } | null {
   const m = /^(a?):?([\w]+):(\d+)$/.exec(emoji);
   if (!m) return null;
   return { id: m[3]!, name: m[2]!, animated: m[1] === "a" };
@@ -44,14 +44,14 @@ function isCustom(emoji: string): { id: string; name: string; animated: boolean 
  * itself is already drawn beside it).
  */
 function nameOf(emoji: string): string {
-  if (isCustom(emoji)) return emojiLabel(emoji);
+  if (customReaction(emoji)) return emojiLabel(emoji);
   const entry = emojiLoaded() ? emojiByUnicode(emoji) : undefined;
   return entry?.shortcodes[0] ? `:${entry.shortcodes[0]}:` : "";
 }
 
 /** How a reaction is named to people: a custom emoji by its :name:, not by the key the server stores. */
 function emojiLabel(emoji: string): string {
-  const custom = isCustom(emoji);
+  const custom = customReaction(emoji);
   return custom ? `:${custom.name}:` : emoji;
 }
 
@@ -163,20 +163,25 @@ export function Reactions({ msg, pickerAnchor, onOpenPicker, onPickerClose }: Pr
     const others = ids.filter((id) => id !== meId);
     return r.me ? [meId, ...others] : others;
   };
+  const roleGiven = (emoji: string): string | undefined => {
+    const id = msg.reaction_roles?.find((x) => x.emoji === emoji)?.role_id;
+    return id && reactServer ? useServers.getState().byId[reactServer]?.roles[id]?.name : undefined;
+  };
   const open = showing ? msg.reactions.find((r) => r.emoji === showing.emoji) : undefined;
   return (
     <div className={s.reactions}>
       {msg.reactions.map((r) => {
-        const custom = isCustom(r.emoji);
+        const custom = customReaction(r.emoji);
         const label = emojiLabel(r.emoji);
         const ids = reactors(r);
         const names = ids?.map((id) => displayName(users[id])).join(", ");
         const locked = !mayReact && !r.me;
         const move = moving.get(r.emoji);
         const tick = move && move.kind !== "pop" ? move : undefined;
+        const gives = roleGiven(r.emoji);
         // the app's own tooltip, as on the toolbar above: it says who, once they are known
         return (
-          <Tooltip key={r.emoji} text={names ? t("chat.reactions.reactedWith", { who: names, emoji: label }) : t("chat.reactions.reactWith", { emoji: label })} side="top">
+          <Tooltip key={r.emoji} text={gives ? t("chat.reactionRoles.pillTip", { emoji: label, role: gives }) : names ? t("chat.reactions.reactedWith", { who: names, emoji: label }) : t("chat.reactions.reactWith", { emoji: label })} side="top">
             <button
               className={s.pill}
               data-me={r.me}
@@ -198,6 +203,7 @@ export function Reactions({ msg, pickerAnchor, onOpenPicker, onPickerClose }: Pr
                 {/* keyed by the count, so a new number is a new element that ticks in */}
                 <span key={r.count} className={s.pillCount} data-tick={tick?.kind} onAnimationEnd={() => landed(r.emoji)}>{r.count}</span>
               </span>
+              {gives ? <Tag size={12} className={s.pillRole} aria-hidden="true" /> : null}
             </button>
           </Tooltip>
         );
@@ -209,9 +215,10 @@ export function Reactions({ msg, pickerAnchor, onOpenPicker, onPickerClose }: Pr
         <ReactorsPopover
           anchor={showing.anchor}
           emoji={open.emoji}
-          custom={isCustom(open.emoji)}
+          custom={customReaction(open.emoji)}
           label={nameOf(open.emoji)}
           count={open.count}
+          gives={roleGiven(open.emoji)}
           ids={reactors(open) ?? null}
           onClose={closeShowing}
         />

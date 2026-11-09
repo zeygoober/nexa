@@ -14,7 +14,24 @@ export interface DiscoveryQuery {
   limit?: number;
 }
 
+/** A bot its developer listed on Discover. */
+export interface ListedApp {
+  id: Snowflake;
+  name: string;
+  description: string;
+  icon_id: Snowflake | null;
+  avatar_id: Snowflake | null;
+  tags: string[];
+  servers: number;
+  reads_all: boolean;
+}
+
 export const discovery = {
+  bots(q: { q?: string; sort?: "popular" | "newest"; offset?: number; limit?: number }): Promise<{ bots: ListedApp[]; has_more: boolean; next_offset?: number }> {
+    const query: Record<string, string> = {};
+    for (const [k, v] of Object.entries(q)) if (v !== undefined && v !== "" && v !== 0) query[k] = String(v);
+    return api.request("GET", "/discovery/bots", undefined, { query });
+  },
   search(q: DiscoveryQuery = {}): Promise<{ servers: DiscoveryCard[]; has_more: boolean; next_offset?: number }> {
     const query: Record<string, string> = {};
     for (const [k, v] of Object.entries(q)) if (v !== undefined && v !== "" && v !== 0) query[k] = String(v);

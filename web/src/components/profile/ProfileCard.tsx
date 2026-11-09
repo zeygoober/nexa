@@ -816,7 +816,7 @@ export function ProfileCard({ userId, variant, onClose, preview, previewWidgets,
               <Spot design={design} part="badges" label={t("designer.spot.badges")} />
             </span>
           ) : (
-            <BadgeRow user={user} badges={badges} className={s.badgePill} />
+            <BadgeRow user={user} badges={badges} className={s.badgePill} onMore={popout ? onClose : undefined} />
           )}
         </div>
       </div>

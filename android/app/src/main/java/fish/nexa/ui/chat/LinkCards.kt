@@ -45,7 +45,12 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
 import fish.nexa.Nexa
+import fish.nexa.data.GiftPreviews
 import fish.nexa.data.Invites
+import fish.nexa.ui.support.SHORT_NAME_GIFT
+import fish.nexa.ui.support.copyGiftLink
+import fish.nexa.ui.support.giftTitle
+import fish.nexa.ui.support.tint
 import fish.nexa.media.Media
 import fish.nexa.media.Unfurl
 import fish.nexa.net.ApiError
@@ -76,6 +81,7 @@ private const val MAX_INVITE_CARDS = 3
 private const val MAX_PROFILE_CARDS = 3
 private const val MAX_PACK_CARDS = 3
 private const val MAX_APP_CARDS = 3
+private const val MAX_GIFT_CARDS = 3
 
 /** Nexa's own addresses a message can link to (lib/appLinks.ts appLink): invites, profiles, and sticker and emoji packs. */
 sealed interface AppLink {
@@ -84,6 +90,7 @@ sealed interface AppLink {
     data class Pack(val id: String, val url: String) : AppLink
     /** An app's install link: the app it adds (its client id) and the link's query. */
     data class App(val clientId: String, val query: String, val url: String) : AppLink
+    data class Gift(val code: String, val url: String) : AppLink
 }
 
 private fun ownHosts(): Set<String> = listOfNotNull(
@@ -101,6 +108,7 @@ private fun Modifier.overlapAbove(by: Dp): Modifier = layout { measurable, const
 private val INVITE_PATH = Regex("^/invite/([A-Za-z0-9_-]{1,64})/?$")
 private val PROFILE_PATH = Regex("^/@([A-Za-z0-9_.]{1,32})/?$")
 private val PACK_PATH = Regex("^/stickers/pack/(\\d{1,20})/?$")
+private val GIFT_PATH = Regex("^/gift/([A-Za-z0-9_-]{1,64})/?$")
 private val AUTHORIZE_PATH = Regex("^/oauth2/authorize/?$")
 
 fun appLink(href: String): AppLink? = runCatching {
@@ -111,6 +119,7 @@ fun appLink(href: String): AppLink? = runCatching {
     PROFILE_PATH.find(path)?.let { return AppLink.Profile(it.groupValues[1].lowercase(), href) }
     INVITE_PATH.find(path)?.let { return AppLink.Invite(it.groupValues[1], u.rawFragment?.let { f -> "#$f" } ?: "", href) }
     PACK_PATH.find(path)?.let { return AppLink.Pack(it.groupValues[1], href) }
+    GIFT_PATH.find(path)?.let { return AppLink.Gift(it.groupValues[1], href) }
     if (AUTHORIZE_PATH.matches(path)) {
         val query = u.rawQuery ?: ""
         val clientId = query.split('&').firstOrNull { it.startsWith("client_id=") }?.substringAfter('=')
@@ -159,7 +168,7 @@ fun InviteCards(text: String?, embeds: List<Unfurl>) {
 }
 
 /** What an invite card shows: a server or a group, with its pictures and counts. */
-data class InviteTarget(val kind: String, val id: String?, val name: String, val description: String, val iconId: String?, val bannerId: String?, val online: Int?, val members: Int?)
+data class InviteTarget(val kind: String, val id: String?, val name: String, val description: String, val iconId: String?, val bannerId: String?, val online: Int?, val members: Int?, val glyph: String? = null, val glyphColor: Color? = null, val tone: Color? = null)
 
 private fun mediaId(url: String?, kind: String): String? = url?.let { Regex("/media/$kind/(\\d{1,20})(?:\\?|$)").find(it)?.groupValues?.get(1) }
 
@@ -237,11 +246,12 @@ fun InviteCardView(target: InviteTarget, lead: (@Composable () -> Unit)?, action
                 modifier = Modifier.fillMaxWidth().aspectRatio(18f / 5f).background(c.bgActive), onError = { bannerFailed = true },
             )
         } else {
-            Box(Modifier.fillMaxWidth().height(44.dp).background(if (target.id != null && target.iconId == null) AvatarColor.of(target.id) else c.bgActive))
+            Box(Modifier.fillMaxWidth().height(44.dp).background(target.tone ?: if (target.id != null && target.iconId == null) AvatarColor.of(target.id) else c.bgActive))
         }
         // the icon, ringed in the card's own colour so it reads as set into the band, half over its edge
         Box(Modifier.padding(start = 12.dp).overlapAbove(32.dp).background(surface, RoundedCornerShape(22.dp)).padding(4.dp)) {
-            if (target.iconId != null) AsyncImage(Media.iconUrl(target.iconId, 56, density), null, imageLoader = Media.loader, contentScale = ContentScale.Crop, modifier = Modifier.size(56.dp).clip(RoundedCornerShape(17.dp)))
+            if (target.glyph != null) Box(Modifier.size(56.dp).clip(RoundedCornerShape(17.dp)).background(target.tone ?: c.bgActive), contentAlignment = Alignment.Center) { Icon(target.glyph, target.glyphColor ?: Color.White, size = 26.dp) }
+            else if (target.iconId != null) AsyncImage(Media.iconUrl(target.iconId, 56, density), null, imageLoader = Media.loader, contentScale = ContentScale.Crop, modifier = Modifier.size(56.dp).clip(RoundedCornerShape(17.dp)))
             else Box(
                 Modifier.size(56.dp).clip(RoundedCornerShape(17.dp)).background(target.id?.let { AvatarColor.of(it) } ?: c.bgActive),
                 contentAlignment = Alignment.Center,
@@ -320,6 +330,81 @@ private fun InviteSkeleton() {
             Box(Modifier.fillMaxWidth(0.55f).height(16.dp).background(c.bgActive, RoundedCornerShape(6.dp)))
             Box(Modifier.fillMaxWidth(0.4f).height(12.dp).background(c.bgActive, RoundedCornerShape(6.dp)))
         }
+    }
+}
+
+// ---- gift links ----
+
+/** A card under a message for each gift link in it, in the frame an invite is drawn in (web GiftCards). */
+@Composable
+fun GiftCards(text: String?) {
+    val links = remember(text) {
+        val out = ArrayList<AppLink.Gift>()
+        for (url in cardLinksIn(text ?: "")) {
+            val l = appLink(url) as? AppLink.Gift ?: continue
+            if (out.none { it.code == l.code }) out += l
+            if (out.size >= MAX_GIFT_CARDS) break
+        }
+        out
+    }
+    if (links.isEmpty()) return
+    Column(Modifier.padding(top = 4.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        for (l in links) GiftCard(l)
+    }
+}
+
+@Composable
+private fun GiftCard(link: AppLink.Gift) {
+    val c = Nx.colors
+    LaunchedEffect(link.code) { GiftPreviews.load(link.code) }
+    var busy by remember { mutableStateOf(false) }
+    when (val entry = GiftPreviews.byCode[link.code]) {
+        is GiftPreviews.Entry.Invalid -> GoneCard("Gift", t("chat.giftCard.goneTitle"), t("chat.giftCard.goneBody"))
+        is GiftPreviews.Entry.Failed -> GoneCard("Gift", t("chat.giftCard.failedTitle"), t("invite.checkYourConnection")) {
+            NxButton(t("invite.tryAgain"), { GiftPreviews.load(link.code, force = true) }, kind = ButtonKind.SECONDARY, size = ButtonSize.SM, icon = "RotateCw")
+        }
+        is GiftPreviews.Entry.Ready -> {
+            val g = entry.gift
+            val taken = g.claimed && !g.claimedByMe && !g.mine
+            val tone = when {
+                g.claimedByMe -> c.statusOnline
+                taken -> c.bgActive
+                g.plan == SHORT_NAME_GIFT -> c.brand
+                else -> tint(c, g.plan.ifEmpty { "supporter" })
+            }
+            val leadText = when {
+                g.claimedByMe -> t("support.giftLink.yoursNow")
+                g.mine -> if (g.claimed) t("chat.giftCard.mineClaimed") else t("chat.giftCard.mineWaiting")
+                g.claimed -> t("chat.giftCard.taken")
+                else -> t("chat.giftCard.from", "name" to g.fromName.ifEmpty { t("support.giftLink.someone") })
+            }
+            val target = InviteTarget("server", null, giftTitle(g.plan, g.days), "", null, null, null, null, glyph = if (g.claimedByMe) "Check" else "Gift", glyphColor = if (taken) c.textMuted else null, tone = tone)
+            InviteCardView(target, lead = { Txt(leadText, style = Nx.type.hint.copy(fontSize = Nx.type.sp(13f)), color = c.textMuted, maxLines = 2) }, action = when {
+                g.claimedByMe -> ({
+                    if (g.plan == SHORT_NAME_GIFT) NxButton(t("support.giftLink.chooseName"), { fish.nexa.ui.settings.Settings.open("account") }, kind = ButtonKind.SECONDARY, size = ButtonSize.SM)
+                    else NxButton(t("support.giftLink.seePlan"), { Nav.go(Route.Support) }, kind = ButtonKind.SECONDARY, size = ButtonSize.SM)
+                })
+                g.mine && !g.claimed -> ({ NxButton(t("support.giftLink.copy"), { copyGiftLink(g.code) }, kind = ButtonKind.SECONDARY, size = ButtonSize.SM) })
+                !g.claimed -> ({
+                    NxButton(t("support.giftLink.claim"), {
+                        busy = true
+                        Nexa.scope.launch {
+                            try {
+                                GiftPreviews.claim(link.code)
+                            } catch (e: Exception) {
+                                if (e is kotlinx.coroutines.CancellationException) throw e
+                                Nexa.ui.toast((e as? ApiError)?.message ?: t("invite.checkYourConnection"), "error")
+                                GiftPreviews.load(link.code, force = true)
+                            } finally {
+                                busy = false
+                            }
+                        }
+                    }, kind = ButtonKind.POSITIVE, size = ButtonSize.SM, loading = busy)
+                })
+                else -> null
+            })
+        }
+        else -> InviteSkeleton()
     }
 }
 

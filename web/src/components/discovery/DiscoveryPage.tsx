@@ -1,7 +1,7 @@
 import { openReport } from "@/lib/reporting";
 import { PersonName } from "@/components/common/PersonName";
 import { useMediaAnimation } from "@/lib/mediaAnimation";
-import { TriangleAlert, Compass, Smile, Sticker, Users, X } from "lucide-react";
+import { Bot, TriangleAlert, Compass, Smile, Sticker, Users, X } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { ApiError } from "@/api/client";
@@ -25,6 +25,7 @@ import { useServers } from "@/stores/servers";
 import { useUI } from "@/stores/ui";
 import { useUsers } from "@/stores/users";
 import chat from "@/components/chat/Chat.module.css";
+import { BotDiscovery } from "./BotDiscovery";
 import { PackDiscovery } from "./PackDiscovery";
 import s from "./Discovery.module.css";
 
@@ -352,22 +353,23 @@ function ServerDiscovery() {
   );
 }
 
-type Section = "servers" | "stickers" | "emoji";
+type Section = "servers" | "stickers" | "emoji" | "bots";
 const SECTIONS: { id: Section; label: string; icon: typeof Compass }[] = [
   { id: "servers", label: "discovery.tab.servers", icon: Compass },
   { id: "stickers", label: "pickers.expressionPicker.stickers", icon: Sticker },
   { id: "emoji", label: "modals.customStatus.emoji", icon: Smile },
+  { id: "bots", label: "discovery.tab.bots", icon: Bot },
 ];
 
 /**
- * The Discover tab: servers to join, and sticker and emoji packs to install.
+ * The Discover tab: servers to join, sticker and emoji packs to install, and bots to add.
  * Which part is open is in the address, so the picker and Settings can link to
  * it. A part once opened stays mounted, so coming back keeps its search.
  */
 export default function DiscoveryPage() {
   const [params, setParams] = useSearchParams();
   const asked = params.get("tab");
-  const section: Section = asked === "stickers" || asked === "emoji" ? asked : "servers";
+  const section: Section = asked === "stickers" || asked === "emoji" || asked === "bots" ? asked : "servers";
   const [seen, setSeen] = useState<Set<Section>>(() => new Set([section]));
   if (!seen.has(section)) setSeen(new Set(seen).add(section));
   const choose = (id: Section) => setParams(id === "servers" ? {} : { tab: id }, { replace: true });
@@ -402,6 +404,7 @@ export default function DiscoveryPage() {
           <div className={s.sectionBody} hidden={section !== "servers"}>{seen.has("servers") ? <ServerDiscovery /> : null}</div>
           {seen.has("stickers") ? <div className={s.sectionBody} hidden={section !== "stickers"}><PackDiscovery kind="sticker" /></div> : null}
           {seen.has("emoji") ? <div className={s.sectionBody} hidden={section !== "emoji"}><PackDiscovery kind="emoji" /></div> : null}
+          {seen.has("bots") ? <div className={s.sectionBody} hidden={section !== "bots"}><BotDiscovery /></div> : null}
         </div>
       </div>
     </div>

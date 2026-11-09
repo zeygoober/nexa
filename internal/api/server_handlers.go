@@ -206,6 +206,12 @@ func (s *Server) syncVisibility(ctx context.Context, serverID ids.ID, before vis
 		s.Log.Warn("visibility sync", "server", serverID.String(), "err", err)
 		return
 	}
+	s.applyVisibility(ctx, serverID, before, after, nil, changed)
+}
+
+// applyVisibility tells those in after what changed since before. rotates, when
+// set, says whether a conversation that lost a viewer should cost a new key.
+func (s *Server) applyVisibility(ctx context.Context, serverID ids.ID, before, after visibility, rotates func(ids.ID) bool, changed []ids.ID) {
 	chans, err := s.Store.ServerChannels(ctx, serverID)
 	if err != nil {
 		s.Log.Warn("visibility sync: channels", "server", serverID.String(), "err", err)
@@ -240,7 +246,7 @@ func (s *Server) syncVisibility(ctx context.Context, serverID ids.ID, before vis
 		}
 	}
 	for chID := range shrank {
-		if c := byID[chID]; c != nil && c.KeyConvID == chID {
+		if c := byID[chID]; c != nil && c.KeyConvID == chID && (rotates == nil || rotates(chID)) {
 			tr := true
 			_ = s.Store.SetKeyFlags(ctx, chID, &tr, nil)
 			if viewers, err := s.Store.ChannelViewers(ctx, chID); err == nil {

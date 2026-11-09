@@ -129,6 +129,7 @@ object Settings {
                 listOf(
                     SettingsPageInfo("account", t("settings.account.myAccount"), "UserRound"),
                     SettingsPageInfo("profiles", t("settings.profile.profiles"), "IdCard"),
+                    SettingsPageInfo("badgeIndex", t("badges.index.title"), "Award"),
                     SettingsPageInfo("security", t("settings.security.security"), "KeyRound"),
                     SettingsPageInfo("devices", t("settings.devices.devices"), "MonitorSmartphone"),
                     SettingsPageInfo("subscription", t("support.settingsLabel"), "Heart"),
@@ -647,6 +648,7 @@ private fun SettingsPageContent(id: String, anchor: String?, openPage: (String, 
     when (id) {
         "account" -> AccountPage(openPage)
         "profiles" -> ProfilesPage(anchor)
+        "badgeIndex" -> BadgeIndexPage()
         "security" -> SecurityPage()
         "devices" -> DevicesPage()
         "subscription" -> fish.nexa.ui.support.SupportPanel(inSettings = true)

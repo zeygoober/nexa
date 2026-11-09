@@ -656,7 +656,7 @@ internal fun MessageBody(item: MsgItem, ctx: ListCtx, failed: Boolean, preview: 
     val embeds = if (cm != null && !cm.m.suppressEmbeds) remember(payload?.embeds) {
         payload?.embeds?.filter { e ->
             val url = (e["url"] as? kotlinx.serialization.json.JsonPrimitive)?.takeIf { it.isString }?.content
-            url == null || fish.nexa.ui.markdown.AppLinks.jumpTarget(url, Nexa.api.baseUrl) == null
+            url == null || (fish.nexa.ui.markdown.AppLinks.jumpTarget(url, Nexa.api.baseUrl) == null && appLink(url) !is AppLink.Gift)
         }?.takeIf { it.isNotEmpty() }
     } else null
     // Pictures and GIFs stand alone; audio and video keep their original link above the player.
@@ -703,6 +703,7 @@ internal fun MessageBody(item: MsgItem, ctx: ListCtx, failed: Boolean, preview: 
             (embeds ?: fish.nexa.ui.markdown.Webhook.of(cm.hook)?.linkEmbeds?.takeIf { it.isNotEmpty() })?.mapNotNull { Unfurl.of(it) } ?: emptyList()
         }
         InviteCards(payload?.t, sealed)
+        GiftCards(payload?.t)
         ProfileCards(payload?.t, sealed)
         fish.nexa.ui.notes.NoteCards(payload?.t)
         PackCards(payload?.t)

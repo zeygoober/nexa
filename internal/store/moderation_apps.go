@@ -16,9 +16,11 @@ type ModApp struct {
 	Description string
 	IconID      *ids.ID
 	// Flags are the app's (its privileged intents); BotFlags its bot account's.
-	Flags     int64
-	BotFlags  int64
-	Public    bool
+	Flags    int64
+	BotFlags int64
+	Public   bool
+	// Discoverable: its developer put it on Discovery; DiscoveryHidden: staff took it off.
+	Discoverable, DiscoveryHidden bool
 	// Banned: its bot is under a ban in effect, so its token is refused.
 	Banned    bool
 	Servers   int
@@ -66,7 +68,7 @@ func (s *Store) ModApps(ctx context.Context, f ModAppFilter) ([]*ModApp, error) 
 	case "name":
 		order = s.db.Dialect.Lower("a.name") + ` ASC, a.id ASC`
 	}
-	q := `SELECT a.id, a.owner_id, a.name, a.description, a.icon_id, a.flags, b.flags, a.bot_public, a.created_at,
+	q := `SELECT a.id, a.owner_id, a.name, a.description, a.icon_id, a.flags, b.flags, a.bot_public, a.created_at, a.discoverable, a.discovery_hidden,
 		(SELECT count(*) FROM application_guild_installs g WHERE g.application_id = a.id) AS servers,
 		(SELECT count(*) FROM application_user_installs u WHERE u.application_id = a.id),
 		CASE WHEN EXISTS (SELECT 1 FROM mod_restrictions r WHERE r.user_id = a.id AND r.kind = 'ban' AND (r.expires_at IS NULL OR r.expires_at > ?)) THEN 1 ELSE 0 END
@@ -85,8 +87,8 @@ func (s *Store) ModApps(ctx context.Context, f ModAppFilter) ([]*ModApp, error) 
 	for rows.Next() {
 		var m ModApp
 		var icon *int64
-		var public, banned int64
-		if err := rows.Scan(&m.ID, &m.OwnerID, &m.Name, &m.Description, &icon, &m.Flags, &m.BotFlags, &public, &m.CreatedAt, &m.Servers, &m.Accounts, &banned); err != nil {
+		var public, banned, listed, hidden int64
+		if err := rows.Scan(&m.ID, &m.OwnerID, &m.Name, &m.Description, &icon, &m.Flags, &m.BotFlags, &public, &m.CreatedAt, &listed, &hidden, &m.Servers, &m.Accounts, &banned); err != nil {
 			return nil, err
 		}
 		if icon != nil {
@@ -94,6 +96,7 @@ func (s *Store) ModApps(ctx context.Context, f ModAppFilter) ([]*ModApp, error) 
 			m.IconID = &id
 		}
 		m.Public, m.Banned = public != 0, banned != 0
+		m.Discoverable, m.DiscoveryHidden = listed != 0, hidden != 0
 		out = append(out, &m)
 	}
 	return out, rows.Err()

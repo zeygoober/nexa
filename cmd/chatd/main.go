@@ -194,6 +194,7 @@ func main() {
 	srv.WireVoice(hub)
 	srv.WireActivities(hub)
 	srv.WireDiscord(hub)
+	srv.WireLastfm(hub, cfg.LastfmAPIKey, cfg.LastfmAPIURL)
 	// last: it wraps the ready extras the others installed
 	srv.WireModeration(hub)
 	srv.Extra = append(srv.Extra, func(mux *http.ServeMux) { mux.Handle("GET /gateway", hub) })
@@ -207,6 +208,7 @@ func main() {
 	srv.StartPolls(ctx)
 	srv.StartThreads(ctx)
 	srv.StartDiscord(ctx)
+	srv.StartLastfm(ctx)
 	// whatever deleted accounts still own goes, now and every hour after
 	srv.StartAccountSweep(ctx)
 	srv.StartBilling(ctx)
@@ -214,6 +216,8 @@ func main() {
 	// of what calls used, and the clearing out of old call records
 	srv.StartRealtime(ctx)
 	srv.StartStorage(ctx)
+	// time in calls towards the Open Mic badge
+	srv.StartBadgeProgress(ctx)
 	srv.Games.StartNameIndex(ctx)
 	if warp != nil {
 		go func() {

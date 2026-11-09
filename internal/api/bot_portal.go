@@ -77,6 +77,8 @@ type appView struct {
 	IntegrationTypes    map[string]store.IntegrationTypeConfig `json:"integration_types"`
 	RedirectURIs        []string                               `json:"redirect_uris"`
 	BotPublic           bool                                   `json:"bot_public"`
+	Discoverable        bool                                   `json:"discoverable"`
+	DiscoveryHidden     bool                                   `json:"discovery_hidden"`
 	BotRequireCodeGrant bool                                   `json:"bot_require_code_grant"`
 	VerifyKey           string                                 `json:"verify_key"`
 	EventWebhooksURL    string                                 `json:"event_webhooks_url"`
@@ -115,7 +117,7 @@ func (s *Server) appView(ctx context.Context, app *store.Application) (*appView,
 	}
 	v := &appView{ID: app.ID, Name: app.Name, Description: app.Description, IconID: app.IconID, CoverID: app.CoverID, Tags: app.Tags,
 		TermsURL: app.TermsURL, PrivacyURL: app.PrivacyURL, InteractionsURL: app.InteractionsURL, CustomInstallURL: app.CustomInstallURL,
-		InstallParams: app.InstallParams, IntegrationTypes: app.IntegrationTypes, RedirectURIs: app.RedirectURIs, BotPublic: app.BotPublic,
+		InstallParams: app.InstallParams, IntegrationTypes: app.IntegrationTypes, RedirectURIs: app.RedirectURIs, BotPublic: app.BotPublic, Discoverable: app.Discoverable, DiscoveryHidden: app.DiscoveryHidden,
 		BotRequireCodeGrant: app.BotRequireCodeGrant, VerifyKey: app.VerifyKey, EventWebhooksURL: app.EventWebhooksURL,
 		EventWebhooksOn: app.EventWebhooksStatus == 2, EventWebhooksTypes: app.EventWebhooksTypes, Intents: intentsOf(app.Flags), Flags: app.Flags,
 		HasSecret: app.SecretHash != "", ProtocolID: botproto.OutString(app.ID), Bot: bot.Public(), CreatedAt: app.CreatedAt}
@@ -350,6 +352,20 @@ func (s *Server) handleAppPatch(w http.ResponseWriter, r *http.Request) {
 		WriteError(w, E(http.StatusBadRequest, "bad_json", "The request could not be read."))
 		return
 	}
+	if on, _ := raw["discoverable"].(bool); on && !app.Discoverable {
+		public := app.BotPublic
+		if v, ok := raw["bot_public"].(bool); ok {
+			public = v
+		}
+		if !public {
+			WriteError(w, E(http.StatusBadRequest, "app_not_public", "Only a public app can be on Discovery."))
+			return
+		}
+		// everyone on Nexa sees it, so as with a server, listing one is a captcha away
+		if !s.requireCaptcha(w, r, "discovery_list") {
+			return
+		}
+	}
 	if err := s.patchApplication(r, app, raw, false); err != nil {
 		writeAppError(w, err)
 		return
@@ -428,6 +444,9 @@ func (s *Server) patchApplication(r *http.Request, app *store.Application, raw m
 		}
 		if v, ok := rd.boolean(raw, "bot_public", nil); ok {
 			p.BotPublic = &v
+		}
+		if v, ok := rd.boolean(raw, "discoverable", nil); ok {
+			p.Discoverable = &v
 		}
 		if v, ok := rd.boolean(raw, "bot_require_code_grant", nil); ok {
 			p.BotRequireCodeGrant = &v

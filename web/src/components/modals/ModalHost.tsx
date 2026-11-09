@@ -1,8 +1,10 @@
 import type { DecryptedMessage } from "@/lib/decrypt";
-import { Suspense, useCallback } from "react";
+import { Suspense, useCallback, type ComponentProps } from "react";
+import type { Badge } from "@/api/types";
+import { AllBadges } from "@/components/badges/Badges";
 import { Modal } from "@/components/common/Modal";
 import { Spinner } from "@/components/common/Spinner";
-import { lazyPage } from "@/lib/lazyChunk";
+import { lazyDialog, lazyPage } from "@/lib/lazyChunk";
 import { useUI, type ModalState } from "@/stores/ui";
 import { ConfirmModal } from "./ConfirmModal";
 import { CreateDMModal } from "./CreateDMModal";
@@ -26,6 +28,7 @@ import { ScreenPermission } from "@/components/desktop/DisplayPicker";
 import { GuestLinkModal } from "@/components/voice/GuestLinkModal";
 import type { StickerPack } from "@/api/types";
 import type { AppForm } from "@/api/apps";
+import { ReactionRolesModal } from "./ReactionRolesModal";
 import { StickerPackModal } from "./StickerPackModal";
 import { BlockDialog } from "@/components/profile/BlockDialog";
 import type { ProfileTab } from "@/components/profile/ProfileCard";
@@ -41,7 +44,7 @@ import { t } from "@/i18n";
 import { PasteUpdateDialog } from "@/components/desktop/PasteUpdateDialog";
 const SettingsModal = lazyPage(() => import("@/components/settings/SettingsModal"));
 const ProfileModal = lazyPage(() => import("@/components/profile/ProfileModal"));
-const ServerSettingsModal = lazyPage(() => import("@/components/server/ServerSettingsModal"));
+const ServerSettingsModal = lazyDialog(() => import("@/components/server/ServerSettingsModal"));
 const ChannelSettingsModal = lazyPage(() => import("@/components/server/ChannelSettingsModal"));
 const MemberActionModal = lazyPage(() => import("@/components/server/MemberActionModal"));
 const SubchatModal = lazyPage(() => import("./SubchatModal"));
@@ -132,6 +135,7 @@ function ModalEntry({ modal }: { modal: ModalState }) {
       {modal?.kind === "createPoll" ? <CreatePollModal onClose={close} channelId={String(modal.props?.["channelId"])} /> : null}
       {modal?.kind === "follow" ? <FollowDialog onClose={close} channelId={String(modal.props?.["channelId"])} /> : null}
       {modal?.kind === "createThread" ? <CreateThreadModal onClose={close} channelId={String(modal.props?.["channelId"])} messageId={modal.props?.["messageId"] as string | undefined} /> : null}
+      {modal?.kind === "reactionRoles" ? <ReactionRolesModal onClose={close} channelId={String(modal.props?.["channelId"])} messageId={String(modal.props?.["messageId"])} /> : null}
       {modal?.kind === "stickerPack" ? <StickerPackModal onClose={close} packId={String(modal.props?.["packId"])} pack={modal.props?.["pack"] as StickerPack | undefined} stickerId={modal.props?.["stickerId"] as string | undefined} /> : null}
       {modal?.kind === "serverProfile" ? <ServerProfileModal onClose={close} serverId={String(modal.props?.["serverId"])} userId={modal.props?.["userId"] as string | undefined} /> : null}
       {modal?.kind === "block" ? <BlockDialog onClose={close} userId={String(modal.props?.["userId"])} /> : null}
@@ -153,6 +157,7 @@ function ModalEntry({ modal }: { modal: ModalState }) {
         {modal?.kind === "serverSettings" ? <ServerSettingsModal onClose={close} serverId={String(modal.props?.["serverId"])} page={modal.props?.["page"] as string | undefined} /> : null}
         {modal?.kind === "channelSettings" ? <ChannelSettingsModal onClose={close} channelId={String(modal.props?.["channelId"])} page={modal.props?.["page"] as string | undefined} /> : null}
         {modal?.kind === "memberAction" ? <MemberActionModal onClose={close} serverId={String(modal.props?.["serverId"])} userId={String(modal.props?.["userId"])} action={modal.props?.["action"] as "kick" | "ban" | "timeout" | "roles"} /> : null}
+        {modal?.kind === "allBadges" ? <AllBadges onClose={close} user={modal.props?.["user"] as ComponentProps<typeof AllBadges>["user"]} list={modal.props?.["list"] as Badge[]} /> : null}
         {modal?.kind === "verifyKey" ? <VerifyKeyModal onClose={close} userId={String(modal.props?.["userId"])} /> : null}
         {modal?.kind === "keyChange" ? <KeyChangeModal onClose={close} /> : null}
         {modal?.kind === "reportBug" ? <ReportBugModal onClose={close} from={modal.props?.["from"] as BugFrom | undefined} kind={modal.props?.["kind"] === "suggestion" ? "suggestion" : "bug"} /> : null}

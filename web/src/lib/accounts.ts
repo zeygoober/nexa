@@ -73,15 +73,34 @@ export function canAddAccount(): boolean {
   return read().length < MAX_ACCOUNTS;
 }
 
+/** How long one step of leaving an account may take before switching goes on without it. */
+const LEAVE_STEP_MS = 4000;
+/** How long to wait for the page to go before asking again: longer than a slow load, which asking again restarts. */
+const GO_AGAIN_MS = 15000;
+
 /** Ends this account's session here (the call, the connection) without signing it out. */
 async function leaveQuietly(): Promise<void> {
   for (const hook of logoutHooks) {
     try {
-      await hook();
+      // a step stuck on a bad connection must not leave the page emptied and going nowhere
+      await Promise.race([hook(), new Promise((done) => setTimeout(done, LEAVE_STEP_MS))]);
     } catch {
       /* switching goes ahead regardless */
     }
   }
+}
+
+/**
+ * Leaves this page for [path]. On a touch screen a dialog closing steps back
+ * through the history (shell/backLayers.ts), and that step can cancel a
+ * navigation made while it travels, which left the page emptied by the switch
+ * on screen for good. So a step back asks again, and so, much later, does the clock.
+ */
+function leaveFor(path: string): void {
+  const again = () => location.assign(path);
+  addEventListener("popstate", again);
+  setInterval(again, GO_AGAIN_MS);
+  again();
 }
 
 const placeKey = (id: string) => `ec.place:${id}`;
@@ -93,7 +112,7 @@ export function placeOf(id: string): string {
 }
 
 /** Opens the app as another saved account, where that account was last. */
-export async function switchAccount(id: string, go: (path: string) => void = (p) => location.assign(p)): Promise<void> {
+export async function switchAccount(id: string, go: (path: string) => void = leaveFor): Promise<void> {
   const to = read().find((a) => a.id === id);
   const here = useAuth.getState().me?.id;
   if (!to || to.id === here) return;

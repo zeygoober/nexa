@@ -29,6 +29,10 @@ export interface InviteTarget {
   banner: string | null;
   online: number | null;
   members: number | null;
+  /** Instead of a picture and initials: what a gift card draws in the icon's place. */
+  glyph?: ReactNode;
+  /** The colour of the band, and of the icon behind a glyph. */
+  tone?: string;
 }
 
 export type InviteVariant = "card" | "dialog" | "page";
@@ -101,16 +105,18 @@ function Band({ target }: { target: InviteTarget }) {
       </div>
     );
   }
-  const color = fromIcon ?? (target.id && !target.icon ? avatarColor(target.id) : undefined);
+  const color = target.tone ?? fromIcon ?? (target.id && !target.icon ? avatarColor(target.id) : undefined);
   return <div className={s.band} data-kind="plain" style={color ? ({ "--band-color": color } as CSSProperties) : undefined} />;
 }
 
 function Icon({ target }: { target: InviteTarget }) {
   const [failed, setFailed] = useState<string | null>(null);
-  const color = target.id ? avatarColor(target.id) : undefined;
+  const color = target.tone ?? (target.id ? avatarColor(target.id) : undefined);
   return (
     <span className={s.icon}>
-      {target.icon && failed !== target.icon ? (
+      {target.glyph ? (
+        <span className={s.initials} style={{ "--icon-color": color, "--icon-text": "#fff" } as CSSProperties}>{target.glyph}</span>
+      ) : target.icon && failed !== target.icon ? (
         <img src={target.icon} alt="" draggable={false} onError={() => setFailed(target.icon)} />
       ) : (
         <span className={s.initials} style={color ? ({ "--icon-color": color, "--icon-text": "#fff" } as CSSProperties) : undefined}>{initials(target.name)}</span>

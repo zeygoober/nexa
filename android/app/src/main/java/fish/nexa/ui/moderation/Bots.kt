@@ -123,7 +123,7 @@ fun BotsTab() {
                     if (q.isNotEmpty()) NxButton(t("moderation.clearFilters"), { q = "" }, kind = ButtonKind.SECONDARY, size = ButtonSize.SM)
                 }
             }
-            else -> items(apps, key = { it.id }) { a -> AppCard(a) }
+            else -> items(apps, key = { it.id }) { a -> AppCard(a) { changed -> apps[apps.indexOfFirst { it.id == changed.id }] = changed } }
         }
         if (loading && loaded) item("more") { LoadingRow() }
     }
@@ -132,8 +132,10 @@ fun BotsTab() {
 /** `.card` for an app: a banner of its colour, its picture on it, its name, owner, description, reach, and Moderate. */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-private fun AppCard(a: ModApp) {
+private fun AppCard(a: ModApp, onChange: (ModApp) -> Unit) {
     val c = Nx.colors
+    val scope = rememberCoroutineScope()
+    var busy by remember { mutableStateOf(false) }
     val owner = person(a.ownerId)
     val bot = person(a.id)
     val open = { goPanel("users/${a.id}") }
@@ -165,7 +167,28 @@ private fun AppCard(a: ModApp) {
                     MetaItem("UserRound", t("apps.portal.onAccounts", "count" to a.accounts))
                     MetaItem("CalendarDays", Time.shortDate(a.createdAt))
                 }
-                NxButton(t("moderation.moderate"), open, Modifier.padding(top = 8.dp).fillMaxWidth(), icon = "Gavel", size = ButtonSize.TOUCH)
+                Row(Modifier.padding(top = 8.dp).fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                NxButton(t("moderation.moderate"), open, Modifier.weight(1f), icon = "Gavel", size = ButtonSize.TOUCH)
+                if (a.listed || a.hidden) NxButton(
+                    t(if (a.hidden) "moderation.bots.allow" else "moderation.bots.hide"),
+                    {
+                        val hide = !a.hidden
+                        busy = true
+                        scope.launch {
+                            try {
+                                Moderation.setAppDiscovery(a.id, hide)
+                                onChange(a.copy(hidden = hide, listed = !hide && a.public))
+                            } catch (e: Exception) {
+                                if (e is kotlinx.coroutines.CancellationException) throw e
+                                Nexa.ui.toast(t("moderation.failed"), "error")
+                            } finally {
+                                busy = false
+                            }
+                        }
+                    },
+                    Modifier.weight(1f), kind = ButtonKind.SECONDARY, size = ButtonSize.TOUCH, loading = busy,
+                )
+                }
                 if (a.disabled) Txt(t("moderation.bots.disabled"), style = Nx.type.hint.copy(fontSize = Nx.type.sp(12f)), color = c.textMuted, modifier = Modifier.padding(top = 6.dp))
             }
         }

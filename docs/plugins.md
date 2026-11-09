@@ -956,7 +956,7 @@ Message on someone else's message, for one).
 | `memberJoinedFilter` | The joined filter of Server Settings, Members | none | `memberJoinedFilter` |
 | `memberRoleFilter` | The roles filter of Server Settings, Members | none | `memberRoleFilter` |
 | `memberSort` | The sort order of Server Settings, Members | none | `memberSortOrder` |
-| `message` | A message | `message`, `user`, `channel`, `server` | `copyMessageImage`, `saveMessageImage`, `addReaction`, `editMessage`, `replyToMessage`, `forwardMessage`, `createThreadFromMessage`, `publishMessage`, `copyMessageText`, `pinMessage`, `markUnread`, `toggleEmbeds`, `copyMessageLink`, `reportMessageContent`, `messageApps`, `copyMessageId`, `selectMessages`, `deleteMessage`, `messageTimes` |
+| `message` | A message | `message`, `user`, `channel`, `server` | `copyMessageImage`, `saveMessageImage`, `addReaction`, `editMessage`, `replyToMessage`, `forwardMessage`, `createThreadFromMessage`, `publishMessage`, `copyMessageText`, `reactionRoles`, `pinMessage`, `markUnread`, `toggleEmbeds`, `copyMessageLink`, `reportMessageContent`, `messageApps`, `copyMessageId`, `selectMessages`, `deleteMessage`, `messageTimes` |
 | `microphone` | The arrow beside the microphone button in a call | none | `microphoneDevices`, `speakerDevices`, `microphoneNoiseModes`, `voiceSettings` |
 | `moderation` | The staff panel's entry in the server rail or the direct messages list | none | `markModerationRead` |
 | `nexa` | Nexa's own conversation in the direct messages list | none | `markNexaRead`, `selectNexa`, `pinNexa`, `addNexaToGroup`, `removeNexaFromGroup`, `moveNexa`, `closeNexa` |

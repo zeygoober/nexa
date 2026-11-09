@@ -2,6 +2,7 @@ import { PersonName } from "@/components/common/PersonName";
 import { Bot, CalendarDays, Eye, Gavel, Search, Server, UserRound } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { ApiError } from "@/api/client";
 import { moderation as modApi, type AppSort, type ModApp, type People } from "@/api/moderation";
 import { AppIcon } from "@/components/apps/AppIcon";
 import { Avatar } from "@/components/common/Avatar";
@@ -13,6 +14,7 @@ import { profileTheme } from "@/lib/avatarColor";
 import { personName, previewText } from "@/lib/moderation";
 import { formatShortDate } from "@/lib/time";
 import { useModeration } from "@/stores/moderation";
+import { useUI } from "@/stores/ui";
 import { t, Tr } from "@/i18n";
 import m from "./Moderation.module.css";
 import p from "./Sheet.module.css";
@@ -130,7 +132,7 @@ export function BotsTab() {
       {apps && apps.length > 0 ? (
         <div className={m.grid}>
           {apps.map((a) => (
-            <AppCard key={a.id} a={a} people={people} onModerate={() => nav(`/channels/@admin/users/${a.id}`)} onOwner={() => nav(`/channels/@admin/users/${a.owner_id}`)} />
+            <AppCard key={a.id} a={a} people={people} onModerate={() => nav(`/channels/@admin/users/${a.id}`)} onOwner={() => nav(`/channels/@admin/users/${a.owner_id}`)} onChange={(next) => setApps((cur) => cur?.map((x) => (x.id === next.id ? next : x)) ?? null)} />
           ))}
         </div>
       ) : null}
@@ -144,9 +146,22 @@ export function BotsTab() {
   );
 }
 
-function AppCard({ a, people, onModerate, onOwner }: { a: ModApp; people: People; onModerate: () => void; onOwner: () => void }) {
+function AppCard({ a, people, onModerate, onOwner, onChange }: { a: ModApp; people: People; onModerate: () => void; onOwner: () => void; onChange: (a: ModApp) => void }) {
   const owner = people[a.owner_id];
   const bot = people[a.id];
+  const toast = useUI((u) => u.toast);
+  const [busy, setBusy] = useState(false);
+  const setHidden = async (hidden: boolean) => {
+    setBusy(true);
+    try {
+      await modApi.setAppDiscovery(a.id, hidden);
+      onChange({ ...a, discovery_hidden: hidden });
+    } catch (err) {
+      toast(err instanceof ApiError ? err.message : t("moderation.loadFailed"), "error");
+    } finally {
+      setBusy(false);
+    }
+  };
   return (
     <article className={m.card} data-testid="bot-card" data-app={a.id} data-state={a.disabled ? "banned" : undefined}>
       <div className={m.cardBanner} style={{ background: profileTheme(null, null, a.id) }} />
@@ -191,6 +206,11 @@ function AppCard({ a, people, onModerate, onOwner }: { a: ModApp; people: People
           <Button size="sm" variant="primary" onClick={onModerate} data-testid="bot-card-moderate">
             <Gavel size={15} aria-hidden="true" /> {t("moderation.moderate")}
           </Button>
+          {a.listed || a.discovery_hidden ? (
+            <Button size="sm" variant="secondary" loading={busy} onClick={() => void setHidden(!a.discovery_hidden)} data-testid="bot-card-discovery">
+              {t(a.discovery_hidden ? "moderation.bots.allow" : "moderation.bots.hide")}
+            </Button>
+          ) : null}
         </div>
         {a.disabled ? <p className={m.blockedNote}>{t("moderation.bots.disabled")}</p> : null}
       </div>

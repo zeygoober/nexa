@@ -19,6 +19,7 @@ import { usePresence } from "@/stores/presence";
 import { useSettings } from "@/stores/settings";
 import { useUI } from "@/stores/ui";
 import { GameDetectionSection } from "./GameDetection";
+import { LastfmSection } from "./LastfmSection";
 import a from "./Activity.module.css";
 import st from "./Settings.module.css";
 
@@ -43,6 +44,7 @@ export default function ActivityPage() {
       </div>
       <h3 data-setting="discord" className={st.h5}>{t("settings.activity.discord")}</h3>
       <DiscordSection share={share} />
+      <LastfmSection share={share} />
       {inApp ? <RichPresenceSection share={share} /> : null}
       {inApp ? <GameDetectionForActivity share={share} /> : null}
     </>

@@ -140,6 +140,11 @@ private fun earnedLabel(id: String) = when (id) {
     "ideas" -> t("badges.staff.ideasName")
     "app_developer" -> t("badges.appDeveloper")
     "gift_giver" -> t("badges.giftGiver")
+    "friendly" -> t("badges.family.friendly")
+    "host" -> t("badges.family.host")
+    "booster" -> t("badges.booster")
+    "regular" -> t("badges.family.regular")
+    "open_mic" -> t("badges.family.openMic")
     else -> id
 }
 

@@ -46,6 +46,10 @@ data class OwnedApp(
     @SerialName("integration_types") val integrationTypes: Map<String, IntegrationTypeConfig> = emptyMap(),
     @SerialName("redirect_uris") val redirectUris: List<String> = emptyList(),
     @SerialName("bot_public") val botPublic: Boolean = true,
+    /** Its developer listed it on Discover, which only a public app can be. */
+    val discoverable: Boolean = false,
+    /** Staff took its listing down. */
+    @SerialName("discovery_hidden") val discoveryHidden: Boolean = false,
     @SerialName("bot_require_code_grant") val botRequireCodeGrant: Boolean = false,
     /** The Ed25519 key its interactions endpoint checks requests against, in hex. */
     @SerialName("verify_key") val verifyKey: String = "",

@@ -13,12 +13,28 @@ import type { Envelope } from "@/crypto/message";
 /** A 64-bit id, rendered as a decimal string so it survives JSON. */
 export type Snowflake = string;
 
+/** Every badge there is to collect (GET /users/@me/badges/index). `badge` is there only once it is collected. */
+/** What the owner arranges: every badge shown as held, as everyone sees them now, and the keys from A to Z. */
+export interface BadgeArrangement {
+  custom: boolean;
+  entries: { key: string; badge: Badge }[];
+  a_to_z: string[];
+}
+
+export interface BadgeIndex {
+  collected: number;
+  total: number;
+  entries: { art?: string; icon?: string; image?: string; badge?: Badge }[];
+}
+
 /**
  * One badge on a profile (internal/store/badges.go), in its holder's order.
  * "staff" and "plan" carry nothing more: they are drawn from the account.
  */
 export interface Badge {
-  /** "staff", "plan", "og", "years", "bug_hunter", "app_developer", "gift_giver", "contributor" or "event:<id>". */
+  /** Bug Hunter: how many of the holder's reports were resolved (missing when staff set the level by hand). */
+  count?: number;
+  /** "staff", "plan", "og", "years", "bug_hunter", "ideas", "app_developer", "gift_giver", "friendly", "host", "booster", "regular", "open_mic", "contributor" or "event:<id>". */
   id: string;
   /** Gift Giver's tier (1 bronze, 2 silver, 3 gold), or the years on Nexa. */
   level?: number;
@@ -455,6 +471,8 @@ export interface Role {
   mentionable: boolean;
   position: number;
   permissions: PermString;
+  /** The bot this role came with, which only that bot's removal takes away. */
+  managed_by?: Snowflake;
   /** A picture of its own, or null; and an emoji ("custom:<id>" for one of the server's), or "". */
   icon_id: Snowflake | null;
   icon_emoji?: string;
@@ -811,6 +829,11 @@ export interface Attachment {
   size: number;
 }
 
+export interface ReactionRole {
+  emoji: string;
+  role_id: Snowflake;
+}
+
 export interface ReactionSummary {
   emoji: string;
   count: number;
@@ -846,6 +869,8 @@ export interface Message {
   mention_everyone: boolean;
   attachments: Attachment[];
   reactions: ReactionSummary[];
+  /** Which reactions on this message give a role. */
+  reaction_roles?: ReactionRole[];
   flags: number;
   /** The sender's idempotency key, echoed back so a client can match its optimistic copy. */
   nonce?: string;
@@ -1062,7 +1087,7 @@ export interface Activity {
   /** IGDB's id for it, when the server found one. */
   game_id?: string;
   /** "discord" for what the person's linked Discord account says, rather than the desktop app. */
-  source?: "discord";
+  source?: "discord" | "lastfm";
   created_at: number;
 }
 

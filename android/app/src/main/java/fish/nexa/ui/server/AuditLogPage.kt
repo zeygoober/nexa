@@ -60,7 +60,7 @@ private const val PAGE = 50
 /** Every audited action, as the server records them. */
 private val ACTIONS = listOf(
     "server_update", "server_transfer", "channel_create", "channel_update", "channel_delete", "channel_positions", "overwrite_update", "overwrite_delete", "overwrite_sync",
-    "role_create", "role_update", "role_delete", "role_positions", "member_update", "member_role_add", "member_role_remove", "member_kick", "member_ban",
+    "reaction_role_set", "reaction_role_remove", "role_create", "role_update", "role_delete", "role_positions", "member_update", "member_role_add", "member_role_remove", "member_kick", "member_ban",
     "member_unban", "member_voice", "emoji_create", "emoji_update", "emoji_delete", "sticker_pack_create", "sticker_pack_update", "sticker_pack_delete",
     "invite_create", "invite_delete", "webhook_create", "webhook_update", "webhook_delete", "server_tag_update", "server_tag_delete",
     "invite_delete_all", "vanity_url_update", "invites_pause", "invites_resume", "member_prune", "member_timeout", "member_timeout_remove", "member_quarantine_lift",

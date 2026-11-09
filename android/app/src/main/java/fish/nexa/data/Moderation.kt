@@ -412,6 +412,10 @@ data class ModApp(
     /** Its bot is banned or turned off, so the app does nothing. */
     val disabled: Boolean = false,
     val public: Boolean = true,
+    /** Whether it is on Discover now. */
+    val listed: Boolean = false,
+    /** Staff took its listing down. */
+    @SerialName("discovery_hidden") val hidden: Boolean = false,
     val servers: Int = 0,
     val accounts: Int = 0,
     @SerialName("created_at") val createdAt: Long = 0,
@@ -701,6 +705,11 @@ object Moderation {
     data class ServerPage(val servers: List<ModServer>, val total: Int, val more: Boolean)
 
     data class AppPage(val apps: List<ModApp>, val total: Int, val more: Boolean)
+
+    /** Takes an app off Discover, or lets it back on. */
+    suspend fun setAppDiscovery(id: String, hidden: Boolean) {
+        Nexa.api.request("PUT", "/moderation/apps/$id/discovery", buildJsonObject { put("hidden", hidden) })
+    }
 
     /** Every app on the instance, for the staff's Bots tab (GET /moderation/apps). */
     suspend fun apps(q: String, sort: String, offset: Int, limit: Int): AppPage {

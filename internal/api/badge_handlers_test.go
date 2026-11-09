@@ -1,6 +1,10 @@
 package api
 
-import "testing"
+import (
+	"encoding/json"
+	"strings"
+	"testing"
+)
 
 // Badges staff give are theirs alone to give (a mod cannot), and one its
 // holder hid is not in anyone else's view of the profile; a staff rank can
@@ -106,5 +110,120 @@ func TestBadgeOverridesAndHolders(t *testing.T) {
 	}
 	if got := badges(); got["years"] != 3 {
 		t.Errorf("an older app's save dropped overrides: %v", got)
+	}
+}
+
+// The index counts each level and no staff rank, and says nothing about a
+// badge until it is held: no name, meaning or colour to spoil how to get it.
+func TestBadgeIndexCountsLevelsAndSpoilsNothing(t *testing.T) {
+	_, ts := newTestServer(t)
+	ownTok, _ := register(t, ts, "owner")
+	bobTok, bobID := register(t, ts, "bob")
+	res, body := do(t, ts, "POST", "/api/v1/moderation/badges", ownTok, map[string]any{"name": "Secret Name", "description": "Secret way to get it", "icon": "star", "color": 0x112233, "color2": -1, "glyph": "light", "shape": "circle"})
+	if res.StatusCode >= 300 {
+		t.Fatalf("make badge: %d %v", res.StatusCode, body)
+	}
+	if res, body := do(t, ts, "PUT", "/api/v1/moderation/badges/bug_hunter/holders/"+bobID, ownTok, map[string]any{"state": "give", "level": 2}); res.StatusCode >= 300 {
+		t.Fatalf("give level: %d %v", res.StatusCode, body)
+	}
+	_, index := do(t, ts, "GET", "/api/v1/users/@me/badges/index", bobTok, nil)
+	raw, _ := json.Marshal(index)
+	for _, leak := range []string{"Secret", "color", "bug_hunter\",\"level\":3"} {
+		if strings.Contains(string(raw), leak) {
+			t.Errorf("the index gave away %q: %s", leak, raw)
+		}
+	}
+	if index["collected"] != float64(2) {
+		t.Errorf("two levels held should be two collected: %v", index["collected"])
+	}
+	_, staff := do(t, ts, "GET", "/api/v1/users/@me/badges/index", ownTok, nil)
+	if staff["collected"] != float64(0) || staff["total"] != index["total"] {
+		t.Errorf("a staff rank counted: %v of %v", staff["collected"], staff["total"])
+	}
+}
+
+// Only the owner arranges the index, everyone's follows it, and nobody else is told what they lack.
+func TestBadgeIndexOrderIsTheOwnersAlone(t *testing.T) {
+	_, ts := newTestServer(t)
+	owner, _ := register(t, ts, "owner")
+	admin, adminID := register(t, ts, "admin")
+	member, memberID := register(t, ts, "member")
+	setRank(t, ts, owner, adminID, "admin")
+
+	const path = "/api/v1/moderation/badges/index-order"
+	put := func(tok string, order ...string) int {
+		if order == nil {
+			order = []string{}
+		}
+		res, _ := do(t, ts, "PUT", path, tok, map[string]any{"order": order})
+		return res.StatusCode
+	}
+	for _, tok := range []string{admin, member} {
+		if res, _ := do(t, ts, "GET", path, tok, nil); res.StatusCode < 400 {
+			t.Fatalf("a non-owner read the arrangement: %d", res.StatusCode)
+		}
+		if code := put(tok, "booster"); code < 400 {
+			t.Fatalf("a non-owner arranged the index: %d", code)
+		}
+	}
+	if code := put(owner, "no-such-badge"); code != 400 {
+		t.Fatalf("unknown key: %d", code)
+	}
+	if code := put(owner, "og", "og"); code != 400 {
+		t.Fatalf("repeated key: %d", code)
+	}
+
+	_, got := do(t, ts, "GET", path, owner, nil)
+	entries, _ := got["entries"].([]any)
+	aToZ, _ := got["a_to_z"].([]any)
+	if got["custom"] != false || len(entries) == 0 || len(entries) != len(aToZ) {
+		t.Fatalf("arrangement: %v, %d entries, %d in A to Z", got["custom"], len(entries), len(aToZ))
+	}
+	if code := put(owner, "friendly-3", "booster"); code != 200 {
+		t.Fatalf("save: %d", code)
+	}
+
+	// what someone holds comes first, in the owner's order; what they lack follows from A to Z
+	first := func() (string, map[string]any) {
+		_, index := do(t, ts, "GET", "/api/v1/users/@me/badges/index", member, nil)
+		e := index["entries"].([]any)
+		return e[0].(map[string]any)["art"].(string), index
+	}
+	if res, body := do(t, ts, "PUT", "/api/v1/moderation/users/"+memberID+"/badges", owner, map[string]any{"overrides": map[string]int{"booster": 1, "friendly": 3}}); res.StatusCode != 200 {
+		t.Fatalf("overrides: %d %v", res.StatusCode, body)
+	}
+	art, index := first()
+	entries2 := index["entries"].([]any)
+	if second := entries2[1].(map[string]any)["art"]; art != "friendly-3" {
+		t.Fatalf("the member's index does not follow the order: %v, %v", art, second)
+	}
+	held := 0
+	for _, e := range entries2 {
+		if e.(map[string]any)["badge"] != nil {
+			held++
+		}
+	}
+	locked := entries2[held:]
+	if got := locked[0].(map[string]any)["art"]; got != "ideas-4" {
+		t.Fatalf("the first locked badge is %v, want Architect (ideas-4)", got)
+	}
+	for _, e := range locked {
+		m := e.(map[string]any)
+		if m["badge"] != nil {
+			t.Fatalf("a held badge among the locked: %v", m)
+		}
+		if _, named := m["name"]; named {
+			t.Fatalf("a locked badge was sent with its name: %v", m)
+		}
+	}
+	raw, _ := json.Marshal(index)
+	if strings.Contains(string(raw), `"key"`) || strings.Contains(string(raw), `"a_to_z"`) {
+		t.Fatalf("the member's index says more than it did: %s", raw)
+	}
+	if code := put(owner); code != 200 {
+		t.Fatalf("clear: %d", code)
+	}
+	if art, _ := first(); art != "booster" {
+		t.Fatalf("clearing did not go back to A to Z: %v", art)
 	}
 }

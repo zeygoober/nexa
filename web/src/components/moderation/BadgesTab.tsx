@@ -424,6 +424,11 @@ function earnedLabel(badge: Badge): string {
     case "ideas": return t("badges.staff.ideasName");
     case "app_developer": return t("badges.appDeveloper");
     case "gift_giver": return t("badges.giftGiver");
+    case "friendly": return t("badges.family.friendly");
+    case "host": return t("badges.family.host");
+    case "booster": return t("badges.booster");
+    case "regular": return t("badges.family.regular");
+    case "open_mic": return t("badges.family.openMic");
     default: return badge.id;
   }
 }

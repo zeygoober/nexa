@@ -45,16 +45,19 @@ const (
 	LogExpressionRelist = "expression_relist"
 	// LogDiscoveryRestore lets a server taken off Discovery be listed again.
 	LogDiscoveryRestore = "discovery_restore"
+	// LogAppDiscoveryHide takes an app off Discovery.
+	LogAppDiscoveryHide = "app_discovery_hide"
 	// Badges (badges.go): giving and taking an account's badges by hand, with
 	// the names added and removed in its details, and making, changing and
 	// deleting event badges, with the name.
-	LogBadgeChange = "badge_change"
-	LogBadgeCreate = "badge_create"
-	LogBadgeEdit   = "badge_edit"
-	LogBadgeDelete = "badge_delete"
-	LogGameList    = "game_list"
-	LogGameReject  = "game_reject"
-	LogGameForget  = "game_forget"
+	LogBadgeChange     = "badge_change"
+	LogBadgeCreate     = "badge_create"
+	LogBadgeEdit       = "badge_edit"
+	LogBadgeDelete     = "badge_delete"
+	LogBadgeIndexOrder = "badge_index_order"
+	LogGameList        = "game_list"
+	LogGameReject      = "game_reject"
+	LogGameForget      = "game_forget"
 	// What only the owner does (api/moderation_owner.go).
 	LogAccountView    = "account_view"
 	LogOwnerJoin      = "owner_join"

@@ -42,7 +42,8 @@ type Activity struct {
 	Detected bool   `json:"detected,omitempty"`
 	GameID   string `json:"game_id,omitempty"`
 	// Source is "discord" for an activity heard from the person's linked
-	// Discord account rather than from the desktop app.
+	// Discord account rather than from the desktop app, and "lastfm" for what
+	// their Last.fm account says is playing.
 	Source    string `json:"source,omitempty"`
 	CreatedAt int64  `json:"created_at"`
 }
@@ -560,8 +561,60 @@ func (h *Hub) activitiesOf(uid ids.ID) []Activity {
 	h.mu.RUnlock()
 	h.linkedMu.Lock()
 	linked := h.linked[uid]
+	listening := h.listening[uid]
 	h.linkedMu.Unlock()
-	return mergeActivities(best, linked)
+	return withListening(mergeActivities(best, linked), listening)
+}
+
+// withListening adds what a person's Last.fm account says is playing, unless
+// something already says what they are listening to: that knows more.
+func withListening(list []Activity, fm *Activity) []Activity {
+	if fm == nil || len(list) >= maxActivities {
+		return list
+	}
+	for _, a := range list {
+		if a.Type == fm.Type {
+			return list
+		}
+	}
+	return append(append(make([]Activity, 0, len(list)+1), list...), *fm)
+}
+
+// SetListening replaces what a person's Last.fm account says is playing; nil
+// says nothing is. It is cleaned as the desktop app's activities are.
+func (h *Hub) SetListening(uid ids.ID, raw json.RawMessage) {
+	h.linkedMu.Lock()
+	prev := h.listening[uid]
+	h.linkedMu.Unlock()
+	var next *Activity
+	if len(raw) > 0 {
+		var was []Activity
+		if prev != nil {
+			was = []Activity{*prev}
+		}
+		if list := h.resolveActivities([]json.RawMessage{raw}, was, nil); len(list) == 1 {
+			list[0].Source = "lastfm"
+			next = &list[0]
+		}
+	}
+	same := (prev == nil) == (next == nil) && (prev == nil || sameActivities([]Activity{*prev}, []Activity{*next}))
+	h.linkedMu.Lock()
+	if next == nil {
+		delete(h.listening, uid)
+	} else {
+		h.listening[uid] = next
+	}
+	h.linkedMu.Unlock()
+	if !same {
+		h.linkedChanged(uid)
+	}
+}
+
+// Listening says whether Last.fm has something playing for this person.
+func (h *Hub) Listening(uid ids.ID) bool {
+	h.linkedMu.Lock()
+	defer h.linkedMu.Unlock()
+	return h.listening[uid] != nil
 }
 
 // mergeActivities puts a linked Discord account's activities after the

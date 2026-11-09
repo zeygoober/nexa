@@ -135,8 +135,10 @@ type Hub struct {
 	// linked holds activities that come from outside any connection: what a
 	// person's linked Discord account says they are doing (internal/discordsync).
 	// They are kept while the person is offline here, and shown once they are back.
-	linkedMu    sync.Mutex
-	linked      map[ids.ID][]Activity
+	linkedMu sync.Mutex
+	linked   map[ids.ID][]Activity
+	// listening is what each person's Last.fm account says is playing
+	listening   map[ids.ID]*Activity
 	linkedTimer map[ids.ID]*time.Timer
 	linkedAt    map[ids.ID]time.Time
 }
@@ -150,7 +152,7 @@ type AppLookup interface {
 func New(st *store.Store, authn *auth.Authenticator, log *slog.Logger, origins []string) *Hub {
 	h := &Hub{st: st, auth: authn, log: log, conns: map[ids.ID]map[*conn]struct{}{},
 		byIP: map[string]int{}, waiting: map[string]int{},
-		linked: map[ids.ID][]Activity{}, linkedTimer: map[ids.ID]*time.Timer{}, linkedAt: map[ids.ID]time.Time{},
+		listening: map[ids.ID]*Activity{}, linked: map[ids.ID][]Activity{}, linkedTimer: map[ids.ID]*time.Timer{}, linkedAt: map[ids.ID]time.Time{},
 		heartbeatTimeout: 60 * time.Second, identifyTimeout: 10 * time.Second, sendBuffer: 256,
 		maxConnsPerUser: 32, maxConnsPerIP: 256, maxConns: 4096, maxWaitingPerIP: 32,
 		// Two a second per address, sustained, with room for a burst of tabs

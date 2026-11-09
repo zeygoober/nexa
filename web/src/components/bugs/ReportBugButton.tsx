@@ -73,6 +73,18 @@ export function ReportBugButton({ from, className, wrapClassName, labelled = fal
   );
 }
 
+/** Suggest a Feature as an icon, beside the bug button in the Friends header. */
+export function SuggestIconButton({ from, className }: { from: BugFrom; className?: string | undefined }) {
+  const label = t("suggestions.suggest");
+  return (
+    <Tooltip text={label} side="bottom">
+      <button type="button" className={className} aria-label={label} onClick={() => openSuggest(from)} data-testid="suggest-feature">
+        <Lightbulb size={22} />
+      </button>
+    </Tooltip>
+  );
+}
+
 /** Suggest a Feature in a header, with its name: beside Report a Bug where that is labelled too. */
 export function SuggestButton({ from }: { from: BugFrom }) {
   const label = t("suggestions.suggest");

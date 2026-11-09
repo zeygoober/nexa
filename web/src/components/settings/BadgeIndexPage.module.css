@@ -1,0 +1,132 @@
+/* Settings, Badge Index */
+.summary {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-bottom: 20px;
+}
+.countRow {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 12px;
+}
+.count {
+  margin: 0;
+  font-size: 14px;
+  color: var(--text-muted);
+}
+.count strong {
+  font-family: var(--font-display);
+  font-size: 28px;
+  font-weight: 800;
+  line-height: 1;
+  color: var(--text-strong);
+  font-variant-numeric: tabular-nums;
+}
+.bar {
+  height: 6px;
+  border-radius: 999px;
+  overflow: hidden;
+  background: var(--bg-active);
+}
+.fill {
+  height: 100%;
+  border-radius: inherit;
+  background: var(--text-brand);
+}
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(64px, 1fr));
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.tile {
+  display: grid;
+  place-items: center;
+  aspect-ratio: 1;
+  border-radius: var(--radius-md);
+  background: var(--bg-surface);
+  box-shadow: inset 0 0 0 1px var(--border-subtle);
+}
+.art,
+.shape {
+  display: block;
+  width: 40px;
+  height: 40px;
+  user-select: none;
+}
+/* a badge staff made, blacked out here as the art's -locked files are: solid inside, in the same heavier line */
+.shape {
+  --badge-body: 1;
+  filter: brightness(0);
+}
+.shape svg {
+  stroke-width: 2.8;
+}
+/* Arranging, the owner's */
+.arrangeHead {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 20px;
+}
+.arrangeTitle {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--text-strong);
+}
+.hint {
+  margin: 0;
+  font-size: 14px;
+  color: var(--text-muted);
+}
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 8px;
+}
+.arranging {
+  position: relative;
+}
+.movable {
+  width: 100%;
+  padding: 0;
+  border: 0;
+  cursor: grab;
+  /* the browser takes back a touch it may scroll, so a tile's swipes scroll by hand (BadgeArrange.tsx) */
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+}
+.movable[data-left] {
+  background: var(--bg-active);
+}
+.inHand {
+  position: absolute;
+  z-index: 2;
+  display: grid;
+  place-items: center;
+  border-radius: var(--radius-md);
+  background: var(--bg-surface);
+  box-shadow: inset 0 0 0 2px var(--text-brand), var(--shadow-high);
+  transform: scale(1.08);
+  pointer-events: none;
+}
+.inHand[data-still] {
+  transform: none;
+}
+.loading {
+  display: grid;
+  place-items: center;
+  padding: 48px 0;
+}
+.note {
+  color: var(--text-muted);
+}

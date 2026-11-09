@@ -206,6 +206,12 @@ class Session(private val nx: Nexa) {
             }
             // the commands kept for each channel are read again when next needed (a page listing a server's apps follows the event itself)
             "application_commands_update", "integrations_update" -> AppCommands.forget()
+            "reaction_roles_update" -> {
+                val ch = d.str("channel_id") ?: return
+                val mid = d.str("message_id") ?: return
+                val list = (d as? kotlinx.serialization.json.JsonObject)?.get("reaction_roles") ?: return
+                nx.messages.setReactionRoles(ch, mid, fish.nexa.net.wireJson.decodeFromJsonElement(kotlinx.serialization.builtins.ListSerializer(fish.nexa.net.ReactionRole.serializer()), list))
+            }
             "reaction_add", "reaction_remove" -> {
                 val ch = d.str("channel_id") ?: return
                 val mid = d.str("message_id") ?: return
@@ -613,6 +619,7 @@ class Session(private val nx: Nexa) {
         fish.nexa.ui.markdown.LinkedChannels.clear()
         Games.reset()
         Invites.clear()
+        GiftPreviews.clear()
         nx.messages.clear()
         nx.users.clear()
         nx.channels.replaceAll(emptyList())

@@ -402,10 +402,12 @@
 /* On the Friends page: at the far end of the header where there is room for
    one row, and beside the title where the tabs take a row of their own (Add
    Friend holds the title row's far end there). */
-.friendsBugWrap {
+.friendsActions {
   order: 3;
   flex: none;
   display: inline-flex;
+  align-items: center;
+  gap: 4px;
   margin-inline-start: auto;
 }
 .friendsBug {
@@ -430,7 +432,7 @@
   height: 20px;
 }
 @container (max-width: 700px) {
-  .friendsBugWrap {
+  .friendsActions {
     order: 0;
     margin-inline-start: 0;
     height: var(--header-h);

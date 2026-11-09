@@ -36,12 +36,14 @@ import java.util.concurrent.ConcurrentHashMap
 object Lucide {
     private lateinit var icons: JsonObject
     private lateinit var aliases: JsonObject
+    private lateinit var bodies: JsonObject
     private val cache = ConcurrentHashMap<String, ImageVector>()
 
     fun init(context: Context) {
         val root = Json.parseToJsonElement(context.assets.open("lucide.json").use { it.readBytes().decodeToString() }) as JsonObject
         icons = root["icons"] as JsonObject
         aliases = root["aliases"] as JsonObject
+        bodies = root["bodies"] as JsonObject
     }
 
     /** The file name for a component name or a file name; null if there is no such icon. */
@@ -57,18 +59,22 @@ object Lucide {
     /** Every icon's file name, for a search over them all. */
     fun names(): Set<String> = icons.keys
 
-    /** [filled] paints the shapes in too, as lucide-react's fill="currentColor" does (a solid play mark, a starred star). */
-    fun vector(name: String, stroke: Float = 2f, filled: Boolean = false): ImageVector? {
+    /** [filled] paints the shapes in too, as lucide-react's fill="currentColor" does (a solid play mark, a starred star);
+     *  [bodied] gives shapes the badge art's faint tint (tools/badge_art.py): closed ones, and the open ones
+     *  android/tools/lucide_assets.py found to enclose something; [bodyAlpha] is how strong it is. */
+    fun vector(name: String, stroke: Float = 2f, filled: Boolean = false, bodied: Boolean = false, bodyAlpha: Float = 0.22f): ImageVector? {
         val file = resolve(name) ?: return null
-        val key = "$file@$stroke${if (filled) "#f" else ""}"
+        val key = "$file@$stroke${if (filled) "#f" else ""}${if (bodied) "#b$bodyAlpha" else ""}"
         cache[key]?.let { return it }
         val paths = icons[file] as? JsonArray ?: return null
         val b = ImageVector.Builder(name = file, defaultWidth = 24.dp, defaultHeight = 24.dp, viewportWidth = 24f, viewportHeight = 24f)
-        for (p in paths) {
+        val open = (bodies[file] as? JsonArray)?.mapNotNull { (it as? JsonPrimitive)?.contentOrNull?.toIntOrNull() }.orEmpty()
+        for ((i, p) in paths.withIndex()) {
             val d = (p as? JsonPrimitive)?.contentOrNull ?: continue
             b.addPath(
                 pathData = PathParser().parsePathString(d).toNodes(),
-                fill = if (filled) SolidColor(Color.Black) else null,
+                fill = if (filled || (bodied && (d.trimEnd().last() in "zZ" || i in open))) SolidColor(Color.Black) else null,
+                fillAlpha = if (filled) 1f else bodyAlpha,
                 stroke = SolidColor(Color.Black),
                 strokeLineWidth = stroke,
                 strokeLineCap = StrokeCap.Round,
@@ -81,8 +87,8 @@ object Lucide {
 
 /** A Lucide icon, tinted. `label` makes it speak to TalkBack; without one it is decoration. */
 @Composable
-fun Icon(name: String, tint: Color, modifier: Modifier = Modifier, size: Dp = 20.dp, stroke: Float = 2f, label: String? = null, filled: Boolean = false) {
-    val v = remember(name, stroke, filled) { Lucide.vector(name, stroke, filled) } ?: return
+fun Icon(name: String, tint: Color, modifier: Modifier = Modifier, size: Dp = 20.dp, stroke: Float = 2f, label: String? = null, filled: Boolean = false, bodied: Boolean = false, bodyAlpha: Float = 0.22f) {
+    val v = remember(name, stroke, filled, bodied, bodyAlpha) { Lucide.vector(name, stroke, filled, bodied, bodyAlpha) } ?: return
     val painter = rememberVectorPainter(v)
     Image(
         painter = painter,

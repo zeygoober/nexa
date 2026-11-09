@@ -217,7 +217,7 @@ class MessagesStore(private val api: Api, private val keys: KeyManager) {
         val prev = c.byId[msg.id] ?: return@with c
         // the reactions already here stay (their own events keep them current), and so does the thread it
         // started: an edited copy (a person's, an app's, an app's answer) comes without it
-        var m = msg.m.copy(reactions = prev.m.reactions, thread = msg.m.thread ?: prev.m.thread)
+        var m = msg.m.copy(reactions = prev.m.reactions, reactionRoles = prev.m.reactionRoles, thread = msg.m.thread ?: prev.m.thread)
         val pr = prev.m.pollResults
         val nr = msg.m.pollResults
         if (nr != null && pr != null) {
@@ -246,6 +246,11 @@ class MessagesStore(private val api: Api, private val keys: KeyManager) {
         val byId = c.byId.builder()
         ids.forEach { byId.remove(it) }
         c.copy(byId = byId.build(), ids = c.ids.filter { it !in drop }.toPersistentList())
+    }
+
+    fun setReactionRoles(ch: String, messageId: String, list: List<fish.nexa.net.ReactionRole>) = with(ch) { c ->
+        val cm = c.byId[messageId] ?: return@with c
+        c.copy(byId = c.byId.put(messageId, cm.copy(m = cm.m.copy(reactionRoles = list))))
     }
 
     fun setReaction(ch: String, messageId: String, emoji: String, add: Boolean, isMe: Boolean) = with(ch) { c ->

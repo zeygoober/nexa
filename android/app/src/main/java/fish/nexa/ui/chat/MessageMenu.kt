@@ -205,6 +205,9 @@ fun openMessageMenu(cm: ChatMessage, ctx: ListCtx, image: ImageTarget? = null) {
             }
         }
     }
+    Nexa.channels.get(cm.channelId)?.serverId?.let { sid ->
+        if (Nexa.servers.canI(Nexa.servers.get(sid), P.MANAGE_ROLES)) items += MenuItem.Action(t("chat.reactionRoles.title")) { openReactionRoles(cm) }
+    }
     items += MenuItem.Action(t("chat.messageItem.markUnread")) { markUnread(cm) }
     val hasEmbeds = !cm.payload?.embeds.isNullOrEmpty() || fish.nexa.data.Webhooks.content(cm.hook)?.linkEmbeds?.isNotEmpty() == true
     if (hasEmbeds && canDelete(cm.m)) {

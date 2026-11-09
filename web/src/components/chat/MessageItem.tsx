@@ -1,3 +1,4 @@
+import { GiftCards } from "./GiftCards";
 import { serverNow } from "@/lib/serverClock";
 import { listOpenedAt } from "@/lib/motion";
 import { jumpTarget } from "@/lib/appLinks";
@@ -539,6 +540,7 @@ function MessageContent({ msg, name, id, pending, upload }: { msg: DecryptedMess
         ) : null}
         {msg.flags & MSG_FLAG_SUPPRESS_EMBEDS ? null : <InviteCards nodes={nodes} embeds={embeds ?? (hook?.link_embeds.length ? hook.link_embeds : null)} />}
         {msg.flags & MSG_FLAG_SUPPRESS_EMBEDS ? null : <ProfileCards nodes={nodes} embeds={embeds ?? (hook?.link_embeds.length ? hook.link_embeds : null)} />}
+        {msg.flags & MSG_FLAG_SUPPRESS_EMBEDS ? null : <GiftCards nodes={nodes} />}
         {msg.flags & MSG_FLAG_SUPPRESS_EMBEDS ? null : <AppLinkCards nodes={nodes} />}
         {msg.flags & MSG_FLAG_SUPPRESS_EMBEDS ? null : <NoteCards nodes={nodes} />}
         {msg.flags & MSG_FLAG_SUPPRESS_EMBEDS ? null : <PackCards nodes={nodes} />}

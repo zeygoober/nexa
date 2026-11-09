@@ -11,7 +11,7 @@ import type { ReportReceipt } from "./reports";
 import { api, type UploadOptions } from "./client";
 import type { GiftLink, Invite, Overwrite, Role } from "./types";
 import type { BugCounts, BugMessage, MemberBug } from "./bugs";
-import type { Activity, BadgeDef, BadgeHolder, BadgeShape, Emoji, PublicUser, ServerTag, Snowflake, StickerPack } from "./types";
+import type { Activity, BadgeArrangement, BadgeDef, BadgeHolder, BadgeShape, Emoji, PublicUser, ServerTag, Snowflake, StickerPack } from "./types";
 
 /** What staff set on an event badge they make or change. */
 export interface BadgeDefBody {
@@ -424,6 +424,10 @@ export interface ModApp {
   /** Its bot's account is turned off, so the app does nothing. */
   disabled: boolean;
   public: boolean;
+  /** Its developer put it on Discover. */
+  listed: boolean;
+  /** Staff took it off Discover, which holds until they allow it again. */
+  discovery_hidden: boolean;
   servers: number;
   accounts: number;
   created_at: number;
@@ -641,6 +645,9 @@ export const moderation = {
   apps(p: { q?: string; sort?: AppSort; offset?: number; limit?: number }): Promise<{ apps: ModApp[]; people: People; total: number; has_more: boolean }> {
     return api.request("GET", "/moderation/apps", undefined, { query: { q: p.q?.trim() || undefined, sort: p.sort, offset: p.offset || undefined, limit: p.limit } });
   },
+  setAppDiscovery(id: Snowflake, hidden: boolean): Promise<unknown> {
+    return api.request("PUT", `/moderation/apps/${id}/discovery`, { hidden });
+  },
   server(id: Snowflake): Promise<{ server: ModServer; cases: StaffCase[]; people: People; emojis?: Emoji[]; packs?: ModPack[] }> {
     return api.request("GET", `/moderation/servers/${id}`);
   },
@@ -770,6 +777,14 @@ export const moderation = {
   /** The event badges staff made, and how many hold Contributor. */
   badges(): Promise<{ badges: BadgeDef[]; contributors: number }> {
     return api.request("GET", "/moderation/badges");
+  },
+  /** The owner's: every badge of the Badge Index, to arrange. */
+  badgeArrangement(): Promise<BadgeArrangement> {
+    return api.request("GET", "/moderation/badges/index-order");
+  },
+  /** The owner's: the order everyone's Badge Index follows; an empty list goes back to A to Z. */
+  setBadgeOrder(order: string[]): Promise<{ ok: boolean }> {
+    return api.request("PUT", "/moderation/badges/index-order", { order });
   },
   createBadge(b: BadgeDefBody): Promise<BadgeDef> {
     return api.request("POST", "/moderation/badges", b);

@@ -35,6 +35,11 @@
   flex: none;
   place-items: center;
 }
+/* shapes only, as tools/badge_art.py does: closed ones here, open ones that enclose something in iconBodies.css */
+.mark svg :is(rect, circle, ellipse, polygon, path[d$="z" i]) {
+  fill: var(--badge-tint);
+  fill-opacity: var(--badge-body, 0.22);
+}
 .markImage {
   display: block;
   width: 100%;
@@ -64,11 +69,9 @@
   color: var(--text-strong);
 }
 
-/* the card a badge's tooltip draws: on a tooltip's dark ink on every theme, so a
-   colour staff chose is pulled towards its words, not the page's */
+/* the card a badge's tooltip draws */
 .card {
   --text-strong: var(--tooltip-text);
-  --badge-ink-mix: 12%;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -94,5 +97,59 @@
   font-size: 13.5px;
   line-height: 18px;
   color: color-mix(in srgb, var(--tooltip-text) 72%, transparent);
+  overflow-wrap: anywhere;
+}
+
+/* +x: the badges past the first five */
+.more {
+  flex: none;
+  min-width: 22px;
+  height: 22px;
+  padding: 0 4px;
+  border-radius: var(--radius-xs);
+  font-size: 12px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-subtle);
+}
+.more:hover {
+  background: var(--bg-hover);
+  color: var(--text-strong);
+}
+.more:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 1px;
+}
+
+/* the box +x opens */
+.allList {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.allRow {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 0;
+}
+.allText {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.allName {
+  font-size: 15px;
+  font-weight: 650;
+  color: var(--text-strong);
+  overflow-wrap: anywhere;
+}
+.allTip {
+  font-size: 13px;
+  line-height: 1.4;
+  color: var(--text-muted);
   overflow-wrap: anywhere;
 }

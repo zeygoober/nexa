@@ -652,10 +652,12 @@ type Message struct {
 	MentionEveryone bool              `json:"mention_everyone"`
 	Attachments     []Attachment      `json:"attachments"`
 	Reactions       []ReactionSummary `json:"reactions"`
-	Flags           int64             `json:"flags"`
-	Nonce           string            `json:"nonce,omitempty"`
-	EditedAt        *int64            `json:"edited_at"`
-	CreatedAt       int64             `json:"created_at"`
+	// ReactionRoles are the reactions on this message that give a role.
+	ReactionRoles []ReactionRole `json:"reaction_roles,omitempty"`
+	Flags         int64          `json:"flags"`
+	Nonce         string         `json:"nonce,omitempty"`
+	EditedAt      *int64         `json:"edited_at"`
+	CreatedAt     int64          `json:"created_at"`
 	// WebhookID names the webhook a message came through, and Webhook holds
 	// what it said, as sent: a webhook's messages are not encrypted (see
 	// api/webhook_message.go for the shape). Both are absent otherwise.

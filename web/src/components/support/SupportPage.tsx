@@ -1,3 +1,5 @@
+import { planName } from "@/lib/plans";
+import { SHORT_NAME_GIFT, giftTitle } from "@/lib/giftPreviews";
 import { personText } from "@/lib/personText";
 import { PersonName } from "@/components/common/PersonName";
 import { useMediaAnimation } from "@/lib/mediaAnimation";
@@ -39,9 +41,7 @@ const LIST_PRICES: Record<Paid, Record<Period, number>> = { supporter: { month: 
 
 const PLANS: Plan[] = ["", "supporter", "pro"];
 
-export function planName(plan: Plan): string {
-  return plan === "pro" ? t("support.plan.pro") : plan === "supporter" ? t("support.plan.supporter") : t("support.plan.free");
-}
+export { planName };
 
 function money(cents: number, currency: string): string {
   return new Intl.NumberFormat(undefined, { style: "currency", currency: currency.toUpperCase(), minimumFractionDigits: cents % 100 ? 2 : 0 }).format(cents / 100);
@@ -358,14 +358,7 @@ export function giftLinkUrl(code: string): string {
   return `${shareOrigin()}/gift/${code}`;
 }
 
-/** The plan column of a link that gives a one-character username. */
-export const SHORT_NAME_GIFT = "short_name";
-
-/** How long a gift lasts, as its title says it ("A Month of Pro"). */
-export function giftTitle(plan: Plan | typeof SHORT_NAME_GIFT, days: number): string {
-  if (plan === SHORT_NAME_GIFT) return t("support.giftLink.shortName");
-  return t(days >= 365 ? "support.giftLink.yearOf" : "support.giftLink.monthOf", { plan: planName(plan) });
-}
+export { SHORT_NAME_GIFT, giftTitle };
 
 /** The gift links this account bought: copy one to send it, and who has claimed which. */
 function GiftLinksMade() {

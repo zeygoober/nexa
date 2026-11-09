@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -22,6 +23,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.graphics.BlendMode
@@ -29,7 +31,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.CompositingStrategy
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.graphics.lerp
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalDensity
@@ -51,6 +53,8 @@ import fish.nexa.data.Badges
 import fish.nexa.ui.Icon
 import fish.nexa.ui.components.Txt
 import fish.nexa.ui.components.pressable
+import fish.nexa.ui.layers.openSheet
+import fish.nexa.ui.t
 import fish.nexa.ui.theme.Nx
 import fish.nexa.ui.theme.ring
 import fish.nexa.ui.theme.shadowInPopup
@@ -85,21 +89,36 @@ fun BadgePill(badge: Badges.Badge, userId: String, flags: Long, plan: String, st
     }
 }
 
-/** A badge at any size; [onInk] for the card's dark ink, whatever the theme. */
+/** The relative luminance of the top and bottom of every badge (tools/badge_art.py), so one reads like another on any card. */
+private const val BADGE_TOP = 0.27f
+private const val BADGE_BOTTOM = 0.2f
+
+/** [color] moved to [target] luminance, towards black or white, so its hue stays (web badgeTone). */
+private fun badgeTone(color: Color, target: Float): Color {
+    val end = if (color.luminance() > target) 0f else 1f
+    fun at(t: Float) = Color(color.red + (end - color.red) * t, color.green + (end - color.green) * t, color.blue + (end - color.blue) * t)
+    var low = 0f
+    var high = 1f
+    repeat(20) {
+        val t = (low + high) / 2
+        if ((at(t).luminance() > target) == (end == 0f)) low = t else high = t
+    }
+    return at(high)
+}
+
+/** A badge at any size. */
 @Composable
-private fun BadgeMark(look: Badges.Look, size: Dp, modifier: Modifier = Modifier, onInk: Boolean = false) {
+internal fun BadgeMark(look: Badges.Look, size: Dp, modifier: Modifier = Modifier) {
     val c = Nx.colors
     if (look.art != null) {
         coil3.compose.AsyncImage(fish.nexa.data.Ota.uri("badges/${look.art}.svg"), null, Modifier.size(size).then(modifier))
     } else if (look.image != null) {
         coil3.compose.AsyncImage(fish.nexa.media.Media.absolute(look.image), null, Modifier.size(size).then(modifier), contentScale = ContentScale.Fit)
     } else {
-        // pulled towards the words around it so it reads there (--badge-ink-mix)
-        val pale = when (LocalProfile.current.text) { "light" -> false; "dark" -> true; else -> c.isLight }
-        val mix = if (pale && !onInk) 0.38f else 0.12f
-        val words = if (onInk) c.tooltipText else c.textStrong
-        val tone = look.color?.let { lerp(opaque(it), words, mix) } ?: c.brand
-        val second = look.color2?.let { lerp(opaque(it), words, mix) }
+        // drawn as the badge art is: a short gradient at its luminance, with a tint inside closed shapes
+        val first = look.color?.let { opaque(it) }
+        val tone = first?.let { badgeTone(it, BADGE_TOP) } ?: c.brand
+        val second = first?.let { badgeTone(look.color2?.let { two -> opaque(two) } ?: it, BADGE_BOTTOM) }
         val icon = look.icon ?: "award"
         val paint = if (second == null) Modifier else Modifier
             .graphicsLayer { compositingStrategy = CompositingStrategy.Offscreen }
@@ -107,7 +126,7 @@ private fun BadgeMark(look: Badges.Look, size: Dp, modifier: Modifier = Modifier
                 drawContent()
                 drawRect(Brush.verticalGradient(listOf(tone, second)), blendMode = BlendMode.SrcIn)
             }
-        Icon(if (fish.nexa.ui.Lucide.exists(icon)) icon else "award", tone, Modifier.then(modifier).then(paint), size = size, stroke = 2.3f)
+        Icon(if (fish.nexa.ui.Lucide.exists(icon)) icon else "award", tone, Modifier.then(modifier).then(paint), size = size, stroke = 2.3f, bodied = true)
     }
 }
 
@@ -161,7 +180,7 @@ private fun BadgeCardPopup(look: Badges.Look, onDismiss: () -> Unit) {
                 .padding(16.dp),
         ) {
             Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
-                BadgeMark(look, 64.dp, onInk = true)
+                BadgeMark(look, 64.dp)
                 Spacer(Modifier.height(10.dp))
                 Txt(look.label, style = Nx.type.heading.copy(fontSize = Nx.type.sp(17f), fontWeight = FontWeight(800), lineHeight = Nx.type.sp(21f)), color = c.tooltipText, align = TextAlign.Center)
                 if (look.tip.isNotEmpty()) {
@@ -197,6 +216,41 @@ fun BadgeRow(userId: String, flags: Long, plan: String, badges: List<Badges.Badg
         verticalArrangement = Arrangement.spacedBy(3.dp),
         itemVerticalAlignment = Alignment.CenterVertically,
     ) {
-        for (b in list) BadgePill(b, userId, flags, plan, size = 22.dp)
+        for (b in list.take(SHOWN_BADGES)) BadgePill(b, userId, flags, plan, size = 22.dp)
+        val rest = list.size - SHOWN_BADGES
+        if (rest > 0) Box(
+            Modifier
+                .height(22.dp)
+                .widthIn(min = 22.dp)
+                .clip(RoundedCornerShape(6.dp))
+                .pressable(remember { MutableInteractionSource() }) { openAllBadges(userId, flags, plan, list) }
+                .semantics { contentDescription = t("badges.showAll", "count" to list.size) }
+                .padding(horizontal = 4.dp),
+            contentAlignment = Alignment.Center,
+        ) {
+            Txt("+$rest", style = Nx.type.hint.copy(fontSize = Nx.type.sp(12f), fontWeight = FontWeight(700), fontFeatureSettings = "tnum"), color = c.textSubtle, maxLines = 1)
+        }
+    }
+}
+
+/** How many badges a profile shows before the rest go behind +x. */
+private const val SHOWN_BADGES = 5
+
+/** Every badge a profile has, each with its name and meaning: what +x opens (web AllBadges). */
+private fun openAllBadges(userId: String, flags: Long, plan: String, list: List<Badges.Badge>) {
+    openSheet("all-badges", title = t("badges.all")) {
+        val c = Nx.colors
+        Column(Modifier.fillMaxWidth().padding(bottom = 8.dp)) {
+            for (b in list) {
+                val look = Badges.look(b, userId, flags, plan) ?: continue
+                Row(Modifier.fillMaxWidth().padding(vertical = 8.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    BadgeMark(look, 36.dp)
+                    Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                        Txt(look.label, style = Nx.type.body.copy(fontSize = Nx.type.sp(15f), fontWeight = FontWeight(650)), color = c.textStrong)
+                        if (look.tip.isNotEmpty()) Txt(look.tip, style = Nx.type.bodySmall.copy(fontSize = Nx.type.sp(13f), lineHeight = Nx.type.sp(18.2f)), color = c.textMuted)
+                    }
+                }
+            }
+        }
     }
 }

@@ -45,6 +45,12 @@ export const messages = {
   ack(channelId: Snowflake, mid: Snowflake): Promise<ReadState> {
     return api.request<ReadState>("POST", `/channels/${channelId}/messages/${mid}/ack`);
   },
+  setReactionRole(channelId: Snowflake, mid: Snowflake, emoji: string, roleId: Snowflake): Promise<unknown> {
+    return api.request("PUT", `/channels/${channelId}/messages/${mid}/reaction-roles/${encodeURIComponent(emoji)}`, { role_id: roleId });
+  },
+  removeReactionRole(channelId: Snowflake, mid: Snowflake, emoji: string): Promise<unknown> {
+    return api.request("DELETE", `/channels/${channelId}/messages/${mid}/reaction-roles/${encodeURIComponent(emoji)}`);
+  },
   react(channelId: Snowflake, mid: Snowflake, emoji: string): Promise<void> {
     return api.request<void>("PUT", `${reactionPath(channelId, mid, emoji)}/@me`);
   },

@@ -103,6 +103,7 @@ export function ActivityCard({ activity: a }: { activity: Activity }) {
         )}
         <ScrollingText className={s.headingText}>{activityHeading(a)}</ScrollingText>
         {a.source === "discord" ? <span className={s.source}>{t("activity.activityCard.fromDiscord")}</span> : null}
+        {a.source === "lastfm" ? <span className={s.source}>{t("activity.activityCard.fromLastfm")}</span> : null}
       </h4>
       <div className={s.row}>
         <div className={s.art}>

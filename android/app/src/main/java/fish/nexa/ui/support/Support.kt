@@ -658,7 +658,7 @@ private fun GiftLinksMade() {
     }
 }
 
-private fun copyGiftLink(code: String) {
+fun copyGiftLink(code: String) {
     val cm = Nexa.app.getSystemService(android.content.Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
     cm.setPrimaryClip(android.content.ClipData.newPlainText("Nexa", giftLinkUrl(code)))
     Nexa.ui.toast(t("support.giftLink.copied"), "success")

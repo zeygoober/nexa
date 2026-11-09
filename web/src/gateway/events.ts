@@ -1,3 +1,4 @@
+import type { ReactionRole } from "@/api/types";
 import type { ReportReceipt, SafetyReport } from "@/api/reports";
 import type { DiscordState } from "@/api/connections";
 import type {
@@ -46,6 +47,8 @@ export type GatewayEvent =
   | { t: "message_update"; d: Message & { was?: Pick<Message, "mentions" | "mention_roles" | "mention_everyone"> } }
   | { t: "message_delete"; d: { id: Snowflake; channel_id: Snowflake; last_message_id?: Snowflake | null; ephemeral?: boolean } & Partial<MentionMeta> }
   | { t: "message_delete_bulk"; d: { ids: Snowflake[]; channel_id: Snowflake; mentions?: MentionMeta[]; last_message_id?: Snowflake | null } }
+  /** Which reactions on a message give a role changed. */
+  | { t: "reaction_roles_update"; d: { channel_id: Snowflake; message_id: Snowflake; reaction_roles: ReactionRole[] } }
   | { t: "reaction_add" | "reaction_remove"; d: { channel_id: Snowflake; message_id: Snowflake; user_id: Snowflake; emoji: string } }
   /** Every reaction taken off a message at once (an app or a moderator through the bot API). */
   | { t: "reaction_remove_all"; d: { channel_id: Snowflake; message_id: Snowflake } }

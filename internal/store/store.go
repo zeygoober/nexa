@@ -7,6 +7,7 @@ import (
 	"database/sql"
 	"errors"
 	"strings"
+	"sync"
 	"time"
 
 	"evilion.xyz/chat/internal/db"
@@ -38,6 +39,13 @@ type Store struct {
 	// edits is one gate per server between the owner's server management and
 	// ordinary edits (edit_gate.go)
 	edits editGates
+
+	// activeDays keeps who has already counted today towards Regular (badge_progress.go)
+	activeDays struct {
+		sync.Mutex
+		day  int64
+		seen map[ids.ID]struct{}
+	}
 }
 
 type sqlNullInt = sql.NullInt64

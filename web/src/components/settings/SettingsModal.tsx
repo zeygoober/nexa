@@ -21,6 +21,7 @@ import { confirmLogout } from "@/lib/confirmLogout";
 import { openReportBug, openSuggest } from "@/components/bugs/ReportBugButton";
 const AccountPage = lazyPage(() => import("./AccountPage"));
 const ProfilePage = lazyPage(() => import("./ProfilePage"));
+const BadgeIndexPage = lazyPage(() => import("./BadgeIndexPage"));
 const PrivacyPage = lazyPage(() => import("./PrivacyPage"));
 const ActivityPage = lazyPage(() => import("./ActivityPage"));
 const BlockedPage = lazyPage(() => import("./BlockedPage"));
@@ -61,6 +62,7 @@ function navGroups(opts: { inApp: boolean; admin: boolean }): NavGroup[] {
       items: [
         { id: "account", label: t("settings.account.myAccount") },
         { id: "profiles", label: t("settings.profile.profiles") },
+        { id: "badgeIndex", label: t("badges.index.title") },
         { id: "security", label: t("settings.security.security") },
         { id: "devices", label: t("settings.devices.devices") },
         { id: "subscription", label: t("support.settingsLabel") },
@@ -189,6 +191,7 @@ export default function SettingsModal({ onClose, page: initial, packId, modalId,
 
   const body =
     page === "profiles" ? <ProfilePage anchor={anchor} serverId={serverId} /> :
+    page === "badgeIndex" ? <BadgeIndexPage /> :
     page === "privacy" ? <PrivacyPage /> :
     page === "data" ? <DataPage onDeleteAccount={() => go({ page: "account", label: "", anchor: "deleteAccount" })} /> :
     page === "activity" ? <ActivityPage /> :

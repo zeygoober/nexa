@@ -4,7 +4,7 @@
       <stop offset="0" stop-color="#7c90a8"/><stop offset="1" stop-color="#667e9a"/>
     </linearGradient>
   </defs>
-  <g transform="translate(0.00 0.00) scale(1)" fill="url(#gift2p)" fill-opacity=".22"><path d="M4 7h16a1 1 0 0 1 1 1v2a1 1 0 0 1 -1 1h-16a1 1 0 0 1 -1 -1v-2a1 1 0 0 1 1 -1Z"/></g>
+  <g transform="translate(0.00 0.00) scale(1)" fill="url(#gift2p)" fill-opacity=".22"><path d="M20 11v8a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2v-8"/><path d="M7.5 7a1 1 0 0 1 0-5A4.8 8 0 0 1 12 7a4.8 8 0 0 1 4.5-5 1 1 0 0 1 0 5"/><path d="M4 7h16a1 1 0 0 1 1 1v2a1 1 0 0 1 -1 1h-16a1 1 0 0 1 -1 -1v-2a1 1 0 0 1 1 -1Z"/></g>
   <g transform="translate(0.00 0.00) scale(1)" stroke="url(#gift2p)" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round" fill="none"><path d="M12 7v14"/><path d="M20 11v8a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2v-8"/><path d="M7.5 7a1 1 0 0 1 0-5A4.8 8 0 0 1 12 7a4.8 8 0 0 1 4.5-5 1 1 0 0 1 0 5"/><path d="M4 7h16a1 1 0 0 1 1 1v2a1 1 0 0 1 -1 1h-16a1 1 0 0 1 -1 -1v-2a1 1 0 0 1 1 -1Z"/></g>
   
 </svg>

@@ -1,5 +1,6 @@
 import { Award } from "lucide-react";
 import { DynamicIcon, iconNames, type IconName } from "lucide-react/dynamic";
+import "./iconBodies.css";
 
 const known = new Set<string>(iconNames);
 

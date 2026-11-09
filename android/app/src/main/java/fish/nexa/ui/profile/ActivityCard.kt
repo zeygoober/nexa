@@ -140,8 +140,8 @@ private fun ActivityCardBody(a: Activity) {
                 if (a.type == 2 && clock is Activities.Clock.Progress && clock.fraction < 1f) ActivityBars(green)
                 else Icon(Activities.icon(a.type), if (a.type == 0 || a.type == 2) green else c.textBrand, size = 13.dp)
                 ScrollingText(AnnotatedString(Activities.heading(a)), Nx.type.label.copy(fontSize = Nx.type.sp(12.5f), fontWeight = FontWeight(700), color = c.textSubtle), Modifier.weight(1f, fill = false))
-                if (a.source == "discord") Txt(
-                    t("activity.activityCard.fromDiscord"),
+                if (a.source == "discord" || a.source == "lastfm") Txt(
+                    t(if (a.source == "lastfm") "activity.activityCard.fromLastfm" else "activity.activityCard.fromDiscord"),
                     style = Nx.type.hint.copy(fontSize = Nx.type.sp(10.5f), fontWeight = FontWeight(650)), color = c.textMuted,
                     modifier = Modifier.background(c.bgActive, RoundedCornerShape(999.dp)).padding(horizontal = 7.dp, vertical = 1.dp),
                 )

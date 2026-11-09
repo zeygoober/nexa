@@ -207,6 +207,7 @@
 .tBtn:hover { color: var(--text-strong); background: var(--bg-hover); }
 .reactions { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; position: relative; }
 .pill { display: inline-flex; align-items: center; gap: 7px; height: 32px; padding: 0 11px 0 9px; border-radius: 999px; background: var(--bg-surface); border: 1px solid var(--border-subtle); font-size: 15px; font-weight: 600; color: var(--text-subtle); font-variant-numeric: tabular-nums; transition: border-color var(--transition), background-color var(--transition), transform 120ms var(--ease-spring); }
+.pillRole { flex: none; margin-inline-start: -2px; color: var(--text-subtle); }
 .pill[data-new] { animation: pillPop 260ms var(--ease-spring); }
 .pill:hover { border-color: var(--border-strong); }
 @keyframes pillPop { from { transform: scale(0.6); opacity: 0; } }

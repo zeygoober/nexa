@@ -1,3 +1,4 @@
+import { useLastfm } from "@/stores/lastfm";
 import type { ReportReceipt, SafetyReport } from "@/api/reports";
 import { useMyReports } from "@/stores/myReports";
 import { useBilling } from "@/stores/billing";
@@ -337,6 +338,7 @@ export async function applyEvent(e: GatewayEvent): Promise<void> {
       each(dispatchHooks.onReady, (h) => h());
       void useKeys.getState().reconcile();
       void useDiscord.getState().load();
+      void useLastfm.getState().load();
       // The notes ride REST, like the stickers above. Asked for again on every
       // ready rather than cleared first: a note open on the page keeps what it
       // has while the list catches up with whatever the reconnect missed.
@@ -465,6 +467,9 @@ export async function applyEvent(e: GatewayEvent): Promise<void> {
       useAppCommands.getState().forget();
       // and a page listing a server's apps reads them again
       each(dispatchHooks.onUnhandled, (h) => h(e));
+      return;
+    case "reaction_roles_update":
+      useMessages.getState().setReactionRoles(e.d.channel_id, e.d.message_id, e.d.reaction_roles);
       return;
     case "reaction_add":
     case "reaction_remove":

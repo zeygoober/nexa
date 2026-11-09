@@ -82,6 +82,10 @@ type Config struct {
 	// films for profile widgets (internal/screen). Without it people add them
 	// by name with a poster of their own.
 	TMDBAPIKey string
+	// LastfmAPIKey turns on linking a Last.fm account; LastfmAPIURL replaces
+	// Last.fm's address, for tests.
+	LastfmAPIKey string
+	LastfmAPIURL string
 	// TelegramBotToken enables Telegram sticker pack imports. The token never
 	// leaves this server: the client only ever sends a pack URL.
 	TelegramBotToken string
@@ -229,6 +233,8 @@ func Load(getenv func(string) string) (Config, error) {
 	str("IGDB_CLIENT_ID", &c.IGDBClientID)
 	str("IGDB_CLIENT_SECRET", &c.IGDBClientSecret)
 	str("TMDB_API_KEY", &c.TMDBAPIKey)
+	str("LASTFM_API_KEY", &c.LastfmAPIKey)
+	str("LASTFM_API_URL", &c.LastfmAPIURL)
 	str("TELEGRAM_BOT_TOKEN", &c.TelegramBotToken)
 	str("DISCORD_CLIENT_ID", &c.DiscordClientID)
 	str("DISCORD_CLIENT_SECRET", &c.DiscordClientSecret)

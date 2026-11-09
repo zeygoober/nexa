@@ -10,6 +10,7 @@
  */
 
 import { lazy, type ComponentType, type LazyExoticComponent } from "react";
+import { failedPage } from "@/components/common/FailedPage";
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
@@ -93,22 +94,36 @@ export function lazyPage<T extends ComponentType<any>>(load: () => Promise<{ def
 export type ReadyPage<T extends ComponentType<any>> = LazyExoticComponent<T> & { ready(): void };
 
 /**
- * lazyPage, plus `ready()`, which suspends whoever calls it until the page's
- * file is here. A dialog calls it for the page it opens on, so its frame and
- * that page arrive together, rather than the frame first with a spinner in it
- * and then, a moment later, the page.
+ * lazyPage for a page of a dialog, plus `ready()`, which suspends whoever calls
+ * it until the page's file is here. A dialog calls it for the page it opens on,
+ * so its frame and that page arrive together, rather than the frame first with
+ * a spinner in it and then, a moment later, the page.
+ *
+ * On a bad connection a file not arriving is ordinary, so it never rejects
+ * (React keeps a rejected page for good, and the app-wide boundary would
+ * restart everything): the page becomes a Try Again in place.
  */
 export function readyPage<T extends ComponentType<any>>(load: () => Promise<{ default: T }>): ReadyPage<T> {
-  let loaded = false;
+  let settled = false;
   let pending: Promise<{ default: T }> | null = null;
   const once = () =>
-    (pending ??= loadChunk(load).then((m) => {
-      loaded = true;
+    (pending ??= loadOrOffer(load).then((m) => {
+      settled = true;
       return m;
     }));
   const page = lazy(once) as ReadyPage<T>;
   page.ready = () => {
-    if (!loaded) throw once();
+    if (!settled) throw once();
   };
   return page;
+}
+
+/** lazyPage for a whole dialog: a file that does not arrive shows Try Again over what is open. */
+export function lazyDialog<T extends ComponentType<any>>(load: () => Promise<{ default: T }>): LazyExoticComponent<T> {
+  return lazy(() => loadOrOffer(load, true));
+}
+
+/** Only pressing Try Again may reload onto a new build: reaching this far usually means the signal, not a deploy. */
+function loadOrOffer<T extends ComponentType<any>>(load: () => Promise<{ default: T }>, dialog = false): Promise<{ default: T }> {
+  return loadPatiently(load).catch(() => ({ default: failedPage(() => loadChunk(load), dialog) }));
 }

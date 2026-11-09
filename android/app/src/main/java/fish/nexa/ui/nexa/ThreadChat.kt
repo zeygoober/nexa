@@ -888,12 +888,12 @@ private fun TrayCard(f: Staged, onRemove: () -> Unit) {
  * message carries them, and the facts about their device folded away.
  */
 @Composable
-fun ReportOpener(subject: String, description: String, attachments: List<NexaFile>, context: kotlinx.serialization.json.JsonObject, from: String?) {
+fun ReportOpener(subject: String, description: String, attachments: List<NexaFile>, context: kotlinx.serialization.json.JsonObject, from: String?, facts: Boolean = true) {
     val c = Nx.colors
     Txt(subject, style = Nx.type.body.copy(fontSize = Nx.type.sp(16f), fontWeight = FontWeight(650), lineHeight = Nx.type.sp(22f)), color = c.textStrong, maxLines = 3)
     MarkdownView(description, RenderCtx(surface = c.bgCanvas))
     if (attachments.isNotEmpty()) ThreadFiles(attachments, "bugs", from)
-    BugFacts(context)
+    if (facts) BugFacts(context)
 }
 
 /** A coloured mark for the panel's lists: something new to this member of staff. */

@@ -176,6 +176,9 @@ export interface PermMember {
   timedOut: boolean;
 }
 
+/** What a role given to anyone who reacts may not carry (api/reaction_roles.go). */
+export const REACTION_ROLE_UNSAFE = P.ADMINISTRATOR | P.MANAGE_SERVER | P.MANAGE_ROLES | P.MANAGE_CHANNELS | P.KICK_MEMBERS | P.BAN_MEMBERS | P.MODERATE_MEMBERS | P.MANAGE_MESSAGES | P.MANAGE_WEBHOOKS | P.MENTION_EVERYONE | P.MANAGE_NICKNAMES | P.MANAGE_THREADS | P.MOVE_MEMBERS | P.MUTE_MEMBERS | P.DEAFEN_MEMBERS | P.VIEW_AUDIT_LOG;
+
 export function toPermRoles(roles: Iterable<Role>): PermRole[] {
   const out: PermRole[] = [];
   for (const r of roles) out.push({ id: r.id, position: r.position, permissions: parsePerm(r.permissions) });
