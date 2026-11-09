@@ -177,6 +177,92 @@ data class ModServerPreview(
     val people: Map<String, NexaPerson> = emptyMap(),
 )
 
+@Serializable
+data class ManageServerInfo(
+    val id: String,
+    val name: String = "",
+    val description: String? = null,
+    @SerialName("icon_id") val iconId: String? = null,
+    @SerialName("banner_id") val bannerId: String? = null,
+    val nsfw: Boolean = false,
+    @SerialName("system_channel_id") val systemChannelId: String? = null,
+    @SerialName("default_notifications") val defaultNotifications: Int = 0,
+    @SerialName("invites_paused_until") val invitesPausedUntil: Long? = null,
+)
+
+@Serializable
+data class ManageChannel(
+    val id: String,
+    val name: String = "",
+    val type: String = "text",
+    @SerialName("parent_id") val parentId: String? = null,
+    val position: Int = 0,
+    val private: Boolean = false,
+    val topic: String = "",
+    val nsfw: Boolean = false,
+    @SerialName("slowmode_seconds") val slowmodeSeconds: Int = 0,
+    @SerialName("user_limit") val userLimit: Int = 0,
+    val overwrites: List<fish.nexa.net.Overwrite> = emptyList(),
+)
+
+@Serializable
+data class ManageRole(
+    val id: String,
+    val name: String = "",
+    val color: Long = 0,
+    val hoist: Boolean = false,
+    val mentionable: Boolean = false,
+    val position: Int = 0,
+    val permissions: String = "0",
+    @SerialName("managed_by") val managedBy: String? = null,
+)
+
+@Serializable
+data class ManageMember(val user: fish.nexa.net.PublicUser, @SerialName("role_ids") val roleIds: List<String> = emptyList())
+
+@Serializable
+data class ManageBan(val user: fish.nexa.net.PublicUser, val reason: String = "")
+
+@Serializable
+data class ManageInvite(val code: String, val uses: Int = 0)
+
+@Serializable
+data class ManageWebhook(val id: String, val name: String = "", @SerialName("channel_id") val channelId: String = "")
+
+@Serializable
+data class ManageApp(val id: String, val name: String = "", @SerialName("reads_all") val readsAll: Boolean = false)
+
+@Serializable
+data class ManageRule(
+    val id: String,
+    val name: String = "",
+    val kind: String = "",
+    val enabled: Boolean = false,
+    val alerts: Boolean = false,
+    val words: List<String> = emptyList(),
+)
+
+/** What the owner's Manage Server sheet shows: a server's structure, and no message or key. */
+@Serializable
+data class ManageView(
+    val gone: Boolean = false,
+    val server: ManageServerInfo? = null,
+    val owner: fish.nexa.net.PublicUser? = null,
+    @SerialName("owner_gone") val ownerGone: Boolean = false,
+    @SerialName("owner_deleted") val ownerDeleted: Boolean = false,
+    val channels: List<ManageChannel> = emptyList(),
+    val roles: List<ManageRole> = emptyList(),
+    val bans: List<ManageBan> = emptyList(),
+    val invites: List<ManageInvite> = emptyList(),
+    val vanity: String = "",
+    val webhooks: List<ManageWebhook> = emptyList(),
+    val apps: List<ManageApp> = emptyList(),
+    val automod: List<ManageRule> = emptyList(),
+)
+
+@Serializable
+private data class ManageMembers(val members: List<ManageMember> = emptyList())
+
 /** The owner's answer to joining a server from the panel. */
 @Serializable
 data class ModJoined(val server: fish.nexa.net.ServerView, val users: List<fish.nexa.net.PublicUser> = emptyList())
@@ -719,6 +805,17 @@ object Moderation {
 
     /** The owner's look at a server's layout without joining it; logged. */
     suspend fun serverPreview(id: String): ModServerPreview = wireJson.decodeFromJsonElement(ModServerPreview.serializer(), Nexa.api.get("/moderation/servers/$id/preview"))
+
+    /** The owner's Manage Server sheet; asking for it writes a line in the log, so it is asked for only when the sheet opens. */
+    suspend fun serverManage(id: String): ManageView = wireJson.decodeFromJsonElement(ManageView.serializer(), Nexa.api.get("/moderation/servers/$id/manage"))
+
+    suspend fun manageMembers(id: String, query: String): List<ManageMember> {
+        val q = java.net.URLEncoder.encode(query, "UTF-8")
+        return wireJson.decodeFromJsonElement(ManageMembers.serializer(), Nexa.api.get("/moderation/servers/$id/manage/members?q=$q")).members
+    }
+
+    /** One owner's action, with its reason; answers the server as it now stands. */
+    suspend fun manage(id: String, body: JsonObject): ManageView = wireJson.decodeFromJsonElement(ManageView.serializer(), Nexa.api.request("POST", "/moderation/servers/$id/manage", body))
 
     /** The owner joins a server as an ordinary member, visibly and logged. */
     suspend fun joinServer(id: String): ModJoined {

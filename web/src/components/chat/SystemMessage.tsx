@@ -62,6 +62,10 @@ function PlainSystemMessage({ msg }: { msg: DecryptedMessage }) {
         ? <Tr id="chat.systemMessage.tookOwnership" values={{ actor: A }} />
         : <Tr id="chat.systemMessage.madeOwner" values={{ actor: A, target: T }} />;
       break;
+    case "system_server_transfer":
+      icon = <Crown size={18} />;
+      body = <Tr id="chat.systemMessage.serverTransferred" values={{ actor: A, target: T }} />;
+      break;
     case "system_pin":
       icon = <Pin size={18} />;
       body = (

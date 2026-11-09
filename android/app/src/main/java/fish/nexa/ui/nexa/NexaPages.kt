@@ -204,11 +204,12 @@ private fun onlyDiscover(d: kotlinx.serialization.json.JsonObject) = detailsFiel
 
 fun severity(action: String): String = when (action) {
     "ban", "delete" -> "danger"
-    "mute", "field_reset", "avatar_remove", "server_reset", "expression_takedown" -> "warn"
+    "mute", "field_reset", "avatar_remove", "server_reset", "expression_takedown", "server_manage" -> "warn"
     else -> "info"
 }
 
 fun actionIcon(action: String): String = when (action) {
+    "server_manage" -> "Settings2"
     "avatar_remove" -> "ImageOff"
     "field_reset" -> "Eraser"
     "server_reset" -> "ServerCog"
@@ -220,6 +221,7 @@ fun actionIcon(action: String): String = when (action) {
 }
 
 fun noticeTitle(action: String, d: kotlinx.serialization.json.JsonObject): String = when (action) {
+    "server_manage" -> t("nexa.notice.managedTitle.${detailsStr(d, "notice") ?: "owner"}")
     "message_remove" -> t("reports.messageRemoved")
     "avatar_remove" -> when {
         detailsBool(d, "avatar") && detailsBool(d, "banner") -> t("nexa.notice.titleAvatarAndBanner")
@@ -243,6 +245,7 @@ fun noticeTitle(action: String, d: kotlinx.serialization.json.JsonObject): Strin
 private fun noticeExplainer(c: MemberCase): String {
     val d = c.details
     return when (c.action) {
+        "server_manage" -> t("nexa.notice.managedBody.${detailsStr(d, "notice") ?: "owner"}", "name" to (detailsStr(d, "server_name") ?: ""), "what" to fish.nexa.ui.moderation.managedWhat(d))
         "message_remove" -> t("reports.messageRemovedBody")
         "avatar_remove" -> t("nexa.notice.explainAvatar")
         "field_reset" -> if ("username" in detailsFields(d)) t("nexa.notice.explainUsername") else t("nexa.notice.explainFields")

@@ -450,6 +450,7 @@ fun StaffServerPage(serverId: String) {
             actions = {
                 if (fish.nexa.data.StaffRanks.can(fish.nexa.data.StaffCan.OWNER_TOOLS)) {
                     NxButton(t("moderation.servers.preview"), { openServerPreview(server) }, kind = ButtonKind.GHOST, size = ButtonSize.TOUCH, icon = "Eye")
+                    NxButton(t("moderation.manage.open"), { openManageServer(server) { load() } }, kind = ButtonKind.GHOST, size = ButtonSize.TOUCH, icon = "Settings2")
                     JoinFromPanel(server)
                 }
                 NxButton(t("moderation.moderate"), { openModerateServer(server, null) { load() } }, size = ButtonSize.TOUCH, icon = "Gavel", enabled = serverBlocked.isEmpty())

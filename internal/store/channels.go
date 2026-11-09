@@ -654,6 +654,11 @@ func (s *Store) RevokeChannelInvites(ctx context.Context, chID ids.ID) error {
 
 // UpdateChannel applies p.
 func (s *Store) UpdateChannel(ctx context.Context, id ids.ID, p ChannelPatch) error {
+	ctx, done, err := s.shareChannelEdits(ctx, id)
+	if err != nil {
+		return err
+	}
+	defer done()
 	var sets []string
 	var args []any
 	set := func(col string, v any) { sets = append(sets, col+" = ?"); args = append(args, v) }
@@ -741,6 +746,11 @@ func (s *Store) UpdateChannel(ctx context.Context, id ids.ID, p ChannelPatch) er
 // deletes its subchats with it, and a channel its threads (forum posts
 // included), since nothing could reach them afterwards.
 func (s *Store) DeleteChannel(ctx context.Context, id ids.ID) error {
+	ctx, done, err := s.shareChannelEdits(ctx, id)
+	if err != nil {
+		return err
+	}
+	defer done()
 	var server ids.ID
 	var serverErr error
 	// the channel and its overwrites leave its server's permissions with it

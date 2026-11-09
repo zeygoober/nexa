@@ -879,7 +879,7 @@ it:
   belong to is on screen.
 - Staff ranks (`api/staff.go`, web `lib/staffRank.ts`, Android `data/StaffRanks.kt`) are public user flags,
   each holding everything below it; the owner's rule (2026-11-04) is that each rank's powers fit its job, and
-  that no rank gives rights in other people's servers or group chats (the one exception is the owner's panel join, below). Helper (1024): support and triage: the
+  that no rank gives rights in other people's servers or group chats (the exceptions are the owner's panel join and Manage Server, both below, and only for the owner). Helper (1024): support and triage: the
   report queue (claim, notes, dismiss; never Action Taken), bug reports, and reading people, cases and the
   log; acts on nobody. Mod (512): takes reported content down, mutes and bans for at most 30 days
   (`modMaxDuration`; never permanent, never shortening a longer one), replies in cases and lifts, closes and
@@ -911,6 +911,27 @@ it:
   `GiftLinksTab.tsx`, Android `ui/moderation/GiftLinks.kt`): free links in `gift_links` claimed at the usual `/gift/<code>`, whose
   `session_id` starts `owner:` (`ownerGiftPrefix`) and whose `plan_gifts` row starts `owner-link:` (`ownerGiftClaim`), which keeps
   them out of the Your Links list and out of the Gift Giver badge. Nexa collects no email address, so there is none to show.
+- Manage Server (the owner's decision, 2026-11-09; `api/moderation_manage.go`, `moderation_manage_guard.go`,
+  `store/moderation_manage.go`; web `moderation/manage/`, Android `ui/moderation/Manage.kt`), `rankOwner` only, on a server's page,
+  member or not: `GET /moderation/servers/{id}/manage` (logged as `owner_server_view`), `.../manage/members` and `POST .../manage`
+  with one named `action` and a required reason, under `limManage`. Each action runs the handler a server's own managers use, as the
+  owner's real account; `privileged` in `permcache.go` is unchanged, and nothing else in the panel changed rank. Reading messages,
+  receiving or rotating keys, adding an app, editing or deleting messages (a report's Take Action aside), DMs and group chats are not
+  on the list, and the action list is the only way in. What must not break is the guard: every change that could open a channel is
+  first tried on an in-memory copy of the server's permissions (`manageWorld.gained`), and is refused (`owner_access_refused`, logged
+  as `owner_server_refused`, nothing reaches the server's log) if it would give View Channel, Read Message History, Connect or Manage
+  Roles in any channel, or Administrator, Manage Roles, Manage Server or View Audit Log on the server, to the owner, a member with a
+  staff rank, an app, an account sharing an address with the owner, or anyone joining later. A new action that touches roles,
+  overwrites, a channel's category or ownership needs its `mutate`, and a case in `TestOwnerManageRefusesIndirectAccess`. `transfer`
+  takes only a server whose owner is deleted, disabled or banned (`owner_active` otherwise) and never goes to one of those same
+  accounts. Every action writes `mod_log` as `owner_server_begin` and `audit_log` with `before` and `nexa_owner: true` (Done By:
+  Nexa's Owner), and the server's owner gets a case of action `server_manage` they can appeal in; anyone removed or banned gets a
+  notice, and a transfer posts `system_server_transfer`. No silent mode exists. An action holds its server's edit gate alone (`store/edit_gate.go`, `LockServerEdits`) from reading the server to its final
+  record, and every write that can change who sees what takes the shared side (`ShareServerEdits`, always gate then writer, ten seconds at most),
+  so nothing lands between the guard's check and the change; `TestAccessWritesTakeTheEditGate` fails on a new such write that does not, and the
+  gate lives in the process, as chatd is one. Handlers commit on their own, so only the attempt (`owner_server_begin`) is written before the change,
+  which fails closed if it cannot be. A failed change adds a failed line and tells the server nothing; a committed one writes `audit_log`, the
+  cases and `owner_server_<action>` in one transaction (`OwnerManageRecord`, tried three times), and only then notifies anyone.
 - One-character names (added 2026-11-09): usernames are 2 to 32 characters unless the account holds a gift for one. A
   Gift Link with plan `short_name` (`store.GiftShortName`, length 0) adds one `users.short_name_credits` (migration 0056)
   when claimed, and renaming to a single letter or number spends one inside `UpdateProfile`, or fails with `ErrNoShortName`

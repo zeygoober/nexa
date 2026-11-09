@@ -64,6 +64,10 @@ func (NoopBroadcaster) DisconnectUser(ids.ID, int, string)     {}
 
 // Server holds the dependencies of every handler.
 type Server struct {
+	// manageHook is called at the stages of an action of the owner's server
+	// management, for tests; nil otherwise
+	manageHook func(stage string)
+
 	Cfg     config.Config
 	Store   *store.Store
 	Log     *slog.Logger

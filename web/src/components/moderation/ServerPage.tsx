@@ -2,7 +2,7 @@ import { useReportNavigation } from "@/lib/reportNavigation";
 import { can, useMyRank } from "@/lib/staffRank";
 import { PersonName } from "@/components/common/PersonName";
 import { useMediaAnimation } from "@/lib/mediaAnimation";
-import { CalendarDays, ChevronLeft, ChevronRight, Compass, Copy, Eraser, Eye, FolderOpen, Gavel, Hash, ImageOff, LogIn, Smile, Users } from "lucide-react";
+import { CalendarDays, ChevronLeft, ChevronRight, Compass, Copy, Eraser, Eye, FolderOpen, Gavel, Hash, ImageOff, LogIn, Settings2, Smile, Users } from "lucide-react";
 import { useCallback, useEffect, useState, type ReactNode } from "react";
 import { useParams } from "react-router-dom";
 import { moderation as modApi, type ModPack, type ModServer, type People, type ServerField, type StaffCase } from "@/api/moderation";
@@ -26,6 +26,7 @@ import { ModerateEmojiModal } from "./ModerateEmojiModal";
 import { ModerateServerModal } from "./ModerateServerModal";
 import { ServerIcon } from "./ProfileSheet";
 import { ServerPreviewModal } from "./ServerPreviewModal";
+import { ManageServerModal } from "./manage/ManageServerModal";
 import { serverBlockedText } from "./ServersTab";
 import m from "./Moderation.module.css";
 import p from "./Sheet.module.css";
@@ -56,6 +57,7 @@ export function ServerPage() {
   const [picked, setPicked] = useState<string[]>([]);
   const [takingEmoji, setTakingEmoji] = useState(false);
   const [previewing, setPreviewing] = useState(false);
+  const [managing, setManaging] = useState(false);
   const member = useServers((st) => !!st.byId[serverId]);
   const join = () =>
     openModal("confirm", {
@@ -189,6 +191,11 @@ export function ServerPage() {
           </div>
         </div>
         <div className={m.userActions}>
+          {can(mine, "ownerTools") ? (
+            <Button size="sm" variant="ghost" onClick={() => setManaging(true)} data-testid="server-manage">
+              <Settings2 size={15} aria-hidden="true" /> {t("moderation.manage.open")}
+            </Button>
+          ) : null}
           {can(mine, "ownerTools") ? (
             <Button size="sm" variant="ghost" onClick={() => setPreviewing(true)} data-testid="server-preview">
               <Eye size={15} aria-hidden="true" /> {t("moderation.servers.preview")}
@@ -372,6 +379,7 @@ export function ServerPage() {
         </div>
       </div>
       {moderating ? <ModerateServerModal server={server} owner={owner} preset={moderating} onClose={() => setModerating(null)} onDone={() => void load()} /> : null}
+      {managing ? <ManageServerModal server={server} onClose={() => setManaging(false)} onChanged={() => void load()} /> : null}
       {previewing ? <ServerPreviewModal server={server} onClose={() => setPreviewing(false)} /> : null}
       {takingEmoji ? (
         <ModerateEmojiModal

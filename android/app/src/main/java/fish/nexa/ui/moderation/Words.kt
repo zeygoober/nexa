@@ -17,7 +17,25 @@ import kotlinx.serialization.json.contentOrNull
 // ---------------------------------------------------------------------------
 
 /** What staff did, as the panel lists it: "Muted", "Removed profile picture". */
-fun actionLabel(action: String): String = when (action) {
+private const val OWNER_SERVER = "owner_server_"
+private val OWNER_SERVER_ACTIONS = listOf("begin", "view", "refused", "server_edit", "server_icon_clear", "server_banner_clear", "channel_create", "channel_edit", "channel_move", "channel_delete", "overwrite_set", "overwrite_remove", "overwrite_sync", "role_create", "role_edit", "role_delete", "member_role_add", "member_role_remove", "member_remove", "member_ban", "member_unban", "invite_revoke", "invites_revoke_all", "vanity_clear", "webhook_delete", "app_remove", "automod_create", "automod_edit", "automod_delete", "transfer").map { OWNER_SERVER + it }
+
+private fun ownerServerLabel(action: String): String {
+    val what = action.removePrefix(OWNER_SERVER)
+    return if (what == "begin" || what == "view" || what == "refused") t("moderation.log.ownerServer.$what") else t("moderation.manage.a.$what")
+}
+
+/** What an owner's change to a server was, in a few words: "Edit Channel (general)". */
+fun managedWhat(d: JsonObject): String {
+    val what = (d["what"] as? JsonPrimitive)?.contentOrNull ?: return ""
+    if (what.isEmpty()) return ""
+    val shown = t("moderation.manage.a.$what")
+    val target = (d["target"] as? JsonPrimitive)?.contentOrNull
+    return if (target.isNullOrEmpty()) shown else "$shown ($target)"
+}
+
+fun actionLabel(action: String): String = if (action.startsWith(OWNER_SERVER)) ownerServerLabel(action) else when (action) {
+    "server_manage" -> t("moderation.action.serverManage")
     "avatar_remove" -> t("moderation.action.avatarRemove")
     "field_reset" -> t("moderation.action.fieldReset")
     "server_reset" -> t("moderation.action.serverReset")
@@ -55,13 +73,13 @@ fun actionLabel(action: String): String = when (action) {
 }
 
 /** How serious an action is, which decides its colour everywhere (the log's own list is longer than a case's). */
-fun logSeverity(action: String): String = when (action) {
+fun logSeverity(action: String): String = if (action == "server_manage" || action.startsWith(OWNER_SERVER)) "warn" else when (action) {
     "ban", "delete", "account_disable", "account_delete_profile" -> "danger"
     "mute", "field_reset", "avatar_remove", "server_reset", "expression_takedown", "admin_revoke" -> "warn"
     else -> "info"
 }
 
-fun logIcon(action: String): String = when (action) {
+fun logIcon(action: String): String = if (action == "server_manage" || action.startsWith(OWNER_SERVER)) "Settings2" else when (action) {
     "avatar_remove" -> "ImageOff"
     "field_reset" -> "Eraser"
     "server_reset" -> "ServerCog"
@@ -88,7 +106,7 @@ val LOG_GROUPS: Map<String, List<String>> = mapOf(
     "punishments" to listOf("message_remove", "avatar_remove", "field_reset", "server_reset", "expression_takedown", "mute", "ban", "delete", "account_delete_profile"),
     "lifts" to listOf("unmute", "unban", "expression_relist", "discovery_restore"),
     "announcements" to listOf("announcement", "announcement_delete"),
-    "access" to listOf("rank_change", "admin_grant", "admin_revoke", "account_disable", "account_enable", "account_view", "owner_join", "server_preview", "gift_link_create", "gift_link_revoke"),
+    "access" to listOf("rank_change", "admin_grant", "admin_revoke", "account_disable", "account_enable", "account_view", "owner_join", "server_preview", *OWNER_SERVER_ACTIONS.toTypedArray(), "gift_link_create", "gift_link_revoke"),
     "badges" to listOf("badge_change", "badge_create", "badge_edit", "badge_delete"),
     "games" to listOf("game_list", "game_reject", "game_forget"),
 )
@@ -114,6 +132,14 @@ fun expressionSummary(d: JsonObject): String {
 /** One sentence for a log entry's details, when it has any worth showing. */
 fun logDetail(e: ModLogEntry): String {
     val d = e.details
+    if (e.action.startsWith(OWNER_SERVER)) {
+        val parts = listOf(
+            d.str("server_name")?.takeIf { it.isNotEmpty() }?.let { "“$it”" } ?: "",
+            if (e.action == OWNER_SERVER + "begin" || e.action == OWNER_SERVER + "refused") managedWhat(d) else d.str("target") ?: "",
+            if (d.str("status") == "failed") t("moderation.log.ownerServer.failed") else "",
+        )
+        return parts.filter { it.isNotEmpty() }.joinToString(" · ")
+    }
     return when (e.action) {
         "mute", "ban" -> when {
             d.bool("permanent") -> t("moderation.log.permanent")

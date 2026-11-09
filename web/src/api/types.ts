@@ -823,6 +823,7 @@ export type MessageType =
   | "system_join"
   | "system_pin"
   | "system_call"
+  | "system_server_transfer"
   | "system_member_add"
   | "system_member_remove"
   | "system_owner_change"

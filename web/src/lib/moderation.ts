@@ -3,7 +3,7 @@
  * the ban screen and the staff's panel all describe the same action the same
  * way — in the reader's language.
  */
-import { Award, Ban, Eraser, Gamepad2, ImageOff, KeyRound, Lock, LockOpen, Megaphone, MessageSquareOff, ServerCog, ShieldMinus, ShieldPlus, Sticker, UserX, type LucideIcon } from "lucide-react";
+import { Award, Ban, Eraser, Gamepad2, ImageOff, KeyRound, Lock, LockOpen, Megaphone, MessageSquareOff, ServerCog, Settings2, ShieldMinus, ShieldPlus, Sticker, UserX, type LucideIcon } from "lucide-react";
 import type { CaseDetails, CaseMessage, MemberCase, ModAction, ModLogEntry, PackField, People, Person, ResetField, ServerField } from "@/api/moderation";
 import type { BugKind, BugStatus } from "@/api/bugs";
 import { bugStatusLabel } from "@/lib/bugs";
@@ -24,7 +24,11 @@ export function isSystemAccount(flags: number | undefined): boolean {
 /** How serious an action is, which decides its colour everywhere. */
 export type Severity = "info" | "warn" | "danger";
 
+const OWNER_SERVER = "owner_server_";
+const OWNER_SERVER_ACTIONS = ["begin", "view", "refused", "server_edit", "server_icon_clear", "server_banner_clear", "channel_create", "channel_edit", "channel_move", "channel_delete", "overwrite_set", "overwrite_remove", "overwrite_sync", "role_create", "role_edit", "role_delete", "member_role_add", "member_role_remove", "member_remove", "member_ban", "member_unban", "invite_revoke", "invites_revoke_all", "vanity_clear", "webhook_delete", "app_remove", "automod_create", "automod_edit", "automod_delete", "transfer"].map((a) => OWNER_SERVER + a);
+
 export function severity(action: string): Severity {
+  if (action === "server_manage" || action.startsWith("owner_server_")) return "warn";
   switch (action) {
     case "ban":
     case "delete":
@@ -44,6 +48,7 @@ export function severity(action: string): Severity {
 }
 
 export function actionIcon(action: string): LucideIcon {
+  if (action === "server_manage" || action.startsWith("owner_server_")) return Settings2;
   switch (action) {
     case "avatar_remove":
       return ImageOff;
@@ -91,7 +96,14 @@ export function actionIcon(action: string): LucideIcon {
 
 /** What staff did, as the panel lists it: "Muted", "Removed profile picture". */
 export function actionLabel(action: string): string {
+  if (action.startsWith(OWNER_SERVER)) {
+    const what = action.slice(OWNER_SERVER.length);
+    if (what === "begin" || what === "view" || what === "refused") return t(`moderation.log.ownerServer.${what}`);
+    return t(`moderation.manage.a.${what}`);
+  }
   switch (action) {
+    case "server_manage":
+      return t("moderation.action.serverManage");
     case "avatar_remove":
       return t("moderation.action.avatarRemove");
     case "field_reset":
@@ -252,6 +264,8 @@ export function fullDate(ms: number): string {
 /** The headline of a notice, as the member reads it: "Your account was muted". */
 export function noticeTitle(action: ModAction, d: CaseDetails): string {
   switch (action) {
+    case "server_manage":
+      return t(`nexa.notice.managedTitle.${d.notice ?? "owner"}`);
     case "message_remove":
       return t("reports.messageRemoved");
     case "avatar_remove":
@@ -284,6 +298,8 @@ function onlyDiscover(d: CaseDetails): boolean {
 /** What an action means for the member, in a sentence under the headline. */
 export function noticeExplainer(c: Pick<MemberCase, "action" | "details" | "expires_at">): string {
   switch (c.action) {
+    case "server_manage":
+      return t(`nexa.notice.managedBody.${c.details.notice ?? "owner"}`, { name: c.details.server_name ?? "", what: managedWhat(c.details) });
     case "message_remove":
       return t("reports.messageRemovedBody");
     case "avatar_remove":
@@ -383,7 +399,20 @@ export function systemLineText(m: Pick<CaseMessage, "author_id" | "body"> & { ev
 }
 
 /** One sentence for a log entry's details, when it has any worth showing. */
+/** What an owner's change to a server was, in a few words: "Edit Channel (general)". */
+export function managedWhat(d: Pick<CaseDetails, "what" | "target">): string {
+  if (!d.what) return "";
+  const what = t(`moderation.manage.a.${d.what}`);
+  return d.target ? `${what} (${d.target})` : what;
+}
+
 export function logDetail(e: ModLogEntry): string {
+  if (e.action.startsWith(OWNER_SERVER)) {
+    const o = e.details as { server_name?: string; what?: string; target?: string; status?: string };
+    const parts = [o.server_name ? `“${o.server_name}”` : "", e.action === `${OWNER_SERVER}begin` || e.action === `${OWNER_SERVER}refused` ? managedWhat(o) : o.target ?? ""];
+    if (o.status === "failed") parts.push(t("moderation.log.ownerServer.failed"));
+    return parts.filter(Boolean).join(" · ");
+  }
   const d = e.details as CaseDetails & { title?: string; messages_kept?: boolean };
   switch (e.action) {
     case "mute":
@@ -464,7 +493,7 @@ export const LOG_GROUPS: Record<string, string[]> = {
   punishments: ["message_remove", "avatar_remove", "field_reset", "server_reset", "expression_takedown", "mute", "ban", "delete", "account_delete_profile"],
   lifts: ["unmute", "unban", "expression_relist", "discovery_restore"],
   announcements: ["announcement", "announcement_delete"],
-  access: ["rank_change", "admin_grant", "admin_revoke", "account_disable", "account_enable", "account_view", "owner_join", "server_preview", "gift_link_create", "gift_link_revoke"],
+  access: ["rank_change", "admin_grant", "admin_revoke", "account_disable", "account_enable", "account_view", "owner_join", "server_preview", ...OWNER_SERVER_ACTIONS, "gift_link_create", "gift_link_revoke"],
   badges: ["badge_change", "badge_create", "badge_edit", "badge_delete"],
   games: ["game_list", "game_reject", "game_forget"],
 };

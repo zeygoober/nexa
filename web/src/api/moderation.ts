@@ -9,7 +9,7 @@ import type { ReportReceipt } from "./reports";
  * itself — and the app says so wherever one is written.
  */
 import { api, type UploadOptions } from "./client";
-import type { GiftLink } from "./types";
+import type { GiftLink, Invite, Overwrite, Role } from "./types";
 import type { BugCounts, BugMessage, MemberBug } from "./bugs";
 import type { Activity, BadgeDef, BadgeHolder, BadgeShape, Emoji, PublicUser, ServerTag, Snowflake, StickerPack } from "./types";
 
@@ -36,7 +36,7 @@ export interface UserBadges {
   earned?: Record<string, number>;
 }
 
-export type ModAction = "message_remove" | "avatar_remove" | "field_reset" | "mute" | "ban" | "delete" | "server_reset" | "expression_takedown";
+export type ModAction = "message_remove" | "avatar_remove" | "field_reset" | "mute" | "ban" | "delete" | "server_reset" | "expression_takedown" | "server_manage";
 export type ResetField = "username" | "display_name" | "about_me" | "pronouns" | "status" | "nicknames" | "server_profiles" | "typing_style" | "name_style" | "widgets" | "server_tag";
 /** What a server_reset can take back of what a server shows everyone. */
 export type ServerField = "icon" | "banner" | "name" | "description" | "tag" | "discovery";
@@ -99,6 +99,10 @@ export interface PurgeCounts {
 
 /** Exactly what a case did; which fields are there depends on the action. */
 export interface CaseDetails {
+  /** A server_manage notice: who it is for, and which of the owner's actions it tells of. */
+  notice?: "owner" | "removed" | "banned" | "heir";
+  what?: string;
+  target?: string;
   avatar?: boolean;
   banner?: boolean;
   /** A field_reset's profile fields, a server_reset's parts of the server, or an expression_takedown's parts of a pack. */
@@ -541,6 +545,61 @@ export const nexa = {
 
 /** What only the owner can read about an account (GET /moderation/users/{id}/account). */
 /** A server's layout as a new member would see it, with the channels already in order. */
+export interface ManageChannel {
+  id: Snowflake;
+  name: string;
+  type: string;
+  parent_id: Snowflake | null;
+  position: number;
+  private: boolean;
+  topic?: string;
+  nsfw?: boolean;
+  slowmode_seconds?: number;
+  user_limit?: number;
+  overwrites: Overwrite[];
+}
+export interface ManageMember {
+  user: PublicUser;
+  role_ids: Snowflake[];
+}
+export interface ManageRule {
+  id: Snowflake;
+  name: string;
+  kind: string;
+  enabled: boolean;
+  alerts: boolean;
+  words?: string[];
+}
+/** What the owner's Manage Server dialog shows: a server's structure, and no message or key. */
+export interface ManageView {
+  gone?: boolean;
+  server?: { id: Snowflake; name: string; description: string | null; icon_id: Snowflake | null; banner_id: Snowflake | null; nsfw: boolean; system_channel_id: Snowflake | null; default_notifications: number; invites_paused_until: number | null };
+  owner?: PublicUser;
+  owner_gone: boolean;
+  owner_deleted: boolean;
+  channels: ManageChannel[];
+  roles: (Role & { managed_by?: Snowflake | null })[];
+  bans: { user: PublicUser; reason: string }[];
+  invites: Invite[];
+  vanity: string;
+  webhooks: { id: Snowflake; name: string; channel_id: Snowflake }[];
+  apps: { id: Snowflake; name: string; reads_all: boolean }[];
+  automod: ManageRule[];
+}
+export interface ManageRequest {
+  action: string;
+  reason: string;
+  channel_id?: Snowflake;
+  role_id?: Snowflake;
+  user_id?: Snowflake;
+  target_id?: Snowflake;
+  webhook_id?: Snowflake;
+  app_id?: Snowflake;
+  rule_id?: Snowflake;
+  code?: string;
+  data?: Record<string, unknown>;
+}
+
 export interface ModServerPreview {
   channels: { id: Snowflake; server_id: Snowflake; type: string; name: string; position: number; parent_id: Snowflake | null }[];
   private_channels: number;
@@ -622,6 +681,15 @@ export const moderation = {
     return api.request("GET", `/moderation/users/${id}/account`);
   },
   /** The owner's: reading this writes a line in the log. */
+  serverManage(id: Snowflake): Promise<ManageView> {
+    return api.request("GET", `/moderation/servers/${id}/manage`);
+  },
+  manageMembers(id: Snowflake, q: string): Promise<{ members: ManageMember[] }> {
+    return api.request("GET", `/moderation/servers/${id}/manage/members?limit=50&q=${encodeURIComponent(q)}`);
+  },
+  manage(id: Snowflake, body: ManageRequest): Promise<ManageView> {
+    return api.request("POST", `/moderation/servers/${id}/manage`, body);
+  },
   serverPreview(id: Snowflake): Promise<ModServerPreview> {
     return api.request("GET", `/moderation/servers/${id}/preview`);
   },

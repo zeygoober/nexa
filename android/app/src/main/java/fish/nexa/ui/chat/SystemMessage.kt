@@ -49,7 +49,7 @@ fun SystemRow(cm: ChatMessage, ctx: ListCtx) {
         "system_member_remove" -> "ArrowLeftFromLine"
         "system_name_change" -> "Pencil"
         "system_icon_change" -> "Image"
-        "system_owner_change" -> "Crown"
+        "system_owner_change", "system_server_transfer" -> "Crown"
         "system_pin" -> "Pin"
         "system_poll_result" -> "ChartBar"
         "system_call" -> "Phone"
@@ -135,6 +135,7 @@ fun SystemRow(cm: ChatMessage, ctx: ListCtx) {
             else fill(t("chat.systemMessage.removedFromGroup"), mapOf("actor" to person(actor), "target" to person(target)))
             "system_owner_change" -> if (self) fill(t("chat.systemMessage.tookOwnership"), mapOf("actor" to person(actor)))
             else fill(t("chat.systemMessage.madeOwner"), mapOf("actor" to person(actor), "target" to person(target)))
+            "system_server_transfer" -> fill(t("chat.systemMessage.serverTransferred"), mapOf("actor" to person(actor), "target" to person(target)))
             "system_pin" -> fill(t("chat.systemMessage.pinned"), mapOf("actor" to person(actor), "message" to jumpLink(t("chat.systemMessage.aMessage"), m.replyToId)))
             "system_join" -> fill(t("chat.systemMessage.joined"), mapOf("actor" to person(actor)))
             // a poll's closing line speaks for whoever asked: the webhook that posted it, or the person

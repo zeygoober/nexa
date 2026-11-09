@@ -232,6 +232,17 @@ export default function AuditLogPage({ serverId }: { serverId: string }) {
     const str = typeof v === "string" ? v : undefined;
     const num = typeof v === "number" ? v : undefined;
     switch (k) {
+      case "nexa_owner":
+        return [t("server.auditLog.doneBy"), t("server.auditLog.nexaOwner")];
+      case "before": {
+        if (!v || typeof v !== "object" || Array.isArray(v)) return null;
+        const was = v as Record<string, unknown>;
+        const parts = Object.entries(was).map(([key, value]) => {
+          const shown = field(key, value, e, was);
+          return shown ? `${shown[0]}: ${shown[1]}` : null;
+        }).filter(Boolean);
+        return parts.length ? [t("server.auditLog.before"), parts.join(", ")] : null;
+      }
       case "name":
         return [t("modals.subchat.name"), str || none()];
       case "description":

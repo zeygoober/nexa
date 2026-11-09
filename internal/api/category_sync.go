@@ -78,6 +78,9 @@ func (s *Server) markIfPrivate(ctx context.Context, ch *store.Channel) bool {
 
 // hasIn reports whether someone holds a permission in a channel.
 func (s *Server) hasIn(ctx context.Context, channelID, uid ids.ID, need perms.Perm) bool {
+	if ch, err := s.Store.ChannelByID(ctx, channelID); err == nil && ch.ServerID != nil && actingOwner(ctx, *ch.ServerID, uid) {
+		return true
+	}
 	p, _, err := s.Store.ChannelPerms(ctx, channelID, uid)
 	return err == nil && p.Has(need)
 }

@@ -99,7 +99,12 @@ func staffRankError(need staffRank) *Error {
 
 // staff gates a handler behind a staff rank.
 func (s *Server) staff(need staffRank, h http.HandlerFunc) http.Handler {
-	return s.authed(func(w http.ResponseWriter, r *http.Request) {
+	return s.authed(s.holdsRank(need, h))
+}
+
+// holdsRank is the rank check alone, for a route that also has a limit.
+func (s *Server) holdsRank(need staffRank, h http.HandlerFunc) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
 		// someone with no rank at all is told what they always were
 		if rank := s.rankOf(r.Context(), auth.UserFrom(r.Context())); rank < need {
 			required := need
@@ -110,7 +115,7 @@ func (s *Server) staff(need staffRank, h http.HandlerFunc) http.Handler {
 			return
 		}
 		h(w, r)
-	})
+	}
 }
 
 // staffBits are the flags of the staff who are at least need (Owner counts

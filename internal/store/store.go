@@ -34,6 +34,10 @@ type Store struct {
 	// perm holds each server's permission inputs, so answering who may see
 	// or do what costs no queries while nothing has changed (permcache.go)
 	perm *permCache
+
+	// edits is one gate per server between the owner's server management and
+	// ordinary edits (edit_gate.go)
+	edits editGates
 }
 
 type sqlNullInt = sql.NullInt64

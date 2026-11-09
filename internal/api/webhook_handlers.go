@@ -206,6 +206,9 @@ func (s *Server) webhookChannel(w http.ResponseWriter, r *http.Request, id ids.I
 		return nil, nil
 	}
 	ok, err := s.canAccess(r, me, ch, NeedWebhooks)
+	if actingOwner(r.Context(), *ch.ServerID, me.ID) {
+		ok, err = true, nil
+	}
 	if err != nil {
 		WriteError(w, err)
 		return nil, nil

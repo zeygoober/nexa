@@ -204,6 +204,13 @@ fun AuditLogPage(serverId: String) {
         val s = str(v)
         val n = num(v)
         return when (k) {
+            "nexa_owner" -> t("server.auditLog.doneBy") to t("server.auditLog.nexaOwner")
+            "before" -> {
+                val was = v as? JsonObject ?: return null
+                val parts = was.entries.mapNotNull { (key, value) -> field(key, value, e, was)?.let { "${it.first}: ${it.second}" } }
+                if (parts.isEmpty()) return null
+                t("server.auditLog.before") to parts.joinToString(", ")
+            }
             "name" -> t("modals.subchat.name") to (s?.ifEmpty { null } ?: none)
             "description" -> t("server.serverOverview.serverDescription") to (s?.ifEmpty { null } ?: none)
             "topic" -> t("server.channelSettings.channelTopic") to (s?.ifEmpty { null } ?: none)

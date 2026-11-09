@@ -87,6 +87,10 @@ func (s *Server) serverCtx(w http.ResponseWriter, r *http.Request, need perms.Pe
 		WriteError(w, ErrNotFound)
 		return nil, nil, 0
 	}
+	// the owner's server management, for the one action it is running
+	if actingOwner(r.Context(), srv.ID, me.ID) {
+		return srv, me, perms.All
+	}
 	p, err := s.Store.ServerPerms(r.Context(), srv.ID, me.ID)
 	if err != nil {
 		WriteError(w, err)
@@ -121,6 +125,10 @@ func (s *Server) auditAs(ctx context.Context, serverID, actor ids.ID, action, ta
 	var raw json.RawMessage
 	if changes != nil {
 		raw, _ = json.Marshal(changes)
+	}
+	// the owner's server management writes one entry of its own for an action
+	if noteAudit(ctx, serverID, raw) {
+		return
 	}
 	e := &store.AuditEntry{ServerID: serverID, ActorID: actor, Action: action, TargetType: targetType, TargetID: target, Changes: raw, Reason: reason}
 	if err := s.Store.Audit(ctx, e); err != nil {
@@ -685,7 +693,7 @@ func (s *Server) handleServerTransfer(w http.ResponseWriter, r *http.Request) {
 	if srv == nil {
 		return
 	}
-	if srv.OwnerID != me.ID {
+	if srv.OwnerID != me.ID && !actingOwner(r.Context(), srv.ID, me.ID) {
 		WriteError(w, E(http.StatusForbidden, "not_owner", "Only the owner can transfer a server."))
 		return
 	}
@@ -1029,7 +1037,7 @@ func (s *Server) handleServerChannelPatch(w http.ResponseWriter, r *http.Request
 		s.threadPatch(w, r, ch, me)
 		return
 	}
-	p, _, err := s.Store.ChannelPerms(r.Context(), ch.ID, me.ID)
+	p, err := s.channelPerms(r.Context(), ch, me.ID)
 	if err != nil || !p.Has(perms.ManageChannels) {
 		WriteError(w, E(http.StatusForbidden, "missing_permission", "You need Manage Channels to edit this channel."))
 		return
@@ -1223,7 +1231,7 @@ func (s *Server) handleServerChannelDelete(w http.ResponseWriter, r *http.Reques
 	if mutedFor(w, r) {
 		return
 	}
-	p, _, err := s.Store.ChannelPerms(r.Context(), ch.ID, me.ID)
+	p, err := s.channelPerms(r.Context(), ch, me.ID)
 	if err != nil || p == 0 {
 		WriteError(w, ErrNotFound)
 		return
@@ -1289,7 +1297,7 @@ func (s *Server) channelManageCtx(w http.ResponseWriter, r *http.Request) (*stor
 		WriteError(w, ErrNotFound)
 		return nil, nil, 0
 	}
-	p, _, err := s.Store.ChannelPerms(r.Context(), ch.ID, me.ID)
+	p, err := s.channelPerms(r.Context(), ch, me.ID)
 	if err != nil || p == 0 {
 		WriteError(w, ErrNotFound)
 		return nil, nil, 0
@@ -1301,6 +1309,14 @@ func (s *Server) channelManageCtx(w http.ResponseWriter, r *http.Request) (*stor
 		return nil, nil, 0
 	}
 	return ch, me, p
+}
+
+func channelIDs(list []*store.Channel) []ids.ID {
+	out := make([]ids.ID, len(list))
+	for i, c := range list {
+		out[i] = c.ID
+	}
+	return out
 }
 
 func (s *Server) handleOverwritePut(w http.ResponseWriter, r *http.Request) {
@@ -1365,18 +1381,12 @@ func (s *Server) handleOverwritePut(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	ow := store.Overwrite{ChannelID: ch.ID, TargetID: target, TargetType: req.Type, Allow: req.Allow &^ req.Deny, Deny: req.Deny}
-	if err := s.Store.SetOverwrite(r.Context(), ow); err != nil {
+	if err := s.Store.SetOverwriteOn(r.Context(), ow, channelIDs(synced)); err != nil {
 		WriteError(w, err)
 		return
 	}
 	touched := []ids.ID{ch.ID}
 	for _, c := range synced {
-		cow := ow
-		cow.ChannelID = c.ID
-		if err := s.Store.SetOverwrite(r.Context(), cow); err != nil {
-			WriteError(w, err)
-			return
-		}
 		s.markIfPrivate(r.Context(), c)
 		touched = append(touched, c.ID)
 	}
@@ -1573,18 +1583,11 @@ func (s *Server) handleOverwriteDelete(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
-	if err := s.Store.DeleteOverwrite(r.Context(), ch.ID, target); err != nil {
+	if err := s.Store.DeleteOverwriteOn(r.Context(), ch.ID, target, channelIDs(synced)); err != nil {
 		WriteError(w, err)
 		return
 	}
-	changed := []ids.ID{ch.ID}
-	for _, c := range synced {
-		if err := s.Store.DeleteOverwrite(r.Context(), c.ID, target); err != nil && !errors.Is(err, store.ErrNotFound) {
-			WriteError(w, err)
-			return
-		}
-		changed = append(changed, c.ID)
-	}
+	changed := append([]ids.ID{ch.ID}, channelIDs(synced)...)
 	s.audit(r, *ch.ServerID, me.ID, "overwrite_delete", "channel", &ch.ID, map[string]any{"target": target}, "")
 	s.syncVisibility(r.Context(), *ch.ServerID, before, changed...)
 	w.WriteHeader(http.StatusNoContent)
@@ -1593,7 +1596,7 @@ func (s *Server) handleOverwriteDelete(w http.ResponseWriter, r *http.Request) {
 // --- roles ---------------------------------------------------------------
 
 func (s *Server) actorHighest(ctx context.Context, srv *store.Server, uid ids.ID) (int, bool) {
-	if srv.OwnerID == uid {
+	if srv.OwnerID == uid || actingOwner(ctx, srv.ID, uid) {
 		return 1 << 30, true
 	}
 	m, err := s.Store.Member(ctx, srv.ID, uid)
@@ -2828,7 +2831,7 @@ func (s *Server) handleInviteDelete(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusNoContent)
 		return
 	}
-	p, err := s.Store.ServerPerms(r.Context(), *in.ServerID, me.ID)
+	p, err := s.serverPerms(r.Context(), *in.ServerID, me.ID)
 	if err != nil {
 		WriteError(w, ErrNotFound)
 		return
