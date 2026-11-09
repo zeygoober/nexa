@@ -1396,6 +1396,25 @@ private fun CardWidget(w: Widgets.CardWidget) {
     }
 }
 
+/** A Local Time widget's words in the popout: what the full profile's says, ticking (web PeekMoment). */
+@Composable
+private fun PeekMoment(w: Widgets.LocalTimeWidget) {
+    val c = Nx.colors
+    val now = minuteClock()
+    Txt(
+        fish.nexa.data.TimeWidgets.time(w.zone, now),
+        style = Nx.type.heading.copy(fontSize = Nx.type.sp(17f), fontWeight = FontWeight(750), lineHeight = Nx.type.sp(21f), fontFeatureSettings = "tnum"),
+        color = c.textStrong,
+        maxLines = 1,
+    )
+    Txt(
+        t("widgets.localtime.where", "place" to fish.nexa.data.TimeWidgets.place(w.zone), "gap" to fish.nexa.data.TimeWidgets.gap(w.zone, now)),
+        style = Nx.type.hint.copy(fontSize = Nx.type.sp(12.5f), lineHeight = Nx.type.sp(16f)),
+        color = c.textMuted,
+        maxLines = 1,
+    )
+}
+
 /** WidgetPeek: the first widget in one line, its covers fanned out, and how many more there are. */
 @Composable
 fun WidgetPeek(widgets: List<Widgets.Widget>, onOpen: (() -> Unit)?) {
@@ -1410,7 +1429,7 @@ fun WidgetPeek(widgets: List<Widgets.Widget>, onOpen: (() -> Unit)?) {
         is Widgets.MusicWidget -> if (w.music.size == 1) w.music[0].name else Widgets.musicCount(w.type, w.music.size)
         is Widgets.CardWidget -> w.text ?: ""
         is Widgets.CountdownWidget -> fish.nexa.data.TimeWidgets.whenText(w.date, w.at)
-        is Widgets.LocalTimeWidget -> fish.nexa.data.TimeWidgets.place(w.zone)
+        is Widgets.LocalTimeWidget -> ""
         is Widgets.StickersWidget -> t("widgets.stickers.packCount", "count" to w.packs.size)
         is Widgets.ScreenWidget -> if (w.items.size == 1) w.items[0].title else t("widgets.screen.count", "count" to w.items.size)
         is Widgets.BookWidget -> if (w.books.size == 1) w.books[0].title else t("widgets.books.count", "count" to w.books.size)
@@ -1431,6 +1450,7 @@ fun WidgetPeek(widgets: List<Widgets.Widget>, onOpen: (() -> Unit)?) {
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(1.dp)) {
             Txt(Widgets.name(w), style = Nx.type.hint.copy(fontWeight = FontWeight(700), lineHeight = Nx.type.sp(15f)), color = c.textMuted, maxLines = 1)
             if (sub.isNotEmpty()) Txt(sub, style = Nx.type.bodySmall.copy(fontSize = Nx.type.sp(14f), fontWeight = FontWeight(650), lineHeight = Nx.type.sp(18f)), color = c.textStrong, maxLines = 1)
+            if (w is Widgets.LocalTimeWidget) PeekMoment(w)
         }
         Row(verticalAlignment = Alignment.CenterVertically) {
             when (w) {
@@ -1442,7 +1462,8 @@ fun WidgetPeek(widgets: List<Widgets.Widget>, onOpen: (() -> Unit)?) {
                 }
                 is Widgets.CardWidget -> w.image?.let { AsyncImage(Media.widgetUrl(it, 40, density), null, Media.loader, Modifier.size(36.dp).clip(RoundedCornerShape(8.dp)), contentScale = ContentScale.Crop) }
                 is Widgets.CountdownWidget -> w.emoji?.let { StatusEmojiImage(it, 22.dp) }
-                is Widgets.LocalTimeWidget, is Widgets.StickersWidget -> Unit
+                is Widgets.LocalTimeWidget -> Icon("Clock", c.textSubtle, size = 20.dp)
+                is Widgets.StickersWidget -> Unit
                 is Widgets.ScreenWidget -> w.items.take(3).forEachIndexed { i, x ->
                     Box(Modifier.offset(x = (-10 * i).dp).zIndex((3 - i).toFloat())) { ScreenPoster(x, 30, 24.dp) }
                 }

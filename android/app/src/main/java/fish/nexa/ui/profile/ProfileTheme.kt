@@ -37,6 +37,8 @@ data class ProfileTokens(
     val tint: Color? = null,
     /** "light" when light text sits on dark colours, "dark" for the reverse. */
     val text: String? = null,
+    /** What a two-colour profile's badges sit on: opaque, from the card's own colour (web --badge-pill). */
+    val badgePill: Color? = null,
 )
 
 val LocalProfile = staticCompositionLocalOf { ProfileTokens(Color.Unspecified, Color.Unspecified, Color.Unspecified, Color.Unspecified, Color.Unspecified) }
@@ -84,6 +86,7 @@ object ProfileTheme {
             bubble = Color(14, 10, 24).copy(alpha = 0.74f),
             sheet = Color.Black.copy(alpha = 0.3f),
             top = theme.top, bottom = theme.bottom, text = "light",
+            badgePill = mixOklab(theme.top, Color.Black, 0.7f),
         ) else ProfileTokens(
             accent = adjustOklch(theme.top, -0.32f, 0.1f),
             chip = Color.White.copy(alpha = 0.55f),
@@ -91,6 +94,7 @@ object ProfileTheme {
             bubble = Color.White.copy(alpha = 0.88f),
             sheet = Color.White.copy(alpha = 0.42f),
             top = theme.top, bottom = theme.bottom, text = "dark",
+            badgePill = mixOklab(theme.top, Color.White, 0.8f),
         )
     }
 

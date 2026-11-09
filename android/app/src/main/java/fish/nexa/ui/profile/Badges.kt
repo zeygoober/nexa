@@ -95,7 +95,8 @@ private fun BadgeMark(look: Badges.Look, size: Dp, modifier: Modifier = Modifier
         coil3.compose.AsyncImage(fish.nexa.media.Media.absolute(look.image), null, Modifier.size(size).then(modifier), contentScale = ContentScale.Fit)
     } else {
         // pulled towards the words around it so it reads there (--badge-ink-mix)
-        val mix = if (c.isLight && !onInk) 0.38f else 0.12f
+        val pale = when (LocalProfile.current.text) { "light" -> false; "dark" -> true; else -> c.isLight }
+        val mix = if (pale && !onInk) 0.38f else 0.12f
         val words = if (onInk) c.tooltipText else c.textStrong
         val tone = look.color?.let { lerp(opaque(it), words, mix) } ?: c.brand
         val second = look.color2?.let { lerp(opaque(it), words, mix) }
@@ -185,16 +186,17 @@ fun BadgeRow(userId: String, flags: Long, plan: String, badges: List<Badges.Badg
     val list = (badges ?: Badges.fallback(userId, flags, plan)).filter { !it.hidden && Badges.look(it, userId, flags, plan) != null }
     if (list.isEmpty()) return
     val c = Nx.colors
-    val shape = RoundedCornerShape(8.dp)
+    val shape = RoundedCornerShape(9.dp)
+    val pill = LocalProfile.current.badgePill
     FlowRow(
         modifier
-            .background(c.textStrong.copy(alpha = 0.07f), shape)
-            .ring(shape, c.textStrong.copy(alpha = 0.10f))
-            .padding(horizontal = 5.dp, vertical = 3.dp),
-        horizontalArrangement = Arrangement.spacedBy(3.dp),
+            .background(pill ?: c.textStrong.copy(alpha = 0.07f), shape)
+            .ring(shape, if (pill != null) c.borderSubtle else c.textStrong.copy(alpha = 0.10f))
+            .padding(horizontal = 6.dp, vertical = 4.dp),
+        horizontalArrangement = Arrangement.spacedBy(4.dp),
         verticalArrangement = Arrangement.spacedBy(3.dp),
         itemVerticalAlignment = Alignment.CenterVertically,
     ) {
-        for (b in list) BadgePill(b, userId, flags, plan)
+        for (b in list) BadgePill(b, userId, flags, plan, size = 22.dp)
     }
 }

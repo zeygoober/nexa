@@ -172,6 +172,9 @@ button.peek:hover, button.peek:focus-visible { background: var(--profile-chip-ho
 .peekText { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
 .peekTitle { font-size: 12px; line-height: 15px; font-weight: 700; letter-spacing: 0.01em; color: var(--text-muted); }
 .peekSub { font-size: 14px; line-height: 18px; font-weight: 650; color: var(--text-strong); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.peekTime { font-family: var(--font-display); font-size: 17px; line-height: 21px; font-weight: 750; color: var(--text-strong); font-variant-numeric: tabular-nums; }
+.peekWhere { font-size: 12.5px; line-height: 16px; color: var(--text-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.peekClock { display: block; color: var(--text-subtle); }
 .peekArt { flex: none; display: flex; align-items: center; }
 .peekCover { width: 26px; border-radius: 4px; }
 /* a fan, the first in front */

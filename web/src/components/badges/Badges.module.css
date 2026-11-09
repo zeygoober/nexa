@@ -8,10 +8,11 @@
   gap: 4px;
   min-width: 0;
   max-width: 100%;
-  padding: 3px 5px;
-  border-radius: 8px;
-  background: color-mix(in srgb, var(--text-strong) 7%, transparent);
-  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--text-strong) 10%, transparent);
+  padding: 4px 6px;
+  border-radius: 9px;
+  /* a two-colour profile sets --badge-pill (Profile.module.css): opaque, from the card's own colour */
+  background: var(--badge-pill, color-mix(in srgb, var(--text-strong) 7%, transparent));
+  box-shadow: inset 0 0 0 1px var(--badge-pill-ring, color-mix(in srgb, var(--text-strong) 10%, transparent));
 }
 
 .badge {

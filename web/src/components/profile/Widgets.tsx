@@ -722,6 +722,17 @@ function Card({ w, variant }: { w: CardWidget; variant: Variant }) {
   );
 }
 
+/** A Local Time widget's words in the popout: what the full profile's says, ticking. */
+function PeekMoment({ zone }: { zone: string }) {
+  const now = serverNow(useNow());
+  return (
+    <>
+      <span className={s.peekTime} dir="ltr">{zoneTime(zone, now)}</span>
+      <span className={s.peekWhere} dir="auto">{t("widgets.localtime.where", { place: zonePlace(zone), gap: zoneGap(zone, now) })}</span>
+    </>
+  );
+}
+
 /**
  * The first of someone's widgets in a line, for the popout: what it is, what
  * is in it, and a few of its boxes (or its picture), the whole of it a press
@@ -733,6 +744,7 @@ export function WidgetPeek({ widgets, onOpen }: { widgets: Widget[]; onOpen?: ((
   const title = widgetName(w);
   let sub: string;
   let art: ReactNode = null;
+  let moment: ReactNode = null;
   if (isGameWidget(w)) {
     sub = w.games.length === 1 ? w.games[0]!.name : t("widgets.gameCount", { count: w.games.length });
     art = w.games.slice(0, 3).map((g, i) => <GameCover key={i} game={g} css={30} className={s.peekCover} />);
@@ -743,7 +755,9 @@ export function WidgetPeek({ widgets, onOpen }: { widgets: Widget[]; onOpen?: ((
     sub = countdownWhen(w);
     art = w.emoji ? <span className={s.peekEmoji}>{w.emoji}</span> : null;
   } else if (w.type === "localtime") {
-    sub = zonePlace(w.zone);
+    sub = "";
+    moment = <PeekMoment zone={w.zone} />;
+    art = <Clock size={20} className={s.peekClock} />;
   } else if (isScreenWidget(w)) {
     sub = w.screen.length === 1 ? w.screen[0]!.title : t("widgets.screen.count", { count: w.screen.length });
     art = w.screen.slice(0, 3).map((x, i) => <ScreenPoster key={i} item={x} css={30} className={s.peekCover} />);
@@ -762,6 +776,7 @@ export function WidgetPeek({ widgets, onOpen }: { widgets: Widget[]; onOpen?: ((
       <span className={s.peekText}>
         <span className={s.peekTitle} dir="auto">{title}</span>
         {sub ? <span className={s.peekSub} dir="auto">{sub}</span> : null}
+        {moment}
       </span>
       <span className={s.peekArt} aria-hidden="true">{art}</span>
       {more > 0 ? <span className={s.peekMore}>+{more}</span> : null}

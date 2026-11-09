@@ -62,22 +62,23 @@ function BadgeCard({ look }: { look: BadgeLook }) {
  * name and meaning; [named] puts the name beside it, for lists (the designer,
  * the staff panel).
  */
-export function BadgePill({ badge, user, still, named }: { badge: Badge; user: Who; still?: boolean; named?: boolean }) {
+export function BadgePill({ badge, user, still, named, size = 20 }: { badge: Badge; user: Who; still?: boolean; named?: boolean; size?: number }) {
   const look = badgeLook(badge, user);
   if (!look) return null;
   const text = look.tip ? `${look.label}: ${look.tip}` : look.label;
   const mark = look.art ? (
-    <img className={s.badge} src={look.art} alt={still ? "" : text} draggable={false} tabIndex={still ? undefined : 0} data-testid={`badge-${badge.id}`} />
+    <img className={s.badge} style={{ width: size, height: size }} src={look.art} alt={still ? "" : text} draggable={false} tabIndex={still ? undefined : 0} data-testid={`badge-${badge.id}`} />
   ) : (
     <span
       className={s.badge}
+      style={{ width: size, height: size }}
       tabIndex={still ? undefined : 0}
       role="img"
       aria-label={still ? undefined : text}
       aria-hidden={still ? true : undefined}
       data-testid={`badge-${badge.id}`}
     >
-      <BadgeMark look={look} />
+      <BadgeMark look={look} size={size} />
     </span>
   );
   if (named) {
@@ -101,7 +102,7 @@ export function BadgeRow({ user, badges, className }: { user: Who; badges: Badge
   if (!list.length) return null;
   return (
     <span className={[s.pill, className].filter(Boolean).join(" ")} data-testid="profile-badges">
-      {list.map((b) => <BadgePill key={b.id} badge={b} user={user} />)}
+      {list.map((b) => <BadgePill key={b.id} badge={b} user={user} size={22} />)}
     </span>
   );
 }

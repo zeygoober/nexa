@@ -1038,7 +1038,7 @@ up; a person's page sets them all at once (web `GrantBadgesModal.tsx`, Android `
 badge has a description (its tooltip and toast, at most 120 characters), one or two colours and any Lucide icon or an uploaded picture (public blob of kind `badge`). Every badge, staff ranks and plans included, is a
 bare coloured icon with nothing behind it: an SVG in `web/src/assets/badges/` written by `tools/badge_art.py` (Android copies the same files and
 takes them over the air), each colour held to a luminance that reads on Dark and Light alike; an event badge is drawn from its look on both clients, its colour pulled towards the text colour (`--badge-ink-mix`, Android the same numbers). The `shape` and `glyph` stored on a badge only serve APKs from before icon-only badges, which still draw them; their editor controls are gone. A profile draws
-all its badges in one pill on the username line. Hovering one, or tapping it on a touch screen, opens a card with the badge
+all its badges in one pill on the username line, at 22 px. On a two-colour profile the pill's backing is opaque and made from the card's own top colour, darker on a card with light text and paler on one with dark text (`--badge-pill` in `Profile.module.css`, Android `ProfileTokens.badgePill`), since a see-through one vanished on saturated cards. Hovering one, or tapping it on a touch screen, opens a card with the badge
 large, its name and its meaning (web `BadgeCard` through `Tooltip`'s `card`, Android `BadgeCardPopup`). `/users/@me/badges` stays open to muted and
 banned accounts. Web `lib/badges.ts`, `components/badges/Badges.tsx`, `moderation/BadgesTab.tsx`; Android
 `data/Badges`, `ui/profile/Badges.kt`, `ui/moderation/BadgeTab.kt`. The event icon list and every icon the search offers must be ones both
@@ -1049,7 +1049,8 @@ lucide-react and Android's `lucide.json` have.
 - A JSON list on `users.widgets` and `server_members.widgets` (no migration for new kinds; apps skip kinds
   they do not know), checked by `cleanWidgets`. Card links confirm the full address before opening.
 - Countdown and Local Time count against the server clock (web `lib/timeWidgets.ts`, Android
-  `data/TimeWidgets.kt`). Sticker Showcase: the server checks owner and public on save; a pack later deleted
+  `data/TimeWidgets.kt`). The popout's preview of Local Time shows the time and place as the full profile does
+  (`PeekMoment` on both). Sticker Showcase: the server checks owner and public on save; a pack later deleted
   or made private drops out for viewers. `store.WidgetImages` counts `books` and `screen` items' own pictures.
 - Books use Open Library (`GET /api/v1/books/search`; it can take over ten seconds, so it waits 20), shows and
   films TMDB (`GET /api/v1/screen/search`, off without `TMDB_API_KEY`, a v4 Read Access Token), both through
