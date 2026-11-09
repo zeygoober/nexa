@@ -333,6 +333,10 @@ export async function join(channelId: string, ice: { servers: RTCIceServer[]; sf
         return false;
       }
     }
+  } else if (!ice.servers.some((server) => [server.urls].flat().some((url) => /^turns?:/i.test(url)))) {
+    // peer to peer goes only through a relay, so without one it could never connect
+    refuse(tr_("friends.thatCallCouldNotBeStarted"));
+    return false;
   }
   // the session the transport's events belong to; set just below, before anything can fire
   let s: Session;

@@ -499,8 +499,13 @@ func (s *Server) handleVoiceOp(ctx context.Context, c *gateway.Conn, op string, 
 		}
 		// only the target's device in the call may answer; another device of
 		// the same person would negotiate a second connection under one id.
-		// The numbers a signal carries to the other side are held to sane ranges.
-		s.emitConn(req.To, target.ConnID, "voice_signal", map[string]any{"from": me.ID, "channel_id": mine.ChannelID, "payload": voice.CleanSignal(req.Payload)})
+		// The numbers a signal carries to the other side are held to sane ranges,
+		// and it never carries the sender's own network address.
+		payload, ok := voice.HideAddresses(voice.CleanSignal(req.Payload))
+		if !ok {
+			return
+		}
+		s.emitConn(req.To, target.ConnID, "voice_signal", map[string]any{"from": me.ID, "channel_id": mine.ChannelID, "payload": payload})
 	}
 }
 

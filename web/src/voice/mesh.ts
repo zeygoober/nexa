@@ -1,9 +1,10 @@
 /**
  * Full-mesh WebRTC transport: one RTCPeerConnection per remote participant,
  * perfect negotiation (the peer with the lower user id is polite), signalling
- * relayed through the gateway. Media is DTLS-SRTP peer to peer; the server
- * never sees it. Playback goes through WebAudio so per-user volume can exceed
- * 100 % and the output device can be chosen.
+ * relayed through the gateway. Media is DTLS-SRTP between the peers through a
+ * TURN relay, and never direct: a direct candidate would hand this device's
+ * address to anyone who joins the call. Playback goes through WebAudio so
+ * per-user volume can exceed 100 % and the output device can be chosen.
  *
  * Video goes out in VP8 and comes in as VP8 or H.264 (a phone's screen
  * share), and where the browser allows it every received video frame is held
@@ -168,7 +169,7 @@ export class MeshTransport implements VoiceTransport {
    */
   addPeer(userId: string, attempts = 0): void {
     if (this.closed || this.peers.has(userId) || userId === this.meId) return;
-    const pc = new RTCPeerConnection({ iceServers: this.ice, bundlePolicy: "max-bundle" });
+    const pc = new RTCPeerConnection({ iceServers: this.ice, iceTransportPolicy: "relay", bundlePolicy: "max-bundle" });
     const peer: Peer = { userId, pc, polite: lower(this.meId, userId), makingOffer: false, ignoreOffer: false, remoteStreams: {}, pendingCandidates: [], audioSender: null, videoSender: null, screenSenders: [], shareAdapter: null, restartTimer: null, restarts: 0, offerTimer: null, renegotiate: false, watchdog: null, attempts, ops: Promise.resolve() };
     this.peers.set(userId, peer);
     pc.onicecandidate = (e) => this.events.onSignal(userId, { candidate: e.candidate ? e.candidate.toJSON() : null });

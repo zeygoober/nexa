@@ -306,6 +306,10 @@ internal object Engine {
                 refuse(t("guestLink.thisConversationSKeysHaveNot"))
                 return false
             }
+        } else if (WebRtc.iceServers(ice.iceServers).none { server -> server.urls.any { it.startsWith("turn:", true) || it.startsWith("turns:", true) } }) {
+            // peer to peer goes only through a relay, so without one it could never connect
+            refuse(t("friends.thatCallCouldNotBeStarted"))
+            return false
         }
         lateinit var s: Session
         val events = object : TransportEvents {

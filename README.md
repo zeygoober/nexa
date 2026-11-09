@@ -28,8 +28,9 @@ Content access can also read accessible channel history.
 
 Webhook and app content, bug reports and moderation conversations are not end-to-end
 encrypted. Account details, public profiles and server membership are also visible to
-the server. Peer-to-peer calls reveal participants' IP addresses to each other; calls
-through the optional Cloudflare Realtime service avoid this.
+the server. Calls never reveal participants' IP addresses to each other: they go through
+the optional Cloudflare Realtime service or, peer to peer, through a TURN relay, which an
+instance without Realtime must configure for calls to work.
 
 See [how Nexa's encryption works](ENCRYPTION.md) for key storage, password and
 recovery protection, message encryption, bot access and the limits of E2EE.

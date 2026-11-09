@@ -125,13 +125,7 @@ class MeshTransport(
     private fun addPeer(userId: String, attempts: Int) {
         if (closed || peers.containsKey(userId) || userId == meId) return
         val peer = Peer(userId, polite = lower(meId, userId), attempts = attempts)
-        val config = PeerConnection.RTCConfiguration(ice).apply {
-            bundlePolicy = PeerConnection.BundlePolicy.MAXBUNDLE
-            rtcpMuxPolicy = PeerConnection.RtcpMuxPolicy.REQUIRE
-            sdpSemantics = PeerConnection.SdpSemantics.UNIFIED_PLAN
-            enableImplicitRollback = true
-        }
-        peer.pc = WebRtc.factory.createPeerConnection(config, object : PeerConnection.Observer {
+        peer.pc = WebRtc.factory.createPeerConnection(rtcConfig(ice), object : PeerConnection.Observer {
             override fun onSignalingChange(state: PeerConnection.SignalingState?) = Unit
             override fun onIceConnectionChange(state: PeerConnection.IceConnectionState?) = Unit
             override fun onIceConnectionReceivingChange(receiving: Boolean) = Unit
@@ -292,14 +286,16 @@ class MeshTransport(
 
     override fun setIceServers(servers: List<PeerConnection.IceServer>) {
         ice = servers
-        for (p in peers.values) runCatching {
-            p.pc.setConfiguration(PeerConnection.RTCConfiguration(servers).apply {
-                bundlePolicy = PeerConnection.BundlePolicy.MAXBUNDLE
-                rtcpMuxPolicy = PeerConnection.RtcpMuxPolicy.REQUIRE
-                sdpSemantics = PeerConnection.SdpSemantics.UNIFIED_PLAN
-                enableImplicitRollback = true
-            })
-        }
+        for (p in peers.values) runCatching { p.pc.setConfiguration(rtcConfig(servers)) }
+    }
+
+    /** Relay only: a direct candidate would hand this device's address to anyone who joins the call. */
+    private fun rtcConfig(servers: List<PeerConnection.IceServer>) = PeerConnection.RTCConfiguration(servers).apply {
+        iceTransportsType = PeerConnection.IceTransportsType.RELAY
+        bundlePolicy = PeerConnection.BundlePolicy.MAXBUNDLE
+        rtcpMuxPolicy = PeerConnection.RtcpMuxPolicy.REQUIRE
+        sdpSemantics = PeerConnection.SdpSemantics.UNIFIED_PLAN
+        enableImplicitRollback = true
     }
 
     override fun peerIds(): List<String> = peers.keys.toList()
@@ -381,12 +377,16 @@ class MeshTransport(
                 peer.ignoreOffer = !peer.polite && offerCollision
                 if (peer.ignoreOffer) return
                 WebRtc.setRemote(pc, Sdp.tunedRemote(SessionDescription(type, sdp), voiceStereo))
+                // a native call on a connection disposed meanwhile ends the whole app
+                if (peer.closed) return
                 for (c in peer.pendingCandidates.toList()) runCatching { pc.addIceCandidate(c) }
                 peer.pendingCandidates.clear()
                 if (type == SessionDescription.Type.OFFER) {
                     // asking to play stereo stays on this side: an older app would take it from what is sent as a request to send two channels
                     val local = WebRtc.createAnswer(pc)
+                    if (peer.closed) return
                     WebRtc.setLocal(pc, tuneLocal(peer.userId, local))
+                    if (peer.closed) return
                     events.onSignal(peer.userId, buildJsonObject {
                         put("description", buildJsonObject {
                             put("type", Sdp.wireOf(local.type))
@@ -426,7 +426,7 @@ class MeshTransport(
 
     private suspend fun negotiate(peer: Peer) {
         val pc = peer.pc
-        if (closed) return
+        if (closed || peer.closed) return
         // mid-exchange the other side's description is on its way; a second offer now would talk over it
         if (pc.signalingState() != PeerConnection.SignalingState.STABLE) {
             peer.renegotiate = true
@@ -437,7 +437,9 @@ class MeshTransport(
             peer.makingOffer = true
             val renegotiating = pc.remoteDescription != null
             val local = WebRtc.createOffer(pc)
+            if (peer.closed) return
             WebRtc.setLocal(pc, tuneLocal(peer.userId, local))
+            if (peer.closed) return
             events.onSignal(peer.userId, buildJsonObject {
                 put("description", buildJsonObject {
                     put("type", Sdp.wireOf(local.type))

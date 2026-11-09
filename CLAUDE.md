@@ -226,8 +226,8 @@ export JAVA_HOME=$HOME/android/jdk ANDROID_HOME=$HOME/android/sdk
 ```
 
 On the Mac, Homebrew's `android-commandlinetools` holds the SDK, NDK and emulator; the same Gradle commands
-take `JAVA_HOME=/Library/Java/JavaVirtualMachines/temurin-21.jdk/Contents/Home` and
-`ANDROID_HOME=/opt/homebrew/share/android-commandlinetools`.
+take `JAVA_HOME=/opt/homebrew/opt/openjdk@21/libexec/openjdk.jdk/Contents/Home` and
+`ANDROID_HOME=/opt/homebrew/share/android-commandlinetools`, with `/opt/homebrew/opt/rustup/bin` on the PATH for cargo.
 
 Work that goes with certain changes:
 
@@ -259,7 +259,10 @@ tools/.venv/bin/python tools/seed.py http://127.0.0.1:$PORT
 `seed.py` registers alice and bob (password `correct horse battery staple`), makes a server whose #general bob
 joins, posts one message of every kind of formatting and prints the ids. Registration is open by default, the
 first account becomes the owner (staff rank Developer, the oldest), and captchas, SFU calls, GIF search and
-the other keyed services stay off without their keys.
+the other keyed services stay off without their keys. Calls need a relay or the SFU, so to try a call without
+Realtime keys run a local TURN server and give the scratch chatd `TURN_URLS`, `TURN_USERNAME` and `TURN_CREDENTIAL`
+(on a machine's real address, not loopback, which WebRTC will not relay through). The drivers that call peer to peer
+(`tools/e2e.py`'s call flows, `call_quality.py`, `stereo_call.py` without `--sfu`) need the same.
 
 To try attachments in R2, start the scratch chatd with the test bucket's settings in its environment
 (`set -a; . ~/.config/nexa/r2-test.env; set +a` first; the file holds `R2_*` for `nexa-media-test`, whose
@@ -747,7 +750,12 @@ it:
 - `internal/voice` tracks who is in each call. Without Realtime keys calls are a peer-to-peer mesh signalled
   over the gateway's `voice_signal`; with `REALTIME_APP_ID`/`REALTIME_APP_SECRET` every call goes through
   Cloudflare's SFU, chatd being the signalling proxy (`/api/v1/voice/sfu/*`) that decides who may pull which
-  track. Frames are encrypted in the apps. An SFU call outlives a dropped socket for `voiceGrace`. SFU video
+  track. Frames are encrypted in the apps. Nobody in a call may learn another's address: the mesh is relay only
+  (`iceTransportPolicy: "relay"` in web `voice/mesh.ts`, `IceTransportsType.RELAY` in Android
+  `voice/MeshTransport`), and every `voice_signal` goes through `voice.HideAddresses`, which drops a signal
+  carrying a direct or unreadable candidate, blanks a relay candidate's related address and cleans the same out of
+  descriptions, so older or patched apps leak nothing either. Without a TURN server (`TURN_URLS` or `TURN_KEY_ID`)
+  the apps refuse to join rather than fall back to direct. An SFU call outlives a dropped socket for `voiceGrace`. SFU video
   checks hold a guest to their channel permissions too, ICE restarts included (a guest link is not an
   exception to Video).
 - SFU policy (`sfu_handlers.go`, `sfu_policy.go`): mutations serialize per user; a publication is bound to its

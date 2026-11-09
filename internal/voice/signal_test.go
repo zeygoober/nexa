@@ -1,7 +1,9 @@
 package voice
 
 import (
+	"bytes"
 	"encoding/json"
+	"strings"
 	"testing"
 )
 
@@ -59,5 +61,63 @@ func TestCleanSignalSeesThroughEscapedNames(t *testing.T) {
 	got := decode(t, CleanSignal(json.RawMessage(`{"voice_loss":5e10}`)))
 	if got["voice_loss"] != float64(1) {
 		t.Errorf("voice_loss = %v, want 1", got["voice_loss"])
+	}
+}
+
+func TestHideAddressesKeepsOnlyRelayCandidates(t *testing.T) {
+	for _, in := range []string{
+		`{"candidate":{"candidate":"candidate:1 1 udp 2122 192.168.1.5 5000 typ host generation 0","sdpMid":"0"}}`,
+		`{"candidate":{"candidate":"candidate:2 1 udp 1686 203.0.113.9 5000 typ srflx raddr 192.168.1.5 rport 5000","sdpMid":"0"}}`,
+		`{"candidate":{"candidate":"candidate:3 1 udp 1686 203.0.113.9 5000 typ prflx","sdpMid":"0"}}`,
+		`{"candidate":{"candidate":"203.0.113.9"}}`,
+		`{"candidate":"candidate:1 1 udp 2122 192.168.1.5 5000 typ host"}`,
+		`{"candidate":{"candidate":"candidate:1 1 udp 2122 192.168.1.5 5000 typ host"}}`,
+	} {
+		if out, ok := HideAddresses(json.RawMessage(in)); ok {
+			t.Errorf("HideAddresses(%s) passed %s", in, out)
+		}
+	}
+	for _, in := range []string{
+		`{"candidate":null}`,
+		`{"candidate":{"candidate":""}}`,
+		`{"voice_loss":0.05}`,
+		`{"guest_keys":"x"}`,
+	} {
+		if out, ok := HideAddresses(json.RawMessage(in)); !ok || string(out) != in {
+			t.Errorf("HideAddresses(%s) = %s, %v, want it unchanged", in, out, ok)
+		}
+	}
+}
+
+// An older app's relay candidate names the device's own public address as its
+// related address, which is the same leak in a smaller field.
+func TestHideAddressesClearsARelaysRelatedAddress(t *testing.T) {
+	in := `{"candidate":{"candidate":"candidate:4 1 udp 41 198.51.100.7 6000 typ relay raddr 203.0.113.9 rport 5000 generation 0","sdpMid":"0"}}`
+	out, ok := HideAddresses(json.RawMessage(in))
+	if !ok {
+		t.Fatal("a relay candidate was stopped")
+	}
+	if bytes.Contains(out, []byte("203.0.113.9")) || !bytes.Contains(out, []byte("198.51.100.7 6000 typ relay raddr 0.0.0.0 rport 0")) {
+		t.Fatalf("got %s", out)
+	}
+}
+
+func TestHideAddressesCleansDescriptions(t *testing.T) {
+	sdp := "v=0\r\nm=audio 5000 UDP/TLS/RTP/SAVPF 111\r\nc=IN IP4 203.0.113.9\r\na=rtcp:5000 IN IP4 203.0.113.9\r\n" +
+		"a=candidate:1 1 udp 2122 192.168.1.5 5000 typ host\r\na=candidate:2 1 udp 1686 203.0.113.9 5000 typ srflx raddr 192.168.1.5 rport 5000\r\n" +
+		"a=candidate:4 1 udp 41 198.51.100.7 6000 typ relay raddr 203.0.113.9 rport 5000\r\nc=IN IP6 2001:db8::1\r\n"
+	body, _ := json.Marshal(map[string]any{"description": map[string]string{"type": "offer", "sdp": sdp}, "streams": map[string]string{"audio": "a"}})
+	out, ok := HideAddresses(body)
+	if !ok {
+		t.Fatal("a description was stopped")
+	}
+	got := decode(t, out)["description"].(map[string]any)["sdp"].(string)
+	for _, gone := range []string{"203.0.113.9", "192.168.1.5", "2001:db8::1", "typ host", "typ srflx"} {
+		if strings.Contains(got, gone) {
+			t.Errorf("%q survived in\n%s", gone, got)
+		}
+	}
+	if !strings.Contains(got, "198.51.100.7 6000 typ relay") || !strings.HasSuffix(got, "\r\n") {
+		t.Errorf("the relay candidate or line endings went missing:\n%s", got)
 	}
 }

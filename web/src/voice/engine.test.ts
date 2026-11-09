@@ -87,7 +87,7 @@ function state(channel: string): VoiceState {
   return { user_id: "me", channel_id: channel, session_id: "s1", self_mute: false, self_deaf: false, video: false, streaming: false, server_mute: false, server_deaf: false, joined_at: 1 };
 }
 
-const ice = { servers: [], sfu: false };
+const ice = { servers: [{ urls: "turn:relay.test:3478" }], sfu: false };
 
 describe("the call engine", () => {
   beforeEach(() => {
