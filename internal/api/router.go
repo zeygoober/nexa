@@ -255,6 +255,9 @@ type Server struct {
 	turnBlocked map[ids.ID]time.Time
 	turnLoaded  bool
 	turnMint    singleflight.Group
+	// relayRead is Cloudflare's latest count of the month's egress, which is
+	// all that holds relay-only calls inside the allowance (turn.go).
+	relayRead relayReading
 	// turnBase replaces the TURN API's address, for tests.
 	turnBase string
 	// Analytics reads what Cloudflare measured of the account's Realtime

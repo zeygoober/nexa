@@ -51,7 +51,14 @@ func newFakeTURN(t *testing.T, srv *Server) *fakeTURN {
 	t.Cleanup(up.Close)
 	srv.Cfg.TurnKeyID, srv.Cfg.TurnAPIToken = "key", "token"
 	srv.turnBase = up.URL
+	relayCounted(srv, 0)
 	return f
+}
+
+// relayCounted is a fresh count from Cloudflare of the month's egress.
+func relayCounted(srv *Server, used int64) {
+	srv.Cfg.RealtimeMonthlyGB = 1000
+	srv.noteRelayRead(used, time.Now())
 }
 
 func (f *fakeTURN) count() (int, []string) {
@@ -226,6 +233,61 @@ func TestTURNNotHandedOutWhileCallsArePaused(t *testing.T) {
 	}
 	if minted, _ := f.count(); minted != 1 {
 		t.Fatalf("minted %d", minted)
+	}
+}
+
+// With no SFU only Cloudflare's count holds relays inside the free allowance:
+// nothing new without a recent count, and everything ends near the limit.
+func TestRelayStaysInsideTheAllowance(t *testing.T) {
+	srv, ts := newTestServer(t)
+	f := newFakeTURN(t, srv)
+	ctx := context.Background()
+	tok, id := register(t, ts, "alice")
+	other, _ := register(t, ts, "bob")
+	uid, _ := ids.Parse(id)
+	putInCall(srv, uid)
+
+	srv.turnMu.Lock()
+	srv.relayRead = relayReading{}
+	srv.turnMu.Unlock()
+	if name := iceUsername(t, ts, tok); name != "" {
+		t.Fatalf("handed %q with no count from Cloudflare", name)
+	}
+
+	relayCounted(srv, 900_000_000_000)
+	name := iceUsername(t, ts, tok)
+	if name == "" {
+		t.Fatal("no relay under the limit")
+	}
+
+	srv.turnMu.Lock()
+	srv.relayRead.at = time.Now().Add(-relayReadFresh - time.Minute)
+	srv.turnMu.Unlock()
+	if again := iceUsername(t, ts, tok); again != name {
+		t.Fatalf("a running call lost its relay to a late count: %q", again)
+	}
+	if fresh := iceUsername(t, ts, other); fresh != "" {
+		t.Fatalf("a new relay went out on a stale count: %q", fresh)
+	}
+
+	relayCounted(srv, 950_000_000_000)
+	srv.sweepTURN(ctx)
+	if _, revoked := f.count(); len(revoked) != 1 || revoked[0] != name {
+		t.Fatalf("a running relay outlasted the allowance: %v", revoked)
+	}
+	if again := iceUsername(t, ts, tok); again != "" {
+		t.Fatalf("handed %q with the allowance spent", again)
+	}
+}
+
+// A TURN key alone must start the meter, or nothing would count its traffic.
+func TestTURNAloneStartsTheMeter(t *testing.T) {
+	srv, _ := newTestServer(t)
+	newFakeTURN(t, srv)
+	srv.Meter = nil
+	srv.WireVoice(nil)
+	if srv.Meter == nil {
+		t.Fatal("no meter for a TURN key")
 	}
 }
 

@@ -114,7 +114,8 @@ func (s *Server) WireVoice(hub *gateway.Hub) {
 	if s.Realtime == nil {
 		s.Realtime = realtime.New(s.Cfg.RealtimeAppID, s.Cfg.RealtimeAppSecret)
 	}
-	if s.Realtime != nil && s.Meter == nil {
+	// a relay spends the same allowance as the SFU, so either one needs the meter
+	if (s.Realtime != nil || s.turnAPI() != nil) && s.Meter == nil {
 		s.Meter = realtime.NewMeter(s.Store, s.Cfg.RealtimeMonthlyGB)
 	}
 	if s.Meter != nil {

@@ -781,7 +781,11 @@ it:
 - TURN (`api/turn.go`, `realtime/turn.go`): credentials are recorded by username only (`turn_credentials`),
   and a 15 s sweep revokes those whose account has been out of a call for `turnGrace`. Minting has `limTurn`,
   stops for people not in a call while calls are paused, and cuts an account off for the UTC day past
-  `REALTIME_TURN_DAILY_GB` of measured relay.
+  `REALTIME_TURN_DAILY_GB` of measured relay. A TURN key without the SFU starts the meter too. Relayed bytes
+  never pass through chatd, so there only Cloudflare's count holds them (`relayOpenLocked`): without one from
+  the last `relayReadFresh` no new credential goes out (so `REALTIME_ACCOUNT_ID` and
+  `REALTIME_ANALYTICS_TOKEN` are required), and at `relayStopPercent` of `REALTIME_MONTHLY_GB` every credential
+  is revoked until the UTC month turns.
 - A server voice channel has its own chat (web `components/voice/VoiceRoom.tsx`, Android
   `ui/voice/VoiceRoom.kt`). It is the active channel, and marked read, only while shown, and voice channels
   count towards unread state and Mark as Read. Its row in the channel list has an Open Chat button that opens

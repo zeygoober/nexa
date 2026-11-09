@@ -26,7 +26,7 @@ import (
 const (
 	realtimePollEvery = 5 * time.Minute
 	// realtimeFirstPoll lets the server settle before its first measurement.
-	realtimeFirstPoll = 30 * time.Second
+	realtimeFirstPoll = 5 * time.Second
 	// callUsageKeepDays is how long each account's daily usage is kept: the
 	// month the allowance runs over and the one before it.
 	callUsageKeepDays   = 62
@@ -38,6 +38,9 @@ const (
 func (s *Server) StartRealtime(ctx context.Context) {
 	if s.Meter == nil && s.turnAPI() == nil {
 		return
+	}
+	if s.Realtime == nil && s.turnAPI() != nil && s.Analytics == nil {
+		s.Log.Warn("no relay will be handed out: a TURN key needs REALTIME_ACCOUNT_ID and REALTIME_ANALYTICS_TOKEN to stay inside the monthly allowance")
 	}
 	go func() {
 		sweep := time.NewTicker(turnSweepEvery)
@@ -95,6 +98,7 @@ func (s *Server) pollRealtime(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
+	s.noteRelayRead(totals.SFU+totals.TURN, now)
 	if _, err := s.Meter.Measure(ctx, until, totals.SFU, totals.TURN); err != nil {
 		return err
 	}

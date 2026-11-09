@@ -236,6 +236,7 @@ func TestCloudflareTURNCredentials(t *testing.T) {
 	srv, ts := newTestServer(t)
 	srv.Cfg.TurnKeyID = "key-123"
 	srv.Cfg.TurnAPIToken = "token-abc"
+	relayCounted(srv, 0)
 	token, id := register(t, ts, "alice")
 
 	res, body := do(t, ts, "GET", "/api/v1/voice/ice", token, nil)
@@ -284,6 +285,7 @@ func TestGuestTURNRequestsShareABoundedCredential(t *testing.T) {
 	srv, ts := newTestServer(t)
 	srv.Cfg.GuestLinksP2P = true
 	srv.Cfg.TurnKeyID, srv.Cfg.TurnAPIToken = "test-key", "test-token"
+	relayCounted(srv, 0)
 	owner, _ := register(t, ts, "owner")
 	view := createServer(t, ts, owner, "Guest relay")
 	channel := channelNamed(view, "General")["id"].(string)

@@ -19,6 +19,11 @@ import (
 // revoked turnGrace later (so moving between channels keeps the relay). Each
 // is tagged with its account, whose relaying Cloudflare measures; an account
 // past REALTIME_TURN_DAILY_GB in a UTC day is cut off until the next.
+//
+// Relayed bytes never pass through this server, so without the SFU only
+// Cloudflare's own count can hold them inside the monthly allowance: no new
+// credential goes out without a recent count, and at relayStopPercent of
+// REALTIME_MONTHLY_GB every relay is cut until the month turns.
 
 const (
 	// turnTTL is how long a minted credential lasts. The apps fetch ICE
@@ -34,7 +39,50 @@ const (
 	// and join their calls again.
 	turnRestartGrace = 3 * time.Minute
 	turnSweepEvery   = 15 * time.Second
+	// relayReadFresh is how old Cloudflare's count may be for a new credential
+	// to go out: three polls missed in a row.
+	relayReadFresh = 20 * time.Minute
+	// relayStopPercent leaves room for what the count cannot have seen yet
+	// (AnalyticsLag and a poll) and for relays still ending.
+	relayStopPercent = 95
 )
+
+// relayReading is Cloudflare's count of a month's egress and when it was taken.
+type relayReading struct {
+	month time.Time
+	bytes int64
+	at    time.Time
+}
+
+// noteRelayRead takes a fresh count of the month's egress.
+func (s *Server) noteRelayRead(used int64, now time.Time) {
+	now = now.UTC()
+	s.turnMu.Lock()
+	_, wasSpent := s.relayOpenLocked(now)
+	s.relayRead = relayReading{month: realtime.MonthStart(now), bytes: used, at: now}
+	_, spent := s.relayOpenLocked(now)
+	s.turnMu.Unlock()
+	if spent && !wasSpent {
+		s.Log.Warn("relay stopped for the month", "used_bytes", used, "monthly_gb", s.Cfg.RealtimeMonthlyGB)
+	}
+}
+
+// relayOpenLocked says whether a new credential may go out, and whether the
+// month's allowance is spent, which also ends those already out. Calls through
+// the SFU are held by the meter instead.
+func (s *Server) relayOpenLocked(now time.Time) (open, spent bool) {
+	if s.Realtime != nil {
+		return true, false
+	}
+	r := s.relayRead
+	if r.at.IsZero() || !r.month.Equal(realtime.MonthStart(now.UTC())) {
+		return false, false
+	}
+	if r.bytes*100 >= s.Cfg.RealtimeMonthlyGB*1_000_000_000*relayStopPercent {
+		return false, true
+	}
+	return now.Sub(r.at) <= relayReadFresh, false
+}
 
 var turnClient = &http.Client{Timeout: 6 * time.Second}
 
@@ -136,7 +184,8 @@ func (s *Server) mintTURN(r *http.Request) []map[string]any {
 	}
 	s.turnMu.Lock()
 	s.loadTURNLocked(ctx, now)
-	if s.turnBlockedLocked(me.ID, now) {
+	open, spent := s.relayOpenLocked(now)
+	if spent || s.turnBlockedLocked(me.ID, now) {
 		s.turnMu.Unlock()
 		return nil
 	}
@@ -150,6 +199,9 @@ func (s *Server) mintTURN(r *http.Request) []map[string]any {
 		}
 	}
 	s.turnMu.Unlock()
+	if !open {
+		return nil
+	}
 	if ok, _ := s.limTurn.Allow("turn:" + me.ID.String()); !ok {
 		return nil
 	}
@@ -192,6 +244,7 @@ func (s *Server) sweepTURN(ctx context.Context) {
 	var revoke []string
 	s.turnMu.Lock()
 	s.loadTURNLocked(ctx, now)
+	_, spent := s.relayOpenLocked(now)
 	for name, g := range s.turnLive {
 		if !now.Before(g.expires) {
 			delete(s.turnLive, name)
@@ -199,7 +252,7 @@ func (s *Server) sweepTURN(ctx context.Context) {
 		}
 		_, inCall := s.Voice.Get(g.user)
 		switch {
-		case s.turnBlockedLocked(g.user, now):
+		case spent || s.turnBlockedLocked(g.user, now):
 			revoke = append(revoke, name)
 		case inCall:
 			g.idleSince = time.Time{}
