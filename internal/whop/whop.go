@@ -23,9 +23,15 @@ import (
 	"time"
 )
 
-// APIVersionDate is the version every request asks for (Api-Version-Date).
-// From it, a plan is a variant (variant_id) and events name the account_id.
-const APIVersionDate = "2026-08-14"
+// The API versions requests ask for (Api-Version-Date). Reads ask for the
+// version the webhooks and the API key are on, since it is the one whose
+// objects were checked: /variants/{plan id} does not exist before it, and a
+// membership names its plan as variant_id. Making a checkout and cancelling
+// stay on the version they were first used on, which works.
+const (
+	ReadVersionDate  = "2026-11-12"
+	WriteVersionDate = "2026-08-14"
+)
 
 // Client talks to Whop with an API key.
 type Client struct {
@@ -51,7 +57,7 @@ type Error struct {
 
 func (e *Error) Error() string { return fmt.Sprintf("whop: %d %s: %s", e.Status, e.Type, e.Message) }
 
-func (c *Client) do(ctx context.Context, method, path string, in, out any) error {
+func (c *Client) do(ctx context.Context, version, method, path string, in, out any) error {
 	var body io.Reader
 	if in != nil {
 		raw, err := json.Marshal(in)
@@ -65,7 +71,7 @@ func (c *Client) do(ctx context.Context, method, path string, in, out any) error
 		return err
 	}
 	req.Header.Set("Authorization", "Bearer "+c.Key)
-	req.Header.Set("Api-Version-Date", APIVersionDate)
+	req.Header.Set("Api-Version-Date", version)
 	req.Header.Set("Accept", "application/json")
 	if body != nil {
 		req.Header.Set("Content-Type", "application/json")
@@ -124,7 +130,7 @@ func (v Variant) Price() int64 {
 // GetVariant reads one plan.
 func (c *Client) GetVariant(ctx context.Context, id string) (*Variant, error) {
 	var v Variant
-	if err := c.do(ctx, http.MethodGet, "/variants/"+url.PathEscape(id), nil, &v); err != nil {
+	if err := c.do(ctx, ReadVersionDate, http.MethodGet, "/variants/"+url.PathEscape(id), nil, &v); err != nil {
 		return nil, err
 	}
 	return &v, nil
@@ -172,7 +178,7 @@ func (c *Client) CreateCheckout(ctx context.Context, p CheckoutParams) (*Checkou
 		in["metadata"] = p.Metadata
 	}
 	var out Checkout
-	if err := c.do(ctx, http.MethodPost, "/checkout_configurations", in, &out); err != nil {
+	if err := c.do(ctx, WriteVersionDate, http.MethodPost, "/checkout_configurations", in, &out); err != nil {
 		return nil, err
 	}
 	if out.ID == "" || out.PurchaseURL == "" {
@@ -207,7 +213,7 @@ func (m Membership) PeriodEnd() int64 {
 // GetMembership reads a membership as it is now.
 func (c *Client) GetMembership(ctx context.Context, id string) (*Membership, error) {
 	var m Membership
-	if err := c.do(ctx, http.MethodGet, "/memberships/"+url.PathEscape(id), nil, &m); err != nil {
+	if err := c.do(ctx, ReadVersionDate, http.MethodGet, "/memberships/"+url.PathEscape(id), nil, &m); err != nil {
 		return nil, err
 	}
 	return &m, nil
@@ -215,7 +221,7 @@ func (c *Client) GetMembership(ctx context.Context, id string) (*Membership, err
 
 // CancelMembership ends a membership at once, or at the end of what is paid.
 func (c *Client) CancelMembership(ctx context.Context, id string, atPeriodEnd bool) error {
-	return c.do(ctx, http.MethodPost, "/memberships/"+url.PathEscape(id)+"/cancel", map[string]any{"cancel_at_period_end": atPeriodEnd}, nil)
+	return c.do(ctx, WriteVersionDate, http.MethodPost, "/memberships/"+url.PathEscape(id)+"/cancel", map[string]any{"cancel_at_period_end": atPeriodEnd}, nil)
 }
 
 // Event is a webhook's event, with its object left raw for the type to read.

@@ -29,8 +29,13 @@ func newFakeWhop(t *testing.T) (*fakeWhop, *httptest.Server) {
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		f.mu.Lock()
 		defer f.mu.Unlock()
-		if v := r.Header.Get("Api-Version-Date"); v != whop.APIVersionDate {
-			t.Errorf("Api-Version-Date %q", v)
+		// reads ask for the current version, writes for the one they were first used on
+		want := whop.WriteVersionDate
+		if r.Method == "GET" {
+			want = whop.ReadVersionDate
+		}
+		if v := r.Header.Get("Api-Version-Date"); v != want {
+			t.Errorf("%s %s: Api-Version-Date %q, want %q", r.Method, r.URL.Path, v, want)
 		}
 		var in map[string]any
 		_ = json.NewDecoder(r.Body).Decode(&in)
@@ -214,6 +219,33 @@ func TestBillingCheckoutWebhookAndPlan(t *testing.T) {
 	}
 	if res, body := do(t, ts, "POST", "/api/v1/billing/boosts", tok, map[string]any{"server_id": s1}); res.StatusCode != 403 || errCode(body) != "plan_required" {
 		t.Fatalf("free boost: %d %v", res.StatusCode, body)
+	}
+}
+
+// A paid membership on a plan this server was not told about is never saved
+// as no plan: Whop is answered with an error, so it sends the event again once
+// the plan ids are right, and the account keeps what it had.
+func TestBillingUnknownPlanIsNeverSavedAsNone(t *testing.T) {
+	srv, ts, f := billingServer(t)
+	tok, uid := register(t, ts, "pays")
+	if res, body := do(t, ts, "POST", "/api/v1/billing/checkout", tok, map[string]any{"plan": "pro", "period": "month"}); res.StatusCode != 200 {
+		t.Fatalf("checkout: %d %v", res.StatusCode, body)
+	}
+	f.setMem("mem_odd", "plan_not_configured", "active")
+	data := map[string]any{"id": "pay_odd", "status": "paid", "checkout_configuration_id": f.lastID(), "membership_id": "mem_odd"}
+	if code := sendWebhook(t, ts, "payment.succeeded", data, testWebhookSecret); code != 500 {
+		t.Fatalf("a membership on an unknown plan answered %d", code)
+	}
+	if b, err := srv.Store.BillingFor(t.Context(), modID(uid)); err == nil && b.SubscriptionID != "" {
+		t.Fatalf("it was saved anyway: %+v", b)
+	}
+	// once the plan is known, the same event puts the account on it
+	srv.Cfg.WhopProMonthly = "plan_not_configured"
+	if code := sendWebhook(t, ts, "payment.succeeded", data, testWebhookSecret); code != 200 {
+		t.Fatalf("after fixing the plan: %d", code)
+	}
+	if u, _ := srv.Store.UserByID(t.Context(), modID(uid)); u.Plan != "pro" {
+		t.Fatalf("plan: %q", u.Plan)
 	}
 }
 

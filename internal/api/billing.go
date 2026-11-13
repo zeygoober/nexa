@@ -466,6 +466,12 @@ func (s *Server) syncMembership(ctx context.Context, memID string, hint ids.ID) 
 	}
 	b := store.Billing{UserID: uid, CustomerID: m.UserID, SubscriptionID: m.ID, Status: m.Status, CancelAtEnd: m.CancelAtPeriodEnd, PeriodEnd: m.PeriodEnd()}
 	b.Plan, b.Period = s.planForVariant(m.VariantID)
+	if b.Plan == "" && planStatuses[m.Status] {
+		// a plan this server does not know must never be saved as no plan: the
+		// error makes Whop send the event again, and says what to fix
+		s.Log.Error("billing: a live membership on a plan this server does not know", "membership", m.ID, "variant", m.VariantID, "user", uid.String())
+		return errors.New("unknown plan")
+	}
 	if !planStatuses[m.Status] {
 		b.Plan = store.PlanFree
 	}
