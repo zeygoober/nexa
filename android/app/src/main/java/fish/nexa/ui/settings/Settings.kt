@@ -457,7 +457,10 @@ private fun SearchField(query: String, setQuery: (String) -> Unit, onEnter: () -
             if (query.isEmpty()) Txt(t("settings.search.placeholder"), style = Nx.type.body, color = c.textPlaceholder, maxLines = 1)
             BasicTextField(
                 value = query,
-                onValueChange = setQuery,
+                onValueChange = {
+                    setQuery(it)
+                    fish.nexa.data.SecretBadges.searched(it)
+                },
                 singleLine = true,
                 textStyle = Nx.type.body.copy(color = c.text),
                 cursorBrush = SolidColor(c.text),

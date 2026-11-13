@@ -1,7 +1,7 @@
 import { create } from "zustand";
 import { fetchMissingUsers } from "./users";
 import { messages as messagesApi } from "@/api/messages";
-import type { Message, PollTally, ReactionRole, ReactionSummary } from "@/api/types";
+import type { Message, PollTally, ReactionRole, ReactionSummary, Trade } from "@/api/types";
 import type { MessagePayload } from "@/crypto/message";
 import { decryptForStore, type DecryptedMessage, type DecryptError } from "@/lib/decrypt";
 import { stage as perfStage } from "@/lib/perfReports";
@@ -138,6 +138,8 @@ interface MessagesState {
   /** A poll's standing as the server just counted it for this account. */
   setPollResults: (channelId: string, messageId: string, results: PollTally) => void;
   setFlags: (channelId: string, id: string, flags: number) => void;
+  /** A trade request was answered, or taken back. */
+  setTrade: (channelId: string, messageId: string, trade: Trade) => void;
   /** A thread was started from a message: it says so under it. */
   setThread: (channelId: string, id: string, thread: NonNullable<DecryptedMessage["thread"]>) => void;
   setLoading: (channelId: string, loading: boolean) => void;
@@ -259,7 +261,7 @@ function arrived(c: ChannelMessages, msgs: DecryptedMessage[]): ChannelMessages 
 async function refreshed(prev: DecryptedMessage, m: Message): Promise<DecryptedMessage> {
   // a webhook's message can change without an edit: its link previews come in after it
   if (prev.edited_at !== m.edited_at || JSON.stringify(prev.ciphertext) !== JSON.stringify(m.ciphertext) || JSON.stringify(prev.webhook) !== JSON.stringify(m.webhook)) return decryptForStore(m);
-  if (prev.flags === m.flags && JSON.stringify(prev.reactions) === JSON.stringify(m.reactions) && JSON.stringify(prev.reaction_roles) === JSON.stringify(m.reaction_roles) && JSON.stringify(prev.attachments) === JSON.stringify(m.attachments) && JSON.stringify(prev.poll_results) === JSON.stringify(m.poll_results)) return prev;
+  if (prev.flags === m.flags && JSON.stringify(prev.reactions) === JSON.stringify(m.reactions) && JSON.stringify(prev.reaction_roles) === JSON.stringify(m.reaction_roles) && JSON.stringify(prev.attachments) === JSON.stringify(m.attachments) && JSON.stringify(prev.poll_results) === JSON.stringify(m.poll_results) && JSON.stringify(prev.trade) === JSON.stringify(m.trade)) return prev;
   const next: DecryptedMessage = { ...m };
   if (prev.payload !== undefined) next.payload = prev.payload;
   if (prev.decryptError !== undefined) next.decryptError = prev.decryptError;
@@ -425,6 +427,14 @@ export const useMessages = create<MessagesState>()((set, get) => ({
         a.count = Math.max(0, a.count + (add ? 1 : -1));
         if (isMe) a.me_voted = add;
         return { ...c, byId: { ...c.byId, [messageId]: { ...m, poll_results: { ...tally, answer_counts: counts, total_voters } } } };
+      }),
+    ),
+  setTrade: (channelId, messageId, trade) =>
+    set((s) =>
+      withChannel(s, channelId, (c) => {
+        const m = c.byId[messageId];
+        if (!m) return c;
+        return { ...c, byId: { ...c.byId, [messageId]: { ...m, trade } } };
       }),
     ),
   setPollResults: (channelId, messageId, results) =>

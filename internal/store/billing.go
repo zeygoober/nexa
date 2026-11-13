@@ -51,14 +51,15 @@ func styleForPlan(style, plan string) string {
 // ErrBoostLimit is a boost asked for by an account that has none left.
 var ErrBoostLimit = errors.New("store: no boosts left")
 
-// Billing is what Stripe said last about an account's subscription.
+// Billing is what the payment processor (Whop) said last about an account's
+// subscription: CustomerID is the Whop user, SubscriptionID the membership.
 type Billing struct {
 	UserID         ids.ID
 	CustomerID     string
 	SubscriptionID string
 	Plan           string
 	Period         string // "month" or "year"
-	Status         string // Stripe's subscription status
+	Status         string // Whop's membership status
 	PeriodEnd      int64  // when it renews or, cancelled, ends (ms)
 	CancelAtEnd    bool
 	UpdatedAt      int64
@@ -77,7 +78,7 @@ func (s *Store) BillingFor(ctx context.Context, uid ids.ID) (*Billing, error) {
 	return &b, err
 }
 
-// UserForCustomer is the account a Stripe customer pays for, or ErrNotFound.
+// UserForCustomer is the account a Whop user pays for, or ErrNotFound.
 func (s *Store) UserForCustomer(ctx context.Context, customerID string) (ids.ID, error) {
 	var id int64
 	err := s.db.R.QueryRowContext(ctx, `SELECT user_id FROM billing WHERE customer_id = ? AND customer_id != ''`, customerID).Scan(&id)
@@ -87,7 +88,64 @@ func (s *Store) UserForCustomer(ctx context.Context, customerID string) (ids.ID,
 	return ids.ID(id), err
 }
 
-// SetBilling keeps what Stripe said and puts the account on its plan. An
+// UserForSubscription is the account a Whop membership is on, or ErrNotFound.
+func (s *Store) UserForSubscription(ctx context.Context, subscriptionID string) (ids.ID, error) {
+	var id int64
+	err := s.db.R.QueryRowContext(ctx, `SELECT user_id FROM billing WHERE subscription_id = ? AND subscription_id != ''`, subscriptionID).Scan(&id)
+	if errors.Is(err, sql.ErrNoRows) {
+		return 0, ErrNotFound
+	}
+	return ids.ID(id), err
+}
+
+// WhopCheckout is a checkout this server made at Whop: whose it is, what it
+// buys (plan, gift or pwyw) and what it was made with. A payment is matched
+// to it by its checkout's id, so what a payment says about itself is never
+// what decides what it buys.
+type WhopCheckout struct {
+	ID     string
+	UserID ids.ID
+	Kind   string
+	Meta   map[string]string
+}
+
+// AddWhopCheckout keeps a checkout just made.
+func (s *Store) AddWhopCheckout(ctx context.Context, c WhopCheckout) error {
+	meta, err := json.Marshal(c.Meta)
+	if err != nil {
+		return err
+	}
+	_, err = s.db.W.ExecContext(ctx, `INSERT INTO whop_checkouts (id, user_id, kind, meta, created_at) VALUES (?,?,?,?,?)`, c.ID, int64(c.UserID), c.Kind, string(meta), nowMs())
+	return err
+}
+
+// WhopCheckoutByID is a checkout this server made, or ErrNotFound.
+func (s *Store) WhopCheckoutByID(ctx context.Context, id string) (*WhopCheckout, error) {
+	var c WhopCheckout
+	var uid int64
+	var meta string
+	err := s.db.R.QueryRowContext(ctx, `SELECT id, user_id, kind, meta FROM whop_checkouts WHERE id = ?`, id).Scan(&c.ID, &uid, &c.Kind, &meta)
+	if errors.Is(err, sql.ErrNoRows) {
+		return nil, ErrNotFound
+	}
+	if err != nil {
+		return nil, err
+	}
+	c.UserID = ids.ID(uid)
+	if err := json.Unmarshal([]byte(meta), &c.Meta); err != nil {
+		return nil, err
+	}
+	return &c, nil
+}
+
+// SweepWhopCheckouts forgets checkouts made before cutoff (ms): Whop retries a
+// webhook for days, not months.
+func (s *Store) SweepWhopCheckouts(ctx context.Context, cutoff int64) error {
+	_, err := s.db.W.ExecContext(ctx, `DELETE FROM whop_checkouts WHERE created_at < ?`, cutoff)
+	return err
+}
+
+// SetBilling keeps what Whop said and puts the account on its plan. An
 // account that is no longer Pro gives up its boosts; the servers they were on
 // are returned, with whether the plan changed at all.
 func (s *Store) SetBilling(ctx context.Context, b Billing) (changed bool, unboosted []ids.ID, err error) {
@@ -116,7 +174,7 @@ func planRank(p string) int {
 }
 
 // recomputePlanTx puts an account on the better of its own subscription
-// (billing.plan, free unless Stripe says it runs) and any gift still running.
+// (billing.plan, free unless Whop says it runs) and any gift still running.
 // An account that is no longer Pro gives up its boosts.
 func recomputePlanTx(ctx context.Context, tx *db.Tx, uid ids.ID) (changed bool, unboosted []ids.ID, err error) {
 	best := PlanFree

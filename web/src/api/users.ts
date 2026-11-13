@@ -133,6 +133,10 @@ export const users = {
   badgeIndex(): Promise<BadgeIndex> {
     return api.request("GET", "/users/@me/badges/index");
   },
+  /** A Secret badge the app saw this account find (lib/secretBadges.ts). */
+  badgeFound(badge: string): Promise<{ new: boolean }> {
+    return api.request("POST", "/users/@me/badges/found", { badge });
+  },
   /** Keeps the order of this account's badges and which it hides (never its staff rank). */
   setBadges(order: string[], hidden: string[]): Promise<{ badges: Badge[] }> {
     return api.request("PUT", "/users/@me/badges", { order, hidden });

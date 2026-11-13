@@ -22,6 +22,10 @@ import kotlinx.serialization.json.put
  */
 object Badges {
     const val CONTRIBUTOR = "contributor"
+    /** The Exclusive badges staff give by hand (store.ExclusiveHandBadges), in their order. */
+    val EXCLUSIVE_HAND = listOf("legend", "mentor", "patron", "influencer", "artist")
+    /** Every built-in badge staff give by hand (store.HandBadges). */
+    val HAND_BADGES = listOf(CONTRIBUTOR) + EXCLUSIVE_HAND
     const val EVENT_PREFIX = "event:"
 
     /**
@@ -43,6 +47,8 @@ object Badges {
         val image: String? = null,
         /** How many reports a Bug Hunter badge stands for. */
         val count: Int? = null,
+        /** How many people hold this badge, at this level or above. */
+        val exist: Int? = null,
     ) {
         val isEvent get() = id.startsWith(EVENT_PREFIX)
     }
@@ -76,6 +82,7 @@ object Badges {
             shape = s("shape")?.takeIf { it in SHAPES } ?: "circle",
             image = s("image"),
             count = i("count"),
+            exist = i("exist"),
         )
     }
 
@@ -123,7 +130,13 @@ object Badges {
     }
 
     /** The look of a badge; null for ids this app does not know, and for staff or a plan the account no longer has. */
-    fun look(b: Badge, userId: String, flags: Long, plan: String): Look? = when (b.id) {
+    fun look(b: Badge, userId: String, flags: Long, plan: String): Look? {
+        val look = builtInLook(b, userId, flags, plan)
+        // the owner's own words for a built-in badge, in every language (store/badge_tips.go)
+        return if (look != null && !b.description.isNullOrEmpty() && b.id != "staff" && !b.isEvent) look.copy(tip = b.description) else look
+    }
+
+    private fun builtInLook(b: Badge, userId: String, flags: Long, plan: String): Look? = when (b.id) {
         "staff" -> StaffRanks.of(userId, flags)?.let { Look("staff-${it.key}", it.label, it.tip) }
         "plan" -> when (plan) {
             "pro" -> Look("plan-pro", t("support.plan.pro"), t("support.badge.proTip"))
@@ -131,7 +144,7 @@ object Badges {
             else -> null
         }
         "og" -> Look("og", t("badges.og"), if (b.count != null && b.count > 0) t("badges.ogTipPlace", "place" to joinPlace(b.count)) else t("badges.ogTip"))
-        "years" -> b.level.coerceAtLeast(1).let { n -> Look("years", t("badges.years", "count" to n), t("badges.yearsTip", "count" to n)) }
+        "years" -> b.level.coerceAtLeast(1).let { n -> Look("years-${n.coerceAtMost(10)}", t("badges.years", "count" to n), t("badges.yearsTip", "count" to n)) }
         "bug_hunter" -> b.level.coerceIn(1, 5).let { n -> Look("bug-$n", t("badges.bug.l$n"), if (b.count != null && b.count > 0) t("badges.bugTipCount", "count" to b.count) else t("badges.bugTip.l$n")) }
         "ideas" -> b.level.coerceIn(1, 5).let { n -> Look("ideas-$n", t("badges.ideas.l$n"), if (b.count != null && b.count > 0) t("badges.ideasTipCount", "count" to b.count) else t("badges.ideasTip.l$n")) }
         "app_developer" -> b.level.coerceIn(1, 3).let { n -> Look("bot-maker-$n", t("badges.botMaker.l$n"), if (b.count != null && b.count > 0) t("badges.appDeveloperTipCount", "count" to b.count) else t("badges.botMakerTip", "count" to BOT_MAKER_TIERS[n - 1])) }
@@ -143,6 +156,9 @@ object Badges {
         "regular" -> b.level.coerceIn(1, 4).let { n -> Look("regular-$n", t("badges.regular.l$n"), t("badges.regularTip", "count" to REGULAR_TIERS[n - 1])) }
         "open_mic" -> b.level.coerceIn(1, 3).let { n -> Look("open-mic-$n", t("badges.openMic.l$n"), t("badges.openMicTip", "count" to OPEN_MIC_TIERS[n - 1])) }
         CONTRIBUTOR -> Look("contributor", t("badges.contributor"), t("badges.contributorTip"))
+        "legend", "mentor", "patron", "influencer", "artist" -> Look(b.id, t("badges.hand.${b.id}"), t("badges.hand.${b.id}Tip"))
+        // the Secret badges: their tooltips say nothing of how they are found
+        "hopeful", "curious", "nosy", "lucky" -> Look(b.id, t("badges.secret.${b.id}"), t("badges.secret.${b.id}Tip"))
         // a badge staff made says what they wrote for it
         else -> if (b.isEvent && b.name != null) Look(null, b.name, b.description ?: "", b.icon ?: "award", b.color, b.color2, b.dark, b.shape, b.image) else null
     }
@@ -210,6 +226,8 @@ object Badges {
         val dark: Boolean = false,
         val shape: String = "circle",
         val imageId: String = "0",
+        /** Where the Badge Index puts it: "exclusive", "special" or "hidden". */
+        val indexKind: String = "exclusive",
     ) {
         /** As a badge someone holds, for drawing it in the panel (web defBadge). */
         val badge get() = Badge(
@@ -226,14 +244,22 @@ object Badges {
             s("id") ?: return null, s("name") ?: "", s("icon") ?: "award", i("color") ?: 0, i("holders") ?: 0,
             description = s("description") ?: "", color2 = i("color2") ?: -1, dark = s("glyph") == "dark",
             shape = s("shape")?.takeIf { it in SHAPES } ?: "circle", imageId = s("image_id") ?: "0",
+            indexKind = s("index_kind") ?: "exclusive",
         )
     }
 
-    /** The event badges, and how many hold Contributor. */
-    suspend fun defs(): Pair<List<Def>, Int> {
+    /** The event badges, and how many hold each badge given by hand. */
+    suspend fun defs(): Pair<List<Def>, Map<String, Int>> {
         val res = Nexa.api.get("/moderation/badges") as JsonObject
         val list = (res["badges"] as? JsonArray)?.mapNotNull { (it as? JsonObject)?.let(::parseDef) } ?: emptyList()
-        return list to ((res["contributors"] as? JsonPrimitive)?.intOrNull ?: 0)
+        val hand = (res["hand"] as? JsonObject)?.mapNotNull { (k, v) -> (v as? JsonPrimitive)?.intOrNull?.let { k to it } }?.toMap()
+            ?: mapOf(CONTRIBUTOR to ((res["contributors"] as? JsonPrimitive)?.intOrNull ?: 0))
+        return list to hand
+    }
+
+    /** The owner's words for one badge by its index key ("" goes back to the built-in text). */
+    suspend fun setTip(key: String, description: String) {
+        Nexa.api.request("PUT", "/moderation/badges/descriptions", buildJsonObject { put("key", key); put("description", description) })
     }
 
     private fun defBody(d: Def) = buildJsonObject {
@@ -245,6 +271,7 @@ object Badges {
         put("glyph", if (d.dark) "dark" else "light")
         put("shape", d.shape)
         put("image_id", d.imageId)
+        put("index_kind", d.indexKind)
     }
 
     suspend fun createDef(d: Def): Def? =

@@ -1,6 +1,6 @@
 import { useEffect, useLayoutEffect, useRef, useState, type KeyboardEvent, type PointerEvent as ReactPointerEvent } from "react";
 import { moderation } from "@/api/moderation";
-import type { BadgeArrangement, PublicUser } from "@/api/types";
+import type { BadgeArrangement, BadgeCategory, PublicUser } from "@/api/types";
 import { BadgeMark } from "@/components/badges/Badges";
 import { Button } from "@/components/common/Button";
 import { Spinner } from "@/components/common/Spinner";
@@ -8,6 +8,7 @@ import { t } from "@/i18n";
 import { badgeLook } from "@/lib/badges";
 import { motionOff } from "@/lib/motion";
 import { useUI } from "@/stores/ui";
+import { BADGE_SECTIONS } from "./BadgeIndexPage";
 import s from "./BadgeIndexPage.module.css";
 
 type Item = BadgeArrangement["entries"][number];
@@ -19,7 +20,7 @@ const HOLD_MS = 250;
 const STRAY = 8;
 
 /** Which plan's badge a plan entry is drawn as, since every plan shows here at once. */
-function lookOf(item: Item, me: PublicUser) {
+export function lookOf(item: Item, me: PublicUser) {
   return badgeLook(item.badge, item.key.startsWith("plan-") ? { ...me, plan: item.key.slice(5) as PublicUser["plan"] } : me);
 }
 
@@ -44,6 +45,7 @@ export default function BadgeArrange({ me, onDone }: { me: PublicUser; onDone: (
   const [changed, setChanged] = useState(false);
   const [toAToZ, setToAToZ] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [chosen, setChosen] = useState<BadgeCategory | null>(null);
   const [held, setHeld] = useState<{ key: string; x: number; y: number; size: number } | null>(null);
   const grid = useRef<HTMLUListElement>(null);
   const list = useRef<Item[]>([]);
@@ -80,9 +82,19 @@ export default function BadgeArrange({ me, onDone }: { me: PublicUser; onDone: (
     return { box, step: first + GAP, columns, rtl: getComputedStyle(grid.current!).direction === "rtl" };
   };
 
+  /** The parts with anything in them, and the part on screen. */
+  const parts = BADGE_SECTIONS.filter((p) => items?.some((i) => i.category === p));
+  const part = chosen && parts.includes(chosen) ? chosen : parts[0];
+  /** What the grid shows, in order: places in the grid are places in this. */
+  const shownNow = () => list.current.filter((i) => i.category === part);
+
+  /** [to] is a place in the grid; the badge goes where the one there stands in the whole list. */
   const moveTo = (key: string, to: number) => {
+    const shown = shownNow();
+    if (!shown.length) return;
+    const target = shown[Math.min(Math.max(to, 0), shown.length - 1)]!.key;
     const from = list.current.findIndex((i) => i.key === key);
-    const at = Math.min(Math.max(to, 0), list.current.length - 1);
+    const at = list.current.findIndex((i) => i.key === target);
     if (from < 0 || from === at) return;
     const next = list.current.slice();
     next.splice(at, 0, ...next.splice(from, 1));
@@ -150,7 +162,7 @@ export default function BadgeArrange({ me, onDone }: { me: PublicUser; onDone: (
     if (!by) return;
     e.preventDefault();
     refocus.current = key;
-    moveTo(key, list.current.findIndex((i) => i.key === key) + by);
+    moveTo(key, shownNow().findIndex((i) => i.key === key) + by);
   };
 
   const useAToZ = () => {
@@ -190,8 +202,17 @@ export default function BadgeArrange({ me, onDone }: { me: PublicUser; onDone: (
           <Button size="sm" variant="secondary" disabled={saving || toAToZ} onClick={useAToZ} data-testid="badge-arrange-aToZ">{t("badges.index.useAlphabetical")}</Button>
         </div>
       </div>
+      {parts.length > 1 ? (
+        <div className={s.parts} role="radiogroup" aria-label={t("badges.index.arrangeTitle")} data-glide="">
+          {parts.map((p) => (
+            <button key={p} type="button" role="radio" aria-checked={p === part} className={s.part} disabled={!!held} onClick={() => setChosen(p)} data-testid={`badge-arrange-${p}`}>
+              {t(`badges.index.${p}`)}
+            </button>
+          ))}
+        </div>
+      ) : null}
       <ul className={`${s.grid} ${s.arranging}`} ref={grid} data-no-swipe="" data-testid="badge-arrange-grid">
-        {items.map((item) => {
+        {items.filter((i) => i.category === part).map((item) => {
           const look = lookOf(item, me);
           const left = held?.key === item.key;
           return (

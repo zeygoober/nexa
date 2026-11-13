@@ -985,6 +985,8 @@ fun openProfileMenu(user: PublicUser, popout: Boolean, serverId: String? = null,
     val items = ArrayList<MenuItem>()
     items += fish.nexa.ui.reports.reportItem(fish.nexa.data.ReportContext(kind = "user", id = user.id, serverId = serverId))
     if (user.isBot) items += fish.nexa.ui.reports.reportItem(fish.nexa.data.ReportContext(kind = "application", id = user.id))
+    // people only; a block ends it, as it ends a message
+    if (!user.isBot && rel?.type != "blocked") items += MenuItem.Action(t("profile.profileCard.tradeBadges")) { fish.nexa.ui.trades.openTradeWindow(userId = user.id) }
     if (popout) {
         items += MenuItem.Action(t("profile.profileCard.viewFullProfile")) { viewFull() }
         items += MenuItem.Action(t("profileLink.copy"), separatorAfter = true) { ProfileLinks.copy(user.username) }

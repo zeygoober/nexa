@@ -8,7 +8,7 @@ import { Button } from "@/components/common/Button";
 import { LoadError } from "@/components/common/LoadError";
 import { Modal } from "@/components/common/Modal";
 import { Spinner } from "@/components/common/Spinner";
-import { CONTRIBUTOR, defBadge, OVERRIDABLE } from "@/lib/badges";
+import { defBadge, HAND_BADGES, OVERRIDABLE } from "@/lib/badges";
 import { Select } from "@/components/common/Select";
 import { describeError } from "@/lib/errors";
 import { useUI } from "@/stores/ui";
@@ -59,7 +59,7 @@ export function GrantBadgesModal({ user, onClose }: { user: { id: string; displa
   };
   useEffect(load, [user.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const options = [{ id: CONTRIBUTOR }, ...(defs ?? []).map(defBadge)];
+  const options = [...HAND_BADGES.map((id) => ({ id })), ...(defs ?? []).map(defBadge)];
   const changed = held !== null && (held.length !== pick.size || held.some((b) => !pick.has(b)) || !sameOverrides(over, overWas));
   const setState = (k: string, st: Over) =>
     setOver((cur) => {
@@ -128,7 +128,7 @@ export function GrantBadgesModal({ user, onClose }: { user: { id: string; displa
                     <BadgePill badge={o} user={NOBODY} still named />
                     {held.includes(o.id) ? <span className={r.now}>{t("badges.staff.held")}</span> : null}
                   </span>
-                  {o.id === CONTRIBUTOR ? <span className={r.powers}>{t("badges.contributorTip")}</span> : null}
+                  {HAND_BADGES.includes(o.id) ? <span className={r.powers}>{t(`badges.staff.${o.id}Note`)}</span> : null}
                 </span>
               </label>
             );

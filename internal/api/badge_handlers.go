@@ -25,6 +25,7 @@ func (s *Server) badgeRoutes(mux *http.ServeMux) {
 	mux.Handle("GET /api/v1/users/@me/badges/index", s.authed(s.handleMyBadgeIndex))
 	mux.Handle("GET /api/v1/users/@me/badges/progress", s.authed(s.handleMyBadgeProgress))
 	mux.Handle("PUT /api/v1/users/@me/badges", s.authed(s.handleMyBadgesPut))
+	mux.Handle("POST /api/v1/users/@me/badges/found", s.authed(s.handleBadgeFound))
 	mux.Handle("GET /api/v1/moderation/badges", s.staff(rankAdmin, s.handleModBadges))
 	mux.Handle("POST /api/v1/moderation/badges", s.staff(rankAdmin, s.handleModBadgeCreate))
 	mux.Handle("POST /api/v1/moderation/badges/image", s.staff(rankAdmin, s.handleModBadgeImage))
@@ -34,6 +35,7 @@ func (s *Server) badgeRoutes(mux *http.ServeMux) {
 	mux.Handle("DELETE /api/v1/moderation/badges/{id}", s.staff(rankAdmin, s.handleModBadgeDelete))
 	mux.Handle("GET /api/v1/moderation/badges/index-order", s.staff(rankOwner, s.handleBadgeArrangement))
 	mux.Handle("PUT /api/v1/moderation/badges/index-order", s.staff(rankOwner, s.handleBadgeOrderPut))
+	mux.Handle("PUT /api/v1/moderation/badges/descriptions", s.staff(rankOwner, s.handleBadgeTipPut))
 	mux.Handle("GET /api/v1/moderation/users/{id}/badges", s.staff(rankAdmin, s.handleModUserBadges))
 	mux.Handle("PUT /api/v1/moderation/users/{id}/badges", s.staff(rankAdmin, s.handleModUserBadgesPut))
 }
@@ -98,6 +100,32 @@ func (s *Server) handleBadgeOrderPut(w http.ResponseWriter, r *http.Request) {
 	WriteJSON(w, http.StatusOK, map[string]bool{"ok": true})
 }
 
+// handleBadgeTipPut keeps the owner's words for one badge's tooltip, shown in
+// every language; empty text goes back to the apps' own.
+func (s *Server) handleBadgeTipPut(w http.ResponseWriter, r *http.Request) {
+	var req struct {
+		Key         string `json:"key"`
+		Description string `json:"description"`
+	}
+	if err := ReadJSON(w, r, &req, 8<<10); err != nil {
+		WriteError(w, err)
+		return
+	}
+	switch err := s.Store.SetBadgeTip(r.Context(), req.Key, req.Description); {
+	case errors.Is(err, store.ErrBadgeTipKey):
+		WriteError(w, E(http.StatusNotFound, "badge_not_found", "That badge does not exist."))
+		return
+	case errors.Is(err, store.ErrBadgeTipLong):
+		WriteError(w, E(http.StatusBadRequest, "badge_description_long", "That description is too long."))
+		return
+	case err != nil:
+		WriteError(w, err)
+		return
+	}
+	s.logBadge(r, store.LogBadgeDescription, nil, map[string]any{"badge": req.Key, "description": strings.TrimSpace(req.Description)})
+	WriteJSON(w, http.StatusOK, map[string]bool{"ok": true})
+}
+
 // handleMyBadgeProgress is what the data export reads: the record behind Regular and Open Mic.
 func (s *Server) handleMyBadgeProgress(w http.ResponseWriter, r *http.Request) {
 	p, err := s.Store.GetBadgeProgress(r.Context(), auth.UserFrom(r.Context()).ID)
@@ -135,12 +163,13 @@ func (s *Server) handleModBadges(w http.ResponseWriter, r *http.Request) {
 		WriteError(w, err)
 		return
 	}
-	contributors, err := s.Store.ContributorCount(r.Context())
+	hand, err := s.Store.HandBadgeCounts(r.Context())
 	if err != nil {
 		WriteError(w, err)
 		return
 	}
-	WriteJSON(w, http.StatusOK, map[string]any{"badges": defs, "contributors": contributors})
+	// contributors stays for apps from before the other badges given by hand
+	WriteJSON(w, http.StatusOK, map[string]any{"badges": defs, "contributors": hand[store.BadgeContributor], "hand": hand})
 }
 
 type badgeDefBody struct {
@@ -155,6 +184,9 @@ type badgeDefBody struct {
 	// ImageID is a picture put up with POST /moderation/badges/image, drawn
 	// instead of the icon; missing or "0" is none.
 	ImageID ids.ID `json:"image_id"`
+	// IndexKind is where it sits in the Badge Index; missing keeps what it was
+	// (an app from before there was a choice), and a new badge is exclusive.
+	IndexKind string `json:"index_kind"`
 }
 
 // badgeSide is the largest an event badge's picture is kept.
@@ -209,7 +241,10 @@ func (s *Server) readBadgeDef(w http.ResponseWriter, r *http.Request) (*store.Ba
 			return bad("bad_image", "That picture has gone. Put it up again.")
 		}
 	}
-	return &store.BadgeDef{Name: name, Description: desc, Icon: b.Icon, Color: b.Color, Color2: color2, Glyph: glyph, Shape: shape, ImageID: b.ImageID}, true
+	if b.IndexKind != "" && !store.BadgeIndexKinds[b.IndexKind] {
+		return bad("bad_index_kind", "That is not a place in the Badge Index.")
+	}
+	return &store.BadgeDef{Name: name, Description: desc, Icon: b.Icon, Color: b.Color, Color2: color2, Glyph: glyph, Shape: shape, ImageID: b.ImageID, IndexKind: b.IndexKind}, true
 }
 
 // handleModBadgeImage takes a picture for an event badge, cuts it square and
@@ -268,6 +303,9 @@ func (s *Server) handleModBadgeCreate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	d.CreatedBy = me.ID
+	if d.IndexKind == "" {
+		d.IndexKind = store.BadgeExclusive
+	}
 	if err := s.keepBadgeImage(r, 0, d.ImageID); err != nil {
 		WriteError(w, err)
 		return
@@ -297,6 +335,9 @@ func (s *Server) handleModBadgeEdit(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	d.ID, d.CreatedBy, d.CreatedAt = id, was.CreatedBy, was.CreatedAt
+	if d.IndexKind == "" {
+		d.IndexKind = was.IndexKind
+	}
 	if d.ImageID != was.ImageID && d.ImageID != 0 {
 		if err := s.Store.AddBlobRef(r.Context(), d.ImageID, 1); err != nil {
 			WriteError(w, err)

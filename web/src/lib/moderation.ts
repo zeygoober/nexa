@@ -7,6 +7,7 @@ import { Award, Ban, Eraser, EyeOff, Gamepad2, ImageOff, KeyRound, Lock, LockOpe
 import type { CaseDetails, CaseMessage, MemberCase, ModAction, ModLogEntry, PackField, People, Person, ResetField, ServerField } from "@/api/moderation";
 import type { BugKind, BugStatus } from "@/api/bugs";
 import { bugStatusLabel } from "@/lib/bugs";
+import { EXCLUSIVE_HAND } from "@/lib/badges";
 import { formatStamp } from "@/lib/time";
 import { formatList, t } from "@/i18n";
 import { rankName } from "@/lib/staffRank";
@@ -85,6 +86,7 @@ export function actionIcon(action: string): LucideIcon {
     case "badge_edit":
     case "badge_delete":
     case "badge_index_order":
+    case "badge_description":
       return Award;
     case "game_list":
     case "game_reject":
@@ -161,6 +163,8 @@ export function actionLabel(action: string): string {
       return t("badges.log.delete");
     case "badge_index_order":
       return t("badges.log.indexOrder");
+    case "badge_description":
+      return t("badges.log.description");
     case "game_list":
       return t("moderation.games.logList");
     case "game_reject":
@@ -458,8 +462,12 @@ export function logDetail(e: ModLogEntry): string {
       return t("moderation.log.messagesKept");
     case "badge_change": {
       const d = e.details as { added?: string[]; removed?: string[] };
-      const named = (list: string[] | undefined) => formatList((list ?? []).map((b) => (b === "contributor" ? t("badges.contributor") : b)));
+      const named = (list: string[] | undefined) => formatList((list ?? []).map((b) => (b === "contributor" ? t("badges.contributor") : (EXCLUSIVE_HAND as readonly string[]).includes(b) ? t(`badges.hand.${b}`) : b)));
       return [d.added?.length ? t("badges.log.gave", { names: named(d.added) }) : "", d.removed?.length ? t("badges.log.took", { names: named(d.removed) }) : ""].filter(Boolean).join("; ");
+    }
+    case "badge_description": {
+      const d = e.details as { badge?: string; description?: string };
+      return d.description ? `${d.badge ?? ""}: “${d.description}”` : t("badges.log.descriptionReset", { badge: d.badge ?? "" });
     }
     case "badge_create":
     case "badge_delete":
@@ -502,7 +510,7 @@ export const LOG_GROUPS: Record<string, string[]> = {
   lifts: ["unmute", "unban", "expression_relist", "discovery_restore"],
   announcements: ["announcement", "announcement_delete"],
   access: ["rank_change", "admin_grant", "admin_revoke", "account_disable", "account_enable", "account_view", "owner_join", "server_preview", ...OWNER_SERVER_ACTIONS, "gift_link_create", "gift_link_revoke"],
-  badges: ["badge_change", "badge_create", "badge_edit", "badge_delete", "badge_index_order"],
+  badges: ["badge_change", "badge_create", "badge_edit", "badge_delete", "badge_index_order", "badge_description"],
   games: ["game_list", "game_reject", "game_forget"],
 };
 

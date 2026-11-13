@@ -1,10 +1,1 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24">
-  <defs>
-    <linearGradient id="friendly1p" x1="12" y1="2" x2="12" y2="22" gradientUnits="userSpaceOnUse">
-      <stop offset="0" stop-color="#d87328"/><stop offset="1" stop-color="#bc6422"/>
-    </linearGradient>
-  </defs>
-  <g transform="translate(0.00 0.00) scale(1)" fill="url(#friendly1p)" fill-opacity=".22"><path d="M2 12a10 10 0 1 0 20 0a10 10 0 1 0 -20 0"/></g>
-  <g transform="translate(0.00 0.00) scale(1)" stroke="url(#friendly1p)" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round" fill="none"><path d="M15 10V9"/><path d="M16.472 15a6 6 0 01-8.943 0"/><path d="M9 10V9"/><path d="M2 12a10 10 0 1 0 20 0a10 10 0 1 0 -20 0"/></g>
-  
-</svg>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64"><defs><linearGradient id="b" gradientUnits="userSpaceOnUse" x1="32" y1="8.66" x2="32" y2="55.33"><stop stop-color="#f0a368"/><stop offset="1" stop-color="#a9571f"/></linearGradient><linearGradient id="s" gradientUnits="userSpaceOnUse" x1="0" y1="0" x2="0" y2="30"><stop stop-color="#fff" stop-opacity=".42"/><stop offset="1" stop-color="#fff" stop-opacity=".1"/></linearGradient><mask id="m" maskUnits="userSpaceOnUse" x="0" y="0" width="64" height="64"><g transform="translate(-7.77 -8.77) scale(1.24)"><path d="M12 32a20 20 0 1 0 40 0a20 20 0 1 0 -40 0Z" fill="#fff" stroke="#fff" stroke-width="3.4" stroke-linejoin="round"/></g></mask></defs><g transform="translate(0 2.6)"><g transform="translate(-7.77 -8.77) scale(1.24)"><path d="M12 32a20 20 0 1 0 40 0a20 20 0 1 0 -40 0Z" fill="#5f2c10" stroke="#5f2c10" stroke-width="3.4" stroke-linejoin="round"/></g></g><g transform="translate(-7.77 -8.77) scale(1.24)"><path d="M12 32a20 20 0 1 0 40 0a20 20 0 1 0 -40 0Z" fill="url(#b)" stroke="url(#b)" stroke-width="3.4" stroke-linejoin="round"/></g><ellipse mask="url(#m)" cx="32" cy="4" rx="46" ry="26" fill="url(#s)"/><g transform="translate(-7.77 -8.77) scale(1.24)"><path d="M20.5 27a4 4 0 1 0 8 0a4 4 0 1 0 -8 0Z" fill="#5f2c10"/><path d="M35.5 27a4 4 0 1 0 8 0a4 4 0 1 0 -8 0Z" fill="#5f2c10"/><path d="M21 38C25 47 39 47 43 38" fill="none" stroke="#5f2c10" stroke-width="4.6" stroke-linecap="round" stroke-linejoin="round"/></g></svg>

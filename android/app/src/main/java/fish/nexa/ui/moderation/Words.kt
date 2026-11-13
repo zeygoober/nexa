@@ -58,6 +58,7 @@ fun actionLabel(action: String): String = if (action.startsWith(OWNER_SERVER)) o
     "badge_edit" -> t("badges.log.edit")
     "badge_delete" -> t("badges.log.delete")
     "badge_index_order" -> t("badges.log.indexOrder")
+    "badge_description" -> t("badges.log.description")
     "account_view" -> t("moderation.log.accountView")
     "owner_join" -> t("moderation.log.ownerJoin")
     "server_preview" -> t("moderation.log.serverPreview")
@@ -94,7 +95,7 @@ fun logIcon(action: String): String = if (action == "server_manage" || action.st
     "announcement", "announcement_delete" -> "Megaphone"
     "admin_grant", "rank_change" -> "ShieldPlus"
     "admin_revoke" -> "ShieldMinus"
-    "badge_change", "badge_create", "badge_edit", "badge_delete", "badge_index_order" -> "Award"
+    "badge_change", "badge_create", "badge_edit", "badge_delete", "badge_index_order", "badge_description" -> "Award"
     "game_list", "game_reject", "game_forget" -> "Gamepad2"
     "account_disable" -> "Lock"
     "account_view" -> "Fingerprint"
@@ -110,7 +111,7 @@ val LOG_GROUPS: Map<String, List<String>> = mapOf(
     "lifts" to listOf("unmute", "unban", "expression_relist", "discovery_restore"),
     "announcements" to listOf("announcement", "announcement_delete"),
     "access" to listOf("rank_change", "admin_grant", "admin_revoke", "account_disable", "account_enable", "account_view", "owner_join", "server_preview", *OWNER_SERVER_ACTIONS.toTypedArray(), "gift_link_create", "gift_link_revoke"),
-    "badges" to listOf("badge_change", "badge_create", "badge_edit", "badge_delete", "badge_index_order"),
+    "badges" to listOf("badge_change", "badge_create", "badge_edit", "badge_delete", "badge_index_order", "badge_description"),
     "games" to listOf("game_list", "game_reject", "game_forget"),
 )
 
@@ -161,13 +162,15 @@ fun logDetail(e: ModLogEntry): String {
         "announcement", "announcement_delete" -> d.str("title")?.takeIf { it.isNotEmpty() }?.let { "“$it”" } ?: ""
         "account_delete_profile" -> t("moderation.log.messagesKept")
         "badge_change" -> {
-            fun named(k: String) = d.list(k).mapNotNull { (it as? JsonPrimitive)?.contentOrNull }.map { if (it == "contributor") t("badges.contributor") else it }.joinToString(", ")
+            fun named(k: String) = d.list(k).mapNotNull { (it as? JsonPrimitive)?.contentOrNull }.map { if (it in fish.nexa.data.Badges.HAND_BADGES) handName(it) else it }.joinToString(", ")
             listOfNotNull(
                 named("added").takeIf { it.isNotEmpty() }?.let { t("badges.log.gave", "names" to it) },
                 named("removed").takeIf { it.isNotEmpty() }?.let { t("badges.log.took", "names" to it) },
             ).joinToString("; ")
         }
         "badge_create", "badge_delete" -> d.str("name")?.let { "“$it”" } ?: ""
+        "badge_description" -> d.str("description")?.takeIf { it.isNotEmpty() }?.let { "${d.str("badge") ?: ""}: “$it”" }
+            ?: t("badges.log.descriptionReset", "badge" to (d.str("badge") ?: ""))
         "owner_join", "server_preview" -> d.str("server_name")?.let { "“$it”" } ?: ""
         "gift_link_create" -> d.str("plan")?.let { fish.nexa.ui.support.planName(it) } ?: ""
         "game_list", "game_reject" -> d.str("process")?.let { "$it: “${d.str("name") ?: ""}”" } ?: ""

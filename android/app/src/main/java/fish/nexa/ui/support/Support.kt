@@ -110,7 +110,7 @@ import kotlin.math.ln
 
 private val PLANS = listOf("", "supporter", "pro")
 
-/** What each plan costs when Stripe has not said (US dollars, in cents). */
+/** What each plan costs when Whop has not said (US dollars, in cents). */
 private val LIST_PRICES = mapOf("supporter" to mapOf("month" to 500L, "year" to 4800L), "pro" to mapOf("month" to 1000L, "year" to 9600L))
 
 fun planName(plan: String): String = when (plan) {
@@ -726,7 +726,7 @@ fun openGiftLink(code: String) {
 
 /**
  * Gift a Plan: a month or a year of Supporter or Pro for a friend or someone
- * this account talks to, or as a link for anyone, paid once on Stripe's page
+ * this account talks to, or as a link for anyone, paid once on Whop's page
  * and never renewed.
  */
 @Composable
@@ -825,7 +825,7 @@ private const val TILES = 24
 /**
  * Pay What You Want (the web's PayWhatYouWant): one payment of any amount
  * from a dollar, never renewed, with what it buys shown month by month as it
- * is typed, before Stripe's page opens.
+ * is typed, before Whop's page opens.
  */
 @Composable
 private fun PayWhatYouWant() {

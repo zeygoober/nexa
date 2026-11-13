@@ -226,6 +226,11 @@ class Session(private val nx: Nexa) {
                 val f = if (d.bool("pinned")) cm.m.flags or Message.MSG_FLAG_PINNED else cm.m.flags and Message.MSG_FLAG_PINNED.inv()
                 nx.messages.setFlags(ch, mid, f)
             }
+            "trade_update" -> {
+                val t = Trades.parse(d) ?: return
+                Trades.set(t)
+                nx.messages.setTrade(t.channelId, t.messageId, d ?: return)
+            }
             "poll_vote_add", "poll_vote_remove" -> {
                 val o = d as? JsonObject ?: return
                 val ch = d.str("channel_id") ?: return

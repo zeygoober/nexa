@@ -421,6 +421,9 @@ func (s *Store) hydrate(ctx context.Context, msgs []*Message, forUser ids.ID) er
 	if err := rrows.Err(); err != nil {
 		return err
 	}
+	if err := s.hydrateTrades(ctx, msgs); err != nil {
+		return err
+	}
 	return s.hydratePolls(ctx, msgs, forUser)
 }
 

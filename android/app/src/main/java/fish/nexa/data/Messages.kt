@@ -298,6 +298,12 @@ class MessagesStore(private val api: Api, private val keys: KeyManager) {
         c.copy(byId = c.byId.put(messageId, cm.copy(m = cm.m.copy(pollResults = results))))
     }
 
+    /** A trade's line says how the trade stands now. */
+    fun setTrade(ch: String, messageId: String, trade: kotlinx.serialization.json.JsonElement) = with(ch) { c ->
+        val cm = c.byId[messageId] ?: return@with c
+        c.copy(byId = c.byId.put(messageId, cm.copy(m = cm.m.copy(trade = trade))))
+    }
+
     fun setFlags(ch: String, id: String, flags: Long) = with(ch) { c ->
         val cm = c.byId[id] ?: return@with c
         c.copy(byId = c.byId.put(id, cm.copy(m = cm.m.copy(flags = flags))))

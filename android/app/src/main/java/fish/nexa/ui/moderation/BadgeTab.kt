@@ -166,7 +166,7 @@ fun BadgesTab() {
     val context = LocalContext.current
     val listState = rememberLazyListState()
     val list = remember { mutableStateListOf<Badges.Def>() }
-    var contributors by remember { mutableIntStateOf(0) }
+    var hand by remember { mutableStateOf<Map<String, Int>>(emptyMap()) }
     var loaded by remember { mutableStateOf(false) }
     var failed by remember { mutableStateOf(false) }
     var editing by remember { mutableStateOf<Badges.Def?>(null) }
@@ -178,6 +178,7 @@ fun BadgesTab() {
     var glyph by remember { mutableStateOf("light") }
     var shape by remember { mutableStateOf("circle") }
     var mode by remember { mutableStateOf("icon") }
+    var indexKind by remember { mutableStateOf("exclusive") }
     var imageId by remember { mutableStateOf("0") }
     var query by remember { mutableStateOf("") }
     var uploading by remember { mutableStateOf(false) }
@@ -190,7 +191,7 @@ fun BadgesTab() {
                 val (defs, n) = Badges.defs()
                 list.clear()
                 list.addAll(defs)
-                contributors = n
+                hand = n
                 loaded = true
             } catch (e: Exception) {
                 if (e is kotlinx.coroutines.CancellationException) throw e
@@ -214,13 +215,14 @@ fun BadgesTab() {
         shape = d?.shape ?: "circle"
         imageId = d?.imageId?.takeIf { it.isNotEmpty() } ?: "0"
         mode = if (imageId != "0") "picture" else "icon"
+        indexKind = d?.indexKind ?: "exclusive"
         query = ""
     }
     val nameLength = lengthOf(name)
     val descLength = lengthOf(description)
     val ready = nameLength in 1..MAX_NAME && descLength <= MAX_DESCRIPTION && (mode == "icon" || imageId != "0") && !uploading
     fun current(id: String, holders: Int) = Badges.Def(
-        id, name.trim(), icon, colour, holders, description.trim(), colour2 ?: -1, glyph == "dark", shape, if (mode == "picture") imageId else "0",
+        id, name.trim(), icon, colour, holders, description.trim(), colour2 ?: -1, glyph == "dark", shape, if (mode == "picture") imageId else "0", indexKind,
     )
     fun submit() {
         busy = true
@@ -322,6 +324,14 @@ fun BadgesTab() {
                     } else {
                         PictureField(imageId, uploading) { pickPicture.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)) }
                     }
+                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        FieldLabel(t("badges.staff.indexKind"))
+                        Segmented(
+                            listOf("exclusive" to t("badges.index.exclusive"), "special" to t("badges.index.special"), "hidden" to t("badges.staff.indexKind.hidden")),
+                            indexKind, { indexKind = it }, t("badges.staff.indexKind"),
+                        )
+                        Txt(t("badges.staff.indexKind.${indexKind}Hint"), style = Nx.type.bodySmall.copy(fontSize = Nx.type.sp(13f), lineHeight = Nx.type.sp(18f)), color = c.textMuted)
+                    }
                     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                         if (editing != null) NxButton(t("chat.editMessage.cancel"), { startEdit(null) }, kind = ButtonKind.GHOST, size = ButtonSize.TOUCH)
                         Spacer(Modifier.weight(1f))
@@ -359,9 +369,11 @@ fun BadgesTab() {
                 item("hand") {
                     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         PartTitle(t("badges.staff.givenByHand"))
-                        val badge = Badges.Badge(Badges.CONTRIBUTOR)
-                        BadgeRow(pill = { BadgePill(badge, "0", 0L, "", still = true, named = true) }, note = t("badges.staff.contributorNote")) {
-                            HoldersButton(contributors) { holdersButtonOpen(badge, t("badges.contributor"), 1) }
+                        for (id in Badges.HAND_BADGES) {
+                            val badge = Badges.Badge(id)
+                            BadgeRow(pill = { BadgePill(badge, "0", 0L, "", still = true, named = true) }, note = t("badges.staff.${id}Note")) {
+                                HoldersButton(hand[id] ?: 0) { holdersButtonOpen(badge, handName(id), 1) }
+                            }
                         }
                     }
                 }
@@ -826,7 +838,7 @@ fun openGiveBadgesSheet(u: ModUser) {
             failed -> LoadFailed({ scope.launch { load() } })
             h == null -> LoadingRow()
             else -> Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                val options = listOf(Badges.Badge(Badges.CONTRIBUTOR)) + (defs ?: emptyList()).map { it.badge }
+                val options = Badges.HAND_BADGES.map { Badges.Badge(it) } + (defs ?: emptyList()).map { it.badge }
                 for (o in options) {
                     val on = o.id in pick
                     val shape = Radii.Md
@@ -847,7 +859,7 @@ fun openGiveBadgesSheet(u: ModUser) {
                                 BadgePill(o, "0", 0L, "", still = true, named = true)
                                 if (o.id in h) Txt(t("badges.staff.held"), style = Nx.type.hint.copy(fontSize = Nx.type.sp(11f), fontWeight = FontWeight(700)), color = c.textMuted)
                             }
-                            if (o.id == Badges.CONTRIBUTOR) Txt(t("badges.contributorTip"), style = Nx.type.bodySmall.copy(fontSize = Nx.type.sp(13f)), color = c.textMuted)
+                            if (o.id in Badges.HAND_BADGES) Txt(t("badges.staff.${o.id}Note"), style = Nx.type.bodySmall.copy(fontSize = Nx.type.sp(13f)), color = c.textMuted)
                         }
                     }
                 }
@@ -887,3 +899,6 @@ fun openGiveBadgesSheet(u: ModUser) {
         }
     }
 }
+
+/** A badge given by hand, by name. */
+internal fun handName(id: String) = if (id == Badges.CONTRIBUTOR) t("badges.contributor") else t("badges.hand.$id")

@@ -763,6 +763,8 @@ data class Message(
     val webhook: JsonElement? = null,
     @SerialName("poll_results") val pollResults: PollTally? = null,
     @SerialName("poll_result") val pollResult: PollOutcome? = null,
+    /** On a system_trade line: the trade as it stands (data/Trades). */
+    val trade: JsonElement? = null,
     /** The thread started from this message, if any. */
     val thread: ThreadSummary? = null,
     /** On a copy of a post published from an announcement channel: where it came from. */

@@ -11,6 +11,10 @@ import { rankName, rankOf, rankTip } from "@/lib/staffRank";
 
 /** The badges staff give by hand, beside the event badges they make. */
 export const CONTRIBUTOR = "contributor";
+/** The Exclusive badges staff give by hand (store.ExclusiveHandBadges), in their order. */
+export const EXCLUSIVE_HAND = ["legend", "mentor", "patron", "influencer", "artist"] as const;
+/** Every built-in badge staff give by hand (store.HandBadges). */
+export const HAND_BADGES: readonly string[] = [CONTRIBUTOR, ...EXCLUSIVE_HAND];
 export const EVENT_PREFIX = "event:";
 
 /** Whether a badge is an event badge staff made. */
@@ -92,6 +96,13 @@ function joinPlace(n: number): string {
 }
 
 export function badgeLook(b: Badge, user: Who): BadgeLook | null {
+  const look = builtInLook(b, user);
+  // the owner's own words for a built-in badge, in every language (store/badge_tips.go)
+  if (look && b.description && b.id !== "staff" && !isEventBadge(b.id)) return { ...look, tip: b.description };
+  return look;
+}
+
+function builtInLook(b: Badge, user: Who): BadgeLook | null {
   switch (b.id) {
     case "staff": {
       const rank = rankOf(user.id, user.flags);
@@ -105,7 +116,7 @@ export function badgeLook(b: Badge, user: Who): BadgeLook | null {
       return { art: art("og"), label: t("badges.og"), tip: b.count ? t("badges.ogTipPlace", { place: joinPlace(b.count) }) : t("badges.ogTip") };
     case "years": {
       const count = Math.max(1, b.level ?? 1);
-      return { art: art("years"), label: t("badges.years", { count }), tip: t("badges.yearsTip", { count }) };
+      return { art: art(`years-${Math.min(count, 10)}`), label: t("badges.years", { count }), tip: t("badges.yearsTip", { count }) };
     }
     case "bug_hunter": {
       const level = tier(b, 5);
@@ -144,6 +155,18 @@ export function badgeLook(b: Badge, user: Who): BadgeLook | null {
     }
     case CONTRIBUTOR:
       return { art: art("contributor"), label: t("badges.contributor"), tip: t("badges.contributorTip") };
+    case "legend":
+    case "mentor":
+    case "patron":
+    case "influencer":
+    case "artist":
+      return { art: art(b.id), label: t(`badges.hand.${b.id}`), tip: t(`badges.hand.${b.id}Tip`) };
+    // the Secret badges: their tooltips say nothing of how they are found
+    case "hopeful":
+    case "curious":
+    case "nosy":
+    case "lucky":
+      return { art: art(b.id), label: t(`badges.secret.${b.id}`), tip: t(`badges.secret.${b.id}Tip`) };
     default:
       // a badge staff made says what they wrote for it
       if (isEventBadge(b.id) && b.name) return { iconName: b.icon, color: b.color, color2: b.color2, image: b.image, label: b.name, tip: b.description ?? "" };

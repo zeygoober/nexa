@@ -1,7 +1,7 @@
 import { api } from "./client";
 import type { Billing, GiftLinkView, Snowflake } from "./types";
 
-/** Subscriptions (api/billing.go): buying goes to Stripe Checkout, managing to Stripe's portal. */
+/** Subscriptions (api/billing.go): buying goes to Whop's checkout, managing to the membership's page on Whop. */
 export const billing = {
   get(): Promise<Billing> {
     return api.request<Billing>("GET", "/billing");

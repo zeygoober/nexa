@@ -17,14 +17,50 @@ export type Snowflake = string;
 /** What the owner arranges: every badge shown as held, as everyone sees them now, and the keys from A to Z. */
 export interface BadgeArrangement {
   custom: boolean;
-  entries: { key: string; badge: Badge }[];
+  entries: { key: string; badge: Badge; category: BadgeCategory }[];
   a_to_z: string[];
 }
+
+/** The parts of the Badge Index, in the order it shows them. */
+export type BadgeCategory = "obtainable" | "exclusive" | "special";
 
 export interface BadgeIndex {
   collected: number;
   total: number;
-  entries: { art?: string; icon?: string; image?: string; badge?: Badge }[];
+  /** `qty` is how many copies this account holds (trades can make it more than one); only its owner is sent it. */
+  entries: { art?: string; icon?: string; image?: string; badge?: Badge; category: BadgeCategory; qty?: number }[];
+}
+
+/** Some copies of one badge in a trade, named by its Badge Index key (bug-3, og, event:12). */
+export interface TradeLine {
+  key: string;
+  qty: number;
+  /** How to draw it. */
+  badge?: Badge;
+}
+
+export type TradeStatus = "pending" | "accepted" | "declined" | "cancelled";
+
+/**
+ * A trade (internal/store/badge_trades.go): what each side puts in it, who has
+ * pressed Ready, and the version the offers are at. A Ready names the version it
+ * was given for, so it never agrees to offers that changed under it.
+ */
+export interface Trade {
+  id: Snowflake;
+  /** The person who opened the trade, and the one it was opened with. */
+  from_id: Snowflake;
+  to_id: Snowflake;
+  from_offer: TradeLine[];
+  to_offer: TradeLine[];
+  from_ready: boolean;
+  to_ready: boolean;
+  version: number;
+  status: TradeStatus;
+  channel_id: Snowflake;
+  message_id: Snowflake;
+  created_at: number;
+  resolved_at: number | null;
 }
 
 /**
@@ -34,6 +70,8 @@ export interface BadgeIndex {
 export interface Badge {
   /** Bug Hunter: how many of the holder's reports were resolved (missing when staff set the level by hand). */
   count?: number;
+  /** How many people hold this badge, at this level or above. */
+  exist?: number;
   /** "staff", "plan", "og", "years", "bug_hunter", "ideas", "app_developer", "gift_giver", "friendly", "host", "booster", "regular", "open_mic", "contributor" or "event:<id>". */
   id: string;
   /** Gift Giver's tier (1 bronze, 2 silver, 3 gold), or the years on Nexa. */
@@ -58,6 +96,8 @@ export interface Badge {
 export type BadgeShape = "circle" | "rounded" | "shield" | "hexagon" | "star" | "diamond" | "seal" | "ribbon";
 
 /** A badge staff made for an event, with how many hold it. */
+export type BadgeIndexKind = "exclusive" | "special" | "hidden";
+
 export interface BadgeDef {
   id: Snowflake;
   name: string;
@@ -70,6 +110,8 @@ export interface BadgeDef {
   shape: BadgeShape;
   /** The uploaded picture's blob, "0" or missing for none. */
   image_id?: Snowflake;
+  /** Where the Badge Index puts it; "hidden" leaves it out. */
+  index_kind: BadgeIndexKind;
   created_by: Snowflake;
   created_at: number;
   holders: number;
@@ -154,7 +196,7 @@ export interface Boost {
   created_at: number;
 }
 
-/** A price as Stripe has it: the smallest unit of the currency. */
+/** A price in the smallest unit of the currency (cents). */
 export interface PlanPrice {
   amount: number;
   currency: string;
@@ -171,12 +213,12 @@ export interface Billing {
   month_frees_at: number;
   boosts: Boost[];
   period: "" | "month" | "year";
-  /** Stripe's word for it: active, past_due, canceled... */
+  /** Whop's word for the membership: active, past_due, canceled, expired... */
   status: string;
   /** When it renews, or ends when cancel_at_end (Unix ms); 0 for none. */
   period_end: number;
   cancel_at_end: boolean;
-  /** There is a Stripe customer to open the portal for. */
+  /** There is a Whop membership whose own page can be opened. */
   manageable: boolean;
   prices: Partial<Record<"supporter" | "pro", Partial<Record<"month" | "year", PlanPrice>>>>;
   /** What a month or a year of a plan costs as a gift, paid once. */
@@ -885,6 +927,8 @@ export interface Message {
   webhook?: unknown;
   /** How a message's poll stands (a webhook's, or a person's), for whoever loaded it. */
   poll_results?: PollTally;
+  /** A trade request's state, on its system_trade message. */
+  trade?: Trade;
   /** On the line that closes a person's poll: how it went, in numbers (the words are sealed in the poll's message). */
   poll_result?: PollOutcome;
   /**

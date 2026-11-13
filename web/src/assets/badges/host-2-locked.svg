@@ -1,5 +1,1 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24">
-  <g transform="translate(0.00 0.00) scale(1)" fill="#000"><path d="M15 21v-8a1 1 0 0 0-1-1h-4a1 1 0 0 0-1 1v8"/><path d="M3 10a2 2 0 0 1 .709-1.528l7-6a2 2 0 0 1 2.582 0l7 6A2 2 0 0 1 21 10v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></g>
-  <g transform="translate(0.00 0.00) scale(1)" stroke="#000" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round" fill="none"><path d="M15 21v-8a1 1 0 0 0-1-1h-4a1 1 0 0 0-1 1v8"/><path d="M3 10a2 2 0 0 1 .709-1.528l7-6a2 2 0 0 1 2.582 0l7 6A2 2 0 0 1 21 10v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></g>
-  
-</svg>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64"><defs><mask id="m" maskUnits="userSpaceOnUse" x="0" y="0" width="64" height="64"><rect width="64" height="64" fill="#fff"/><g transform="translate(-3.96 -4.96) scale(1.12)"><path d="M28 37H36Q38 37 38 39V54Q38 56 36 56H28Q26 56 26 54V39Q26 37 28 37Z" fill="#000"/></g></mask></defs><g mask="url(#m)"><g transform="translate(-3.96 -4.96) scale(1.12)"><path d="M32 9L57 32H49V55H15V32H7Z" fill="#000" stroke="#000" stroke-width="3.4" stroke-linejoin="round"/></g></g></svg>

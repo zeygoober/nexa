@@ -134,6 +134,7 @@ const (
 	EvInviteCreate       = "invite_create"
 	EvInviteDelete       = "invite_delete"
 	EvWebhooksUpdate     = "webhooks_update"
+	EvTradeUpdate        = "trade_update"
 	EvPollVoteAdd        = "poll_vote_add"
 	EvPollVoteRemove     = "poll_vote_remove"
 	EvSettingsUpdate     = "settings_update"

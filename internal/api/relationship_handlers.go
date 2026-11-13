@@ -108,6 +108,8 @@ func (s *Server) handleFriendRequest(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if isSystem(target) {
+		// the answer stays no; asking anyway is Hopeful
+		s.awardSecret(ctx, me, store.BadgeHopeful)
 		WriteError(w, E(http.StatusForbidden, "nexa_system", "Nexa is the system account; it can't be added as a friend."))
 		return
 	}

@@ -6,6 +6,7 @@ import type { GatewayEvent, MentionMeta } from "./events";
 import { useAuth } from "@/stores/auth";
 import { useChannels } from "@/stores/channels";
 import { keysGoneHooks, useKeys } from "@/stores/keys";
+import { useTrades } from "@/stores/trades";
 import { useMessages } from "@/stores/messages";
 import { isThread, useThreads } from "@/stores/threads";
 import { noteThreadMessage, useThreadLast } from "@/stores/threadLast";
@@ -810,6 +811,11 @@ export async function applyEvent(e: GatewayEvent): Promise<void> {
     case "invite_delete":
     case "webhooks_update":
       each(dispatchHooks.onUnhandled, (h) => h(e));
+      return;
+    case "trade_update":
+      // the card in their messages says how it ended; badges are asked for when a page that shows them opens
+      useMessages.getState().setTrade(e.d.channel_id, e.d.message_id, e.d);
+      useTrades.getState().set(e.d);
       return;
     case "poll_vote_add":
     case "poll_vote_remove":

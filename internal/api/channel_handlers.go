@@ -64,6 +64,67 @@ func (s *Server) systemMessage(r *http.Request, ch *store.Channel, actor ids.ID,
 	s.Bcast.EmitChannel(ch.ID, "message_create", m)
 }
 
+// dmGate is the rules for starting a conversation with one person: they must
+// exist and be a person, not Nexa, not have blocked or been blocked, and take
+// messages from this account (their DM privacy), a first message to a stranger
+// asking for a captcha. Anything refused is answered; ok says to go on.
+func (s *Server) dmGate(w http.ResponseWriter, r *http.Request, me *store.User, id ids.ID) (target *store.User, ok bool) {
+	ctx := r.Context()
+	target, err := s.Store.UserByID(ctx, id)
+	if err != nil || target.Flags&store.FlagDeleted != 0 || isWebhookAccount(target) {
+		WriteError(w, ErrNotFound)
+		return nil, false
+	}
+	if isSystem(target) {
+		WriteError(w, errNexaNoDM)
+		return nil, false
+	}
+	ab, ba, err := s.Store.Blocked(ctx, me.ID, target.ID)
+	if err != nil {
+		WriteError(w, err)
+		return nil, false
+	}
+	if ab || ba {
+		WriteError(w, E(http.StatusForbidden, "blocked", "You cannot message this user."))
+		return nil, false
+	}
+	friends, err := s.Store.AreFriends(ctx, me.ID, target.ID)
+	if err != nil {
+		WriteError(w, err)
+		return nil, false
+	}
+	if !friends {
+		switch target.DMPrivacy {
+		case store.DMNobody:
+			WriteError(w, E(http.StatusForbidden, "dm_closed", "This user does not accept direct messages."))
+			return nil, false
+		case store.DMFriends:
+			WriteError(w, E(http.StatusForbidden, "dm_friends_only", "This user only accepts messages from friends."))
+			return nil, false
+		case store.DMFriendsServers:
+			shared, err := s.Store.ShareServer(ctx, me.ID, target.ID)
+			if err != nil {
+				WriteError(w, err)
+				return nil, false
+			}
+			if !shared {
+				WriteError(w, E(http.StatusForbidden, "dm_friends_servers", "This user only accepts messages from friends and people they share a server with."))
+				return nil, false
+			}
+		}
+		// a first message to a stranger is what spam is made of
+		exists, err := s.Store.DMExists(ctx, me.ID, target.ID)
+		if err != nil {
+			WriteError(w, err)
+			return nil, false
+		}
+		if !exists && !s.requireCaptcha(w, r, "dm") {
+			return nil, false
+		}
+	}
+	return target, true
+}
+
 func (s *Server) handleDMCreate(w http.ResponseWriter, r *http.Request) {
 	me := auth.UserFrom(r.Context())
 	var req struct {
@@ -91,57 +152,9 @@ func (s *Server) handleDMCreate(w http.ResponseWriter, r *http.Request) {
 		WriteError(w, E(http.StatusBadRequest, "no_recipients", "Pick at least one other person."))
 		return
 	case len(recipients) == 1:
-		target, err := s.Store.UserByID(ctx, recipients[0])
-		if err != nil || target.Flags&store.FlagDeleted != 0 || isWebhookAccount(target) {
-			WriteError(w, ErrNotFound)
+		target, ok := s.dmGate(w, r, me, recipients[0])
+		if !ok {
 			return
-		}
-		if isSystem(target) {
-			WriteError(w, errNexaNoDM)
-			return
-		}
-		ab, ba, err := s.Store.Blocked(ctx, me.ID, target.ID)
-		if err != nil {
-			WriteError(w, err)
-			return
-		}
-		if ab || ba {
-			WriteError(w, E(http.StatusForbidden, "blocked", "You cannot message this user."))
-			return
-		}
-		friends, err := s.Store.AreFriends(ctx, me.ID, target.ID)
-		if err != nil {
-			WriteError(w, err)
-			return
-		}
-		if !friends {
-			switch target.DMPrivacy {
-			case store.DMNobody:
-				WriteError(w, E(http.StatusForbidden, "dm_closed", "This user does not accept direct messages."))
-				return
-			case store.DMFriends:
-				WriteError(w, E(http.StatusForbidden, "dm_friends_only", "This user only accepts messages from friends."))
-				return
-			case store.DMFriendsServers:
-				shared, err := s.Store.ShareServer(ctx, me.ID, target.ID)
-				if err != nil {
-					WriteError(w, err)
-					return
-				}
-				if !shared {
-					WriteError(w, E(http.StatusForbidden, "dm_friends_servers", "This user only accepts messages from friends and people they share a server with."))
-					return
-				}
-			}
-			// a first message to a stranger is what spam is made of
-			exists, err := s.Store.DMExists(ctx, me.ID, target.ID)
-			if err != nil {
-				WriteError(w, err)
-				return
-			}
-			if !exists && !s.requireCaptcha(w, r, "dm") {
-				return
-			}
 		}
 		// The other person is not shown the conversation yet: it reaches their
 		// sidebar with the first message or call (revealDM), not the moment

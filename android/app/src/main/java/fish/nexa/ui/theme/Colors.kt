@@ -228,6 +228,12 @@ fun adjustOklch(c: Color, dl: Float, dc: Float): Color {
     return fromOklab(floatArrayOf(l, ch * kotlin.math.cos(hue), ch * kotlin.math.sin(hue)), c.alpha)
 }
 
+/** A colour's lightness in Oklab, 0 to 1. */
+fun oklabLightness(c: Color): Float = oklab(c)[0]
+
+/** A colour's chroma in Oklch. */
+fun oklchChroma(c: Color): Float = oklab(c).let { kotlin.math.sqrt(it[1] * it[1] + it[2] * it[2]) }
+
 /** `color-mix(in oklab, a, b t)`: t is the share of b. */
 fun mixOklab(a: Color, b: Color, t: Float): Color {
     val x = oklab(a)

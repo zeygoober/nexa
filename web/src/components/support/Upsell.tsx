@@ -46,7 +46,7 @@ function texts(r: UpsellReason): { title: string; body: string } {
   }
 }
 
-/** The line both offers give pay what you want, at Stripe's month prices once the page has them, else the list prices. */
+/** The line both offers give pay what you want, at Whop's month prices once the page has them, else the list prices. */
 export function pwywLine(): string {
   const usd = (c: number) => new Intl.NumberFormat(undefined, { style: "currency", currency: "USD", minimumFractionDigits: c % 100 ? 2 : 0 }).format(c / 100);
   const prices = useBilling.getState().billing?.gift_prices;

@@ -55,9 +55,11 @@ const (
 	LogBadgeEdit       = "badge_edit"
 	LogBadgeDelete     = "badge_delete"
 	LogBadgeIndexOrder = "badge_index_order"
-	LogGameList        = "game_list"
-	LogGameReject      = "game_reject"
-	LogGameForget      = "game_forget"
+	// the owner's words for a badge's tooltip, with its index key and the text
+	LogBadgeDescription = "badge_description"
+	LogGameList         = "game_list"
+	LogGameReject       = "game_reject"
+	LogGameForget       = "game_forget"
 	// What only the owner does (api/moderation_owner.go).
 	LogAccountView    = "account_view"
 	LogOwnerJoin      = "owner_join"

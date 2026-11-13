@@ -75,11 +75,11 @@ fun BadgePill(badge: Badges.Badge, userId: String, flags: Long, plan: String, st
     var open by remember { mutableStateOf(false) }
     val press = if (still) Modifier else Modifier
         .pressable(remember { MutableInteractionSource() }) { open = true }
-        .semantics { contentDescription = look.said }
+        .semantics { contentDescription = badge.exist?.let { "${look.said} (${t("badges.exist", "count" to it)})" } ?: look.said }
     val mark = @Composable {
         Box {
             BadgeMark(look, size, press)
-            if (open) BadgeCardPopup(look) { open = false }
+            if (open) BadgeCardPopup(look, badge.exist) { open = false }
         }
     }
     if (!named) return mark()
@@ -147,7 +147,7 @@ private class BadgeCardPlace(private val room: Int, private val clear: Int, priv
 
 /** What pressing a badge opens, as the web's tooltip card: the badge large, its name, and what it means. */
 @Composable
-private fun BadgeCardPopup(look: Badges.Look, onDismiss: () -> Unit) {
+private fun BadgeCardPopup(look: Badges.Look, exist: Int?, onDismiss: () -> Unit) {
     val c = Nx.colors
     val density = LocalDensity.current
     var arrowX by remember { mutableStateOf(-1) }
@@ -186,6 +186,10 @@ private fun BadgeCardPopup(look: Badges.Look, onDismiss: () -> Unit) {
                 if (look.tip.isNotEmpty()) {
                     Spacer(Modifier.height(4.dp))
                     Txt(look.tip, style = Nx.type.bodySmall.copy(fontSize = Nx.type.sp(13.5f), fontWeight = FontWeight(500), lineHeight = Nx.type.sp(18f)), color = c.tooltipText.copy(alpha = 0.72f), align = TextAlign.Center)
+                }
+                if (exist != null && exist > 0) {
+                    Spacer(Modifier.height(8.dp))
+                    Txt(t("badges.exist", "count" to exist), style = Nx.type.bodySmall.copy(fontSize = Nx.type.sp(12.5f), fontWeight = FontWeight(600), lineHeight = Nx.type.sp(16f), fontFeatureSettings = "tnum"), color = c.tooltipText.copy(alpha = 0.72f), align = TextAlign.Center)
                 }
             }
         }

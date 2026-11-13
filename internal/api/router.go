@@ -69,6 +69,10 @@ type Server struct {
 	// management, for tests; nil otherwise
 	manageHook func(stage string)
 
+	// mfaAnswered remembers the second steps that signed in, so one whose
+	// answer never reached the device can be sent again (mfa_handlers.go)
+	mfaAnswered mfaReplays
+
 	Cfg     config.Config
 	Store   *store.Store
 	Log     *slog.Logger
@@ -96,7 +100,7 @@ type Server struct {
 	// R2Analytics reads Cloudflare's own numbers for the bucket; nil leaves
 	// the meter to this server's count
 	R2Analytics *objstore.Analytics
-	// the plans' prices from Stripe, kept for a while (billing.go)
+	// the plans' prices from Whop, kept for a while (billing.go)
 	priceCache priceCache
 
 	limGeneric *ratelimit.Limiter
@@ -127,6 +131,7 @@ type Server struct {
 	limKeyBad  *ratelimit.Limiter
 	limPass    *ratelimit.Limiter
 	limProfile *ratelimit.Limiter
+	limLucky   *ratelimit.Limiter
 	limExpr    *ratelimit.Limiter
 	limImport  *ratelimit.Limiter
 	limCrash   *ratelimit.Limiter
@@ -194,9 +199,11 @@ type Server struct {
 	// One allowance per account for each of these, on top of the generic limit:
 	// friend requests, what else changes who someone knows, opening DMs, joining
 	// (invites, Discovery, note links, gifts), pins, typing, deleting messages,
-	// asking Stripe for a page, and running a server (roles, channels, members).
+	// asking Whop for a page, and running a server (roles, channels, members).
 	limFriend, limRelate, limDM, limJoin, limPin, limTyping, limDelete, limBilling, limManage *ratelimit.Limiter
 	limMsgAll                                                                                 *ratelimit.Limiter
+	// limTrade: badge trade requests sent, per account
+	limTrade *ratelimit.Limiter
 	// limForward: messages forwarded, per account, on top of the message limits
 	limForward *ratelimit.Limiter
 	limSearch  *ratelimit.Limiter
@@ -373,6 +380,8 @@ func NewServer(cfg config.Config, st *store.Store, log *slog.Logger, bc Broadcas
 		// Profile and status changes, per account: each is sent to everyone
 		// who shares a server with the person.
 		limProfile: ratelimit.New(ratelimit.Every(20, time.Minute), 20, 10*time.Minute),
+		// Lucky's draws, per account: one a minute however much is sent.
+		limLucky: ratelimit.New(ratelimit.Every(1, time.Minute), 1, 2*time.Minute),
 		// New emoji and stickers, per account: a pack is filled by dropping a
 		// folder of images in at once, so the burst is generous; a script
 		// filling the disk is not.
@@ -460,6 +469,7 @@ func NewServer(cfg config.Config, st *store.Store, log *slog.Logger, bc Broadcas
 		limDelete:    ratelimit.New(ratelimit.Every(120, time.Minute), 30, 10*time.Minute),
 		limBilling:   ratelimit.New(ratelimit.Every(20, time.Hour), 10, 2*time.Hour),
 		limManage:    ratelimit.New(ratelimit.Every(120, time.Minute), 60, 10*time.Minute),
+		limTrade:     ratelimit.New(ratelimit.Every(30, time.Hour), 10, 2*time.Hour),
 		// messages and edits per account across every channel, on top of
 		// limMsg's five every five seconds in one channel
 		limMsgAll: ratelimit.New(ratelimit.Every(120, time.Minute), 30, 10*time.Minute),
@@ -491,13 +501,13 @@ func (s *Server) limiters() map[string]*ratelimit.Limiter {
 	out := map[string]*ratelimit.Limiter{
 		"generic": s.limGeneric, "auth-ip": s.limAuthIP, "auth-user": s.limAuthUsr, "register": s.limReg, "signup": s.limSignup, "message": s.limMsg,
 		"upload": s.limUpload, "parts": s.limParts, "links": s.limLinks, "reads": s.limReads, "relay": s.limRelay, "unfurl": s.limUnfurl, "proxy": s.limProxy, "youtube": s.limYouTube, "refresh": s.limRefresh, "voice": s.limVoice, "turn": s.limTurn,
-		"guest": s.limGuest, "leave-key": s.limLeftKey, "rotator": s.limRotator, "key-reject": s.limKeyBad, "password": s.limPass, "profile": s.limProfile, "expressions": s.limExpr,
+		"guest": s.limGuest, "leave-key": s.limLeftKey, "rotator": s.limRotator, "key-reject": s.limKeyBad, "password": s.limPass, "profile": s.limProfile, "lucky": s.limLucky, "expressions": s.limExpr,
 		"import": s.limImport, "crash": s.limCrash, "perf": s.limPerf, "bug": s.limBug, "report": s.limReport, "bug-file": s.limBugFile, "key-ask": s.limKeyAsk,
 		"webhook": s.limHook, "webhook-channel": s.limHookCh, "webhook-manage": s.limHookMgr, "poll-vote": s.limVote, "discord": s.limDiscord, "server-tag": s.limTag, "music-search": s.limMusic, "music-preview": s.limPreview,
 		"automod": s.limAutomod, "publish": s.limPublish, "thread": s.limThread, "discover": s.limDiscover,
 		"note": s.limNote, "note-save": s.limNoteSave, "note-update": s.limNoteUpdate, "note-invite": s.limNoteInvite, "note-link": s.limNoteLink, "note-presence": s.limNotePresence,
 		"apps": s.limApps, "interact": s.limInteract,
-		"react": s.limReact, "react-role": s.limReactRole, "lastfm": s.limLastfm, "username": s.limUsername, "friend": s.limFriend, "relate": s.limRelate, "dm": s.limDM, "join": s.limJoin, "pin": s.limPin, "typing": s.limTyping, "delete": s.limDelete, "billing": s.limBilling, "manage": s.limManage, "message-all": s.limMsgAll, "forward": s.limForward, "search": s.limSearch, "lookup": s.limLookup, "build": s.limBuild, "game-share": s.limGameShare, "game-lists": s.limGameLists,
+		"react": s.limReact, "react-role": s.limReactRole, "lastfm": s.limLastfm, "username": s.limUsername, "friend": s.limFriend, "relate": s.limRelate, "dm": s.limDM, "join": s.limJoin, "pin": s.limPin, "typing": s.limTyping, "delete": s.limDelete, "billing": s.limBilling, "manage": s.limManage, "trade": s.limTrade, "message-all": s.limMsgAll, "forward": s.limForward, "search": s.limSearch, "lookup": s.limLookup, "build": s.limBuild, "game-share": s.limGameShare, "game-lists": s.limGameLists,
 		"lookup-captcha": s.stepLookup.solves, "build-captcha": s.stepBuild.solves,
 	}
 	for name, l := range s.botLim.all() {

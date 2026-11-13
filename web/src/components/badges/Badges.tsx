@@ -46,12 +46,13 @@ export function BadgeMark({ look, size = 20 }: { look: BadgeLook; size?: number 
 }
 
 /** What a badge's tooltip shows: the badge large, its name, and what it means. */
-function BadgeCard({ look }: { look: BadgeLook }) {
+function BadgeCard({ look, exist }: { look: BadgeLook; exist: number | undefined }) {
   return (
     <span className={s.card}>
       {look.art ? <img className={s.cardArt} src={look.art} alt="" draggable={false} /> : <BadgeMark look={look} size={64} />}
       <span className={s.cardName} dir="auto">{look.label}</span>
       {look.tip ? <span className={s.cardTip} dir="auto">{look.tip}</span> : null}
+      {exist ? <span className={s.cardExist} dir="auto" data-testid="badge-exist">{t("badges.exist", { count: exist })}</span> : null}
     </span>
   );
 }
@@ -65,7 +66,8 @@ function BadgeCard({ look }: { look: BadgeLook }) {
 export function BadgePill({ badge, user, still, named, size = 20 }: { badge: Badge; user: Who; still?: boolean; named?: boolean; size?: number }) {
   const look = badgeLook(badge, user);
   if (!look) return null;
-  const text = look.tip ? `${look.label}: ${look.tip}` : look.label;
+  const said = look.tip ? `${look.label}: ${look.tip}` : look.label;
+  const text = badge.exist ? `${said} (${t("badges.exist", { count: badge.exist })})` : said;
   const mark = look.art ? (
     <img className={s.badge} style={{ width: size, height: size }} src={look.art} alt={still ? "" : text} draggable={false} tabIndex={still ? undefined : 0} data-testid={`badge-${badge.id}`} />
   ) : (
@@ -89,7 +91,7 @@ export function BadgePill({ badge, user, still, named, size = 20 }: { badge: Bad
       </span>
     );
   }
-  return still ? mark : <Tooltip text={text} side="top" card={<BadgeCard look={look} />}>{mark}</Tooltip>;
+  return still ? mark : <Tooltip text={text} side="top" card={<BadgeCard look={look} exist={badge.exist} />}>{mark}</Tooltip>;
 }
 
 /** How many badges a profile shows before the rest go behind +x. */

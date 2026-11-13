@@ -45,16 +45,19 @@ export function badgeText(n: number): string {
   return n > 99 ? "99+" : String(n);
 }
 
+/** Whether a channel's unread state and mentions count towards its server's badge. A thread counts once this account is in it, as on Android. */
+export function countsForServer(ch: Channel): boolean {
+  if (ch.type === "text" || ch.type === "voice" || ch.type === "announcement") return true;
+  return (ch.type === "thread" || ch.type === "private_thread") && !!useThreads.getState().joined[ch.id];
+}
+
 /** Aggregates unread state over a server's text channels and the chats of its voice channels, honouring mutes. */
 export function serverUnread(serverId: string, channels: Record<string, Channel>, reads: Record<string, ChannelRead>, settings: Settings): UnreadSummary {
   let unread = false;
   let mentions = 0;
   const serverMuted = settings.notifications.muted.includes(serverId);
   for (const ch of Object.values(channels)) {
-    if (ch.server_id !== serverId) continue;
-    // A thread counts once this account is in it, as on Android.
-    const thread = ch.type === "thread" || ch.type === "private_thread";
-    if (ch.type !== "text" && ch.type !== "voice" && ch.type !== "announcement" && !(thread && useThreads.getState().joined[ch.id])) continue;
+    if (ch.server_id !== serverId || !countsForServer(ch)) continue;
     const rs = reads[ch.id];
     mentions += rs?.mentions ?? 0;
     if (!serverMuted && !settings.notifications.muted.includes(ch.id) && isUnread(rs, ch.last_message_id)) unread = true;

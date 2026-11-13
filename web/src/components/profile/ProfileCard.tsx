@@ -3,7 +3,7 @@ import { useMediaAnimation } from "@/lib/mediaAnimation";
 import { touchFirst } from "@/lib/touch";
 import { NexaProfile } from "@/components/nexa/NexaProfile";
 import { isSystemAccount } from "@/lib/moderation";
-import { CirclePlus, Link2, LoaderCircle, Maximize2, MessageCircle, MoreHorizontal, NotebookPen, Pencil, Plus, SendHorizontal, UserPlus, X } from "lucide-react";
+import { ArrowLeftRight, CirclePlus, Link2, LoaderCircle, Maximize2, MessageCircle, MoreHorizontal, NotebookPen, Pencil, Plus, SendHorizontal, UserPlus, X } from "lucide-react";
 import { apps as appsApi, type AppSummary } from "@/api/apps";
 import { HookTags } from "@/components/chat/webhook/HookHeader";
 import { isBot } from "@/lib/botCopies";
@@ -832,6 +832,11 @@ export function ProfileCard({ userId, variant, onClose, preview, previewWidgets,
           {!isMe && !rel ? (
             <Tooltip text={t("profile.profileCard.message")} side="top">
               <button className={s.square} aria-label={t("profile.profileCard.message")} onClick={() => void message()}><MessageCircle size={18} /></button>
+            </Tooltip>
+          ) : null}
+          {!isMe && !bot && rel?.type !== "blocked" ? (
+            <Tooltip text={t("profile.profileCard.tradeBadges")} side="top">
+              <button className={s.square} aria-label={t("profile.profileCard.tradeBadges")} onClick={() => { onClose?.(); openModal("trade", { userId }); }} data-testid="profile-trade"><ArrowLeftRight size={18} /></button>
             </Tooltip>
           ) : null}
           <Tooltip text={t("profileLink.copy")} side="top">

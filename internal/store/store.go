@@ -40,6 +40,12 @@ type Store struct {
 	// ordinary edits (edit_gate.go)
 	edits editGates
 
+	// exist is how many hold each badge (badge_counts.go)
+	exist badgeCountCache
+
+	// tips is the owner's words for built-in badges (badge_tips.go)
+	tips badgeTipCache
+
 	// activeDays keeps who has already counted today towards Regular (badge_progress.go)
 	activeDays struct {
 		sync.Mutex

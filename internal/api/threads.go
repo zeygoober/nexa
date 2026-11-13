@@ -360,6 +360,7 @@ func (s *Server) postFirstMessage(r *http.Request, th *store.Channel, me *store.
 	}
 	s.Bcast.EmitChannel(th.ID, "message_create", full)
 	s.Bcast.KeysMaybeNeeded(env.Conv)
+	s.luckyDraw(ctx, me)
 	return full, nil
 }
 

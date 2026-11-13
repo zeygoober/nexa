@@ -577,6 +577,7 @@ object NexaInbox {
         Moderation.reset()
         Reports.reset()
         Badges.reset()
+        Trades.reset()
         _standing.value = null
         _people.value = emptyMap()
         _feed.value = null

@@ -1,6 +1,14 @@
 package fish.nexa.ui.chat
 
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.widthIn
+import androidx.compose.runtime.collectAsState
+import fish.nexa.ui.theme.Radii
+import fish.nexa.ui.theme.ring
+import kotlinx.coroutines.launch
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
@@ -30,6 +38,7 @@ import fish.nexa.ui.nav.Route
 import fish.nexa.ui.shell.Names
 import fish.nexa.ui.shell.openProfile
 import fish.nexa.ui.components.pressable
+import fish.nexa.ui.components.Txt
 import fish.nexa.ui.t
 import fish.nexa.ui.theme.Nx
 
@@ -239,4 +248,112 @@ private fun closedLine(head: AnnotatedString, outcome: String, view: AnnotatedSt
     if (outcome.isNotEmpty()) append(" $outcome")
     append(" ")
     view()
+}
+
+/**
+ * TradeCard.tsx: a trade in the messages of the two people, as each sees it:
+ * what they give and what they get, whoever began it. While it is open either
+ * can open the window to make their side and press Ready (now, or later when the
+ * other person is not here), or end it; afterwards it says how it ended. It is
+ * the server's own line, not end-to-end encrypted, since the server is what
+ * moves the badges.
+ */
+@Composable
+fun TradeRow(cm: ChatMessage, ctx: ListCtx) {
+    val c = Nx.colors
+    val trades by fish.nexa.data.Trades.byId.collectAsState()
+    val trade = trades[fish.nexa.data.Trades.parse(cm.m.trade)?.id ?: ""] ?: fish.nexa.data.Trades.parse(cm.m.trade)
+    val me = ctx.meId
+    val mine = trade?.fromId == me
+    val otherId = trade?.otherId(me) ?: cm.m.authorId
+    val inlineWidth = rememberInlineWidth()
+    val maxWidth = with(androidx.compose.ui.platform.LocalDensity.current) { inlineWidth.pixels.toDp() }
+    val names = personInlines(Nx.type.body.copy(fontSize = Nx.type.sp(15.5f), lineHeight = Nx.type.sp(22f), fontWeight = FontWeight(500)), c.textStrong, maxWidth, null)
+    val scope = androidx.compose.runtime.rememberCoroutineScope()
+    val template = t(if (mine) "trades.card.sentByYou" else "trades.card.sentToYou")
+    val sentence = buildAnnotatedString {
+        var i = 0
+        for (match in Regex("\\{(\\w+)\\}").findAll(template)) {
+            append(template.substring(i, match.range.first))
+            if (match.groupValues[1] == "name") names.append(this, otherId, Names.member(null, otherId)) { openProfile(otherId) } else append(match.value)
+            i = match.range.last + 1
+        }
+        append(template.substring(i))
+        withStyle(SpanStyle(fontSize = Nx.type.sp(12f), color = c.textMuted)) { append("  " + Time.timestamp(cm.m.createdAt)) }
+    }
+    Box(
+        Modifier.fillMaxWidth().padding(top = 17.dp).padding(start = if (ctx.selecting) 98.dp else 64.dp, end = 16.dp, top = 4.dp, bottom = 4.dp).then(inlineWidth.modifier),
+    ) {
+        Icon("ArrowLeftRight", c.textMuted, size = 18.dp, modifier = Modifier.padding(top = 2.dp).offsetStart(if (ctx.selecting) -44 else -40))
+        androidx.compose.foundation.layout.Column(verticalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(8.dp)) {
+            BasicText(sentence, inlineContent = names.content, style = Nx.type.body.copy(fontSize = Nx.type.sp(15.5f), lineHeight = Nx.type.sp(22f), color = c.textMuted))
+            androidx.compose.foundation.layout.Column(
+                Modifier.fillMaxWidth().widthIn(max = 480.dp)
+                    .background(c.embedBg, Radii.Md).ring(Radii.Md, c.borderSubtle).padding(14.dp),
+                verticalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(14.dp),
+            ) {
+                if (trade == null) {
+                    Txt(t("trades.status.gone"), color = c.textMuted, style = Nx.type.body.copy(fontSize = Nx.type.sp(14f), fontWeight = FontWeight(600)))
+                    return@Column
+                }
+                TradeSide(t("trades.youGive"), trade.offerOf(me))
+                TradeSide(t("trades.youGet"), trade.offerOfOther(me))
+                if (trade.pending) {
+                    val theirReady = trade.readyOfOther(me)
+                    val myReady = trade.readyOf(me)
+                    Row(
+                        Modifier.fillMaxWidth(),
+                        verticalAlignment = androidx.compose.ui.Alignment.CenterVertically,
+                        horizontalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(8.dp, androidx.compose.ui.Alignment.End),
+                    ) {
+                        val note = when {
+                            myReady -> t("trades.ready")
+                            theirReady -> t("trades.theirReady", "name" to Names.display(Nexa.users.byId.value[otherId]))
+                            else -> null
+                        }
+                        Box(Modifier.weight(1f)) { if (note != null) Txt(note, style = Nx.type.bodySmall.copy(fontSize = Nx.type.sp(13f)), color = c.textMuted) }
+                        fish.nexa.ui.components.NxButton(
+                            if (mine) t("trades.card.cancelTrade") else t("trades.card.decline"),
+                            onClick = {
+                                scope.launch {
+                                    try { fish.nexa.data.Trades.end(trade.id) } catch (e: Exception) { Nexa.ui.toast(fish.nexa.ui.describeError(e, t("trades.couldNotUpdate")), "error") }
+                                }
+                            },
+                            kind = fish.nexa.ui.components.ButtonKind.DANGER,
+                            size = fish.nexa.ui.components.ButtonSize.SM,
+                        )
+                        fish.nexa.ui.components.NxButton(
+                            if (mine) t("trades.card.open") else t("trades.card.join"),
+                            onClick = { fish.nexa.ui.trades.openTradeWindow(tradeId = trade.id) },
+                            kind = fish.nexa.ui.components.ButtonKind.POSITIVE,
+                            size = fish.nexa.ui.components.ButtonSize.SM,
+                        )
+                    }
+                } else {
+                    Row(verticalAlignment = androidx.compose.ui.Alignment.CenterVertically, horizontalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(6.dp)) {
+                        if (trade.status == "accepted") Icon("Check", c.statusOnline, size = 16.dp)
+                        Txt(t("trades.status.${trade.status}"), style = Nx.type.body.copy(fontSize = Nx.type.sp(14f), fontWeight = FontWeight(600)), color = if (trade.status == "accepted") c.text else c.textMuted)
+                    }
+                }
+            }
+        }
+    }
+}
+
+/** One side of a trade on its card: a heading and a picture, a name and how many for each badge. */
+@Composable
+private fun TradeSide(title: String, lines: List<fish.nexa.data.Trades.Line>) {
+    val c = Nx.colors
+    androidx.compose.foundation.layout.Column(verticalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(6.dp)) {
+        Txt(title, style = Nx.type.heading.copy(fontSize = Nx.type.sp(14f)), color = c.textStrong)
+        if (lines.isEmpty()) Txt(t("trades.nothing"), style = Nx.type.body.copy(fontSize = Nx.type.sp(14f)), color = c.textMuted)
+        for (l in lines) {
+            Row(verticalAlignment = androidx.compose.ui.Alignment.CenterVertically, horizontalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(8.dp)) {
+                if (l.badge != null) fish.nexa.ui.profile.BadgePill(l.badge, "0", 0L, "", still = true, size = 28.dp)
+                else Box(Modifier.size(28.dp).background(c.bgActive, androidx.compose.foundation.shape.CircleShape))
+                Txt(l.badge?.let { fish.nexa.data.Badges.look(it, "0", 0L, "")?.label } ?: l.key, style = Nx.type.body.copy(fontSize = Nx.type.sp(14f), fontWeight = FontWeight(600)), maxLines = 1, modifier = Modifier.weight(1f, fill = false))
+                if (l.qty > 1) Txt("×${l.qty}", style = Nx.type.body.copy(fontSize = Nx.type.sp(14f), fontWeight = FontWeight(700), fontFeatureSettings = "tnum"), color = c.textBrand)
+            }
+        }
+    }
 }

@@ -1,6 +1,7 @@
 import { ApiError } from "@/api/client";
 import { servers as serversApi } from "@/api/servers";
 import { t } from "@/i18n";
+import { countsForServer } from "@/lib/unread";
 import { useChannels } from "@/stores/channels";
 import { isUnread, useReadStates } from "@/stores/readStates";
 import { useServers } from "@/stores/servers";
@@ -12,8 +13,9 @@ import { useUI } from "@/stores/ui";
 export function markServerRead(serverId: string): void {
   const channels = useChannels.getState().byId;
   const reads = useReadStates.getState();
+  // every channel the server's badge counts, announcements and joined threads included, or their pings stay
   for (const ch of Object.values(channels)) {
-    if (ch.server_id !== serverId || (ch.type !== "text" && ch.type !== "voice") || !ch.last_message_id) continue;
+    if (ch.server_id !== serverId || !countsForServer(ch) || !ch.last_message_id) continue;
     if (isUnread(reads.byChannel[ch.id], ch.last_message_id) || (reads.byChannel[ch.id]?.mentions ?? 0) > 0) void reads.ack(ch.id, ch.last_message_id);
   }
 }

@@ -36,7 +36,7 @@ import s from "./Support.module.css";
 type Paid = (typeof PAID_PLANS)[number];
 type Period = "month" | "year";
 
-/** What each plan costs when Stripe has not said (US dollars, in cents). */
+/** What each plan costs when Whop has not said (US dollars, in cents). */
 const LIST_PRICES: Record<Paid, Record<Period, number>> = { supporter: { month: 500, year: 4800 }, pro: { month: 1000, year: 9600 } };
 
 const PLANS: Plan[] = ["", "supporter", "pro"];
@@ -389,7 +389,7 @@ function GiftLinksMade() {
 
 /**
  * Gift a Plan: a month or a year of Supporter or Pro for a friend or someone
- * this account talks to, or as a link for anyone, paid once on Stripe's page
+ * this account talks to, or as a link for anyone, paid once on Whop's page
  * and never renewed. /channels/@me/support?gift=<id> starts with that person
  * picked.
  */
@@ -527,7 +527,7 @@ const TILES = 24;
 /**
  * Pay What You Want: one payment of any amount from a dollar, never renewed.
  * What it buys (payWhatYouWant, the server's own split) is shown as it is
- * typed, month by month, before Stripe's page opens.
+ * typed, month by month, before Whop's page opens.
  */
 function PayWhatYouWant() {
   const loc = useLocation();

@@ -238,7 +238,7 @@ Work that goes with certain changes:
   Node/ICU: check a changed expectation against current Chromium too before updating it, and never weaken host
   checks just to match a stale vector.
 - lucide-react upgraded: `python3 android/tools/lucide_assets.py` (it also works out which open paths enclose a shape, into `bodies` in lucide.json and
-  `web/src/components/badges/iconBodies.css`, for a badge's tint), then `python3 tools/badge_art.py`. emojibase-data or `@twemoji/svg` upgraded:
+  `web/src/components/badges/iconBodies.css`, for a badge's tint). emojibase-data or `@twemoji/svg` upgraded:
   `node android/tools/emoji_assets.mjs`, `tools/twemoji_sprites.py`, `tools/twemoji_font.py`, then
   `tools/twemoji_font_check.py`.
 
@@ -312,7 +312,7 @@ runs in the foreground, so start it in the background; stop it with `pkill -f bi
   `tools/.venv/bin/python tools/seed.py http://127.0.0.1:6969` (it registers alice and bob, so it fails if
   they already exist), then give the owner the address and the logins (password
   `correct horse battery staple`).
-- It still has `chatd.env`'s other live keys (Realtime calls, Discord sync, GIFs, Stripe), so what it does
+- It still has `chatd.env`'s other live keys (Realtime calls, Discord sync, GIFs, Whop), so what it does
   with them is real; test on a throwaway server instead when that matters.
 
 ### Web in a headless browser
@@ -460,7 +460,7 @@ serves until SIGINT or SIGTERM.
 | `realtime` | Cloudflare Realtime: the SFU client, the usage meter, analytics, TURN keys |
 | `rpcapps` | names and art of Discord Rich Presence applications, looked up once and kept |
 | `store` | every SQL query, grouped by domain; models; the permission cache |
-| `stripe` | the Stripe calls plans need and webhook signatures; standard library only |
+| `whop` | the Whop calls plans need (variants, checkouts, memberships) and Standard Webhooks signatures; standard library only |
 | `telegram` | the Bot API calls a sticker set import needs |
 | `textutil` | cleaning user text, shared by REST and gateway |
 | `totp` | RFC 6238 codes for two-factor sign-in |
@@ -488,7 +488,7 @@ serves until SIGINT or SIGTERM.
   `limReact`, `limMsgAll` (beside per-channel `limMsg`), `limSearch`, `limLookup` (signed-out lookups, per
   address), `limBuild` (things people create, servers included), `limForward`, `limReport`, `limTurn`, `limUsername` (two real
   changes an hour; a taken or unchanged name spends nothing), `limFriend`, `limRelate`, `limDM`, `limJoin`, `limPin`,
-  `limTyping`, `limDelete`, `limBilling`, `limManage` (server management), `limReactRole` (roles gained or lost by reacting) and `limLastfm` (usernames tried). `limLookup` and
+  `limTyping`, `limDelete`, `limBilling`, `limManage` (server management), `limReactRole` (roles gained or lost by reacting), `limLastfm` (usernames tried) and `limTrade` (badge trades opened). `limLookup` and
   `limBuild` step up (`stepup.go`): past the free allowance a captcha (action `lookup` or `build`) buys a
   batch, those captchas capped per address and per account; batches are in memory, per process. A server holds
   at most 500 channels and 250 roles (`store.MaxServerChannels`, `MaxServerRoles`, counted in the creating
@@ -592,7 +592,7 @@ serves until SIGINT or SIGTERM.
   `crossposts`), messages (`messages` with `ciphertext`, and `plain` for webhook and system text;
   `attachments`, `reactions`, `reaction_roles`, `pins`, `read_states`, `polls`, `poll_votes`), keys (`key_epochs`, `key_grants`,
   `key_flags`, `key_rejections`), servers (`servers`, `server_members`, `roles`, `member_roles`, `invites`, `bans`, `audit_log`,
-  `automod_rules`, `automod_events`), plans (`billing`, `server_boosts`, `plan_gifts`, `gift_links`,
+  `automod_rules`, `automod_events`), plans (`billing`, `whop_checkouts`, `server_boosts`, `plan_gifts`, `gift_links`,
   `users.plan`, `servers.boosts`), expressions (`emojis`, `sticker_packs`, `stickers`, `sticker_installs`,
   `recent_stickers`, `blocked_images`), games people share (`game_submissions`, `known_games`), files (`blobs`, `uploads`, `remote_blobs`, `storage_usage`), calls
   (`guest_links`, `guests`, `realtime_usage`, `realtime_measurements`, `realtime_sessions`, `call_usage`,
@@ -606,7 +606,7 @@ serves until SIGINT or SIGTERM.
   `application_guild_installs`, `application_user_installs`, `oauth_codes`, `oauth_tokens` (gone with its
   refresh token, 90 days unused), `interactions` and `ephemeral_messages` (15 minutes), `ephemeral_files`,
   `interaction_files` (a day), `bot_copies`, `roles.managed_by`), badges (`badge_defs`, `user_badges`,
-  `badge_overrides`, `badge_prefs`, `badge_progress`), the instance (`instance_settings`).
+  `badge_overrides`, `badge_prefs`, `badge_progress`, `badge_holdings`, `badge_trades`), the instance (`instance_settings`).
 - Channel types: `dm`, `group_dm`, `subchat`, `text`, `voice`, `category`, `announcement`, `forum`, `media`,
   `link`, `thread`, `private_thread`. `store.IsForum` is forum or media (posts only), `store.HoldsNoMessages`
   is category or link (no messages, invites, read states, mentions or own key). A channel's `key_conv_id`
@@ -881,6 +881,12 @@ it:
   asking device's user agent, and on Log In seals the identity key to the key in the code, never one the
   server names. The server hands the session over once; requests live in memory for three minutes, per
   process.
+- The second step (`handleLoginMFA` in `api/mfa_handlers.go`) spends the code before it answers, so a phone that
+  lost the answer used to come back with a spent code and "this code cannot be used". A login ticket now carries a
+  random nonce, and the same ticket with the same code is answered again until the ticket lapses (`mfaAnswered`,
+  in memory, per process; `TestLostSecondStepAnswerCanBeAskedAgain`); a ticket without a nonce never repeats. The
+  apps ask once more after a network failure (web `passwordSignIn` in `stores/auth.ts`, Android `secondStep` in
+  `data/Auth.kt`).
 - More than one account (web `lib/accounts.ts`, Android `data/Accounts`): up to five signed-in accounts keep
   their tokens in a list and their keys where they always were. Only one runs; switching ends the call and
   connection and reopens the app where that account last was. Add Another Account signs in, or creates an account
@@ -922,8 +928,9 @@ it:
   Developers held every permission in every server they were in, private channels and their keys included;
   keys handed out then stay with them until those channels' keys rotate.
 - The owner's tools (`api/moderation_owner.go`, the owner's decision 2026-11-08; `ownerTools` on web, `StaffCan.OWNER_TOOLS` on
-  Android), each written to `mod_log`, and each described in the Privacy Policy's section 3n, the Terms and `ENCRYPTION.md`, so
-  they stay true together: Account Details on a person's page (`GET /moderation/users/{id}/account`: addresses with first and
+  Android), each written to `mod_log`. On 2026-11-08 the owner chose to omit public descriptions of owner-only
+  tools, while retaining disclosure of the records kept and moderation logging. Account Details on a person's page
+  (`GET /moderation/users/{id}/account`: addresses with first and
   last seen, sessions, plan, subscription; logged as `account_view` before anything is read, so the apps ask only when the
   dialog opens, web `AccountDetailsModal.tsx`, Android `openAccountDetails`); Join Server on a server's page (`POST
   /moderation/servers/{id}/join`, `Store.JoinFromPanel`, join method `staff`, logged as `owner_join`): an ordinary visible member,
@@ -1054,8 +1061,9 @@ and `ideas` (bug reports and suggestions staff resolved, five levels at `ReportT
 (shown as Bot Maker, three levels at `AppDeveloperTiers`, by the servers its bots are in), `gift_giver` (three levels, `GiftTiers`),
 `friendly` (friends who are people, `FriendlyTiers`), `host` (people in the largest server the account owns, `HostTiers`), `booster`
 (boosting any server), `regular` (best run of consecutive UTC days, `RegularTiers`), `open_mic` (lifetime call hours with someone else
-present, `OpenMicTiers`), and the two staff give by hand in
-`user_badges`: `contributor` and `event:<badge_defs id>`. Earned badges are worked out when asked for, never
+present, `OpenMicTiers`), and those staff give by hand in
+`user_badges`: `contributor`, the Exclusive `legend`, `mentor` (thanks for moving over from Yapin), `patron`, `influencer` and `artist`
+(`store.ExclusiveHandBadges`, `HandBadges`, web `HAND_BADGES`, Android `Badges.HAND_BADGES`; added 2026-11-10), and `event:<badge_defs id>`. Earned badges are worked out when asked for, never
 stored; bots, Nexa's accounts and deleted accounts have none. Staff can override an earned badge (`og`, `years`,
 `bug_hunter`, `ideas`, `app_developer`, `gift_giver`, `friendly`, `host`, `booster`, `regular`, `open_mic`) for one account in `badge_overrides` (migration 0055): no row
 follows the account, level 0 takes it away, above 0 gives it at that tier, and it holds until cleared. Rank and plan
@@ -1064,8 +1072,8 @@ badges come with the account and cannot be overridden. Every badge has a holders
 up; a person's page sets them all at once (web `GrantBadgesModal.tsx`, Android `openGiveBadgesSheet`). A staff-made
 badge has a description (its tooltip and toast, at most 120 characters), one or two colours and any Lucide icon or an uploaded picture (public blob of kind `badge`). Every badge, staff ranks and plans included, is a
 bare coloured icon with nothing behind it: an SVG in `web/src/assets/badges/` written by `tools/badge_art.py` (Android copies the same files and
-takes them over the air), each colour held to a luminance that reads on Dark and Light alike, every shape in the icon tinted faintly inside, open or closed, as long as it encloses something; an event badge is drawn from its look on both clients, its colours moved to the art's same luminances and closed shapes given the art's faint tint (web `badgeTones`, Android `badgeTone`), so it reads like the built-in ones. The `shape` and `glyph` stored on a badge only serve APKs from before icon-only badges, which still draw them; their editor controls are gone. A profile draws
-its first five badges in one pill (the holder's order; `SHOWN_BADGES` on both clients, then +x, which opens All Badges: web `AllBadges`, Android `openAllBadges`) on the username line, at 22 px. On a two-colour profile the pill's backing is opaque and made from the card's own top colour, darker on a card with light text and paler on one with dark text (`--badge-pill` in `Profile.module.css`, Android `ProfileTokens.badgePill`), since a see-through one vanished on saturated cards. Hovering one, or tapping it on a touch screen, opens a card with the badge
+takes them over the air). The art is hand-drawn chunky glyphs, plain SVG with no filters or fonts since Android's renderer has neither: the icon in a dark tone a little lower for depth, the icon in a gradient, one curved gloss masked to it, details in the deep tone (the owner's call, 2026-11-10: the look is new, but no coin, tile or shield behind the icon and no outline around it). Levels are materials (bronze, silver, gold, emerald, prism); no badge carries sparkles (the owner's call, 2026-11-10). Years shows its number, `years-1` to `years-10` (10 and up show 10), in one material each; a Years not yet earned in the Index, and APKs from before then, use the cake, `years`. A new glyph needs its line in `FIT`, measured from its ink. An event badge is drawn from its look on both clients, its colours moved to the art's same luminances and closed shapes given the art's faint tint (web `badgeTones`, Android `badgeTone`). The `shape` and `glyph` stored on a badge only serve APKs from before icon-only badges, which still draw them; their editor controls are gone. A profile draws
+its first five badges in one pill (the holder's order; `SHOWN_BADGES` on both clients, then +x, which opens All Badges: web `AllBadges`, Android `openAllBadges`) on the username line, at 22 px. On a two-colour profile the pill's backing is opaque and made from the card's own top colour, darker on a card with light text and paler on one with dark text (`--badge-pill` in `Profile.module.css`, Android `ProfileTokens.badgePill`), since a see-through one vanished on saturated cards; a shade under the card (never below OKLCH lightness 0.34, so a near-black card still has a pill), not near black, which the owner found too dark (2026-11-10). Hovering one, or tapping it on a touch screen, opens a card with the badge
 large, its name and its meaning (web `BadgeCard` through `Tooltip`'s `card`, Android `BadgeCardPopup`). `/users/@me/badges` stays open to muted and
 banned accounts. Web `lib/badges.ts`, `components/badges/Badges.tsx`, `moderation/BadgesTab.tsx`; Android
 `data/Badges`, `ui/profile/Badges.kt`, `ui/moderation/BadgeTab.kt`. The event icon list and every icon the search offers must be ones both
@@ -1078,7 +1086,7 @@ deleted accounts write nothing), and goes with the account. A day counts only wi
 `RestDeep` or while the connection says it is away, so neither a resting phone nor a tab left open earns anything (with Idle by itself off an app never says away, so its open tab does); `Store.MarkActiveDay` writes once per
 account per UTC day. `StartBadgeProgress` (`api/badge_progress.go`) counts call seconds from `voice.InCallTogether` each minute, written every
 five. `GET /users/@me/badges/progress` gives the person their own row for the data export (`badge-progress.json`), and the legal report prints
-it. Blacked out art for a face, a robot and a mic keeps those shapes hollow (`LOCKED_HOLLOW` in `tools/badge_art.py`), or they turn into a disc, a pot and a leaf.
+it. Blacked out art keeps a glyph's details cut out, or a face turns into a disc and a robot into a pot.
 
 The Badge Index (`GET /users/@me/badges/index`, `Store.MyBadgeIndex`; web `settings/BadgeIndexPage.tsx`, Android
 `ui/settings/BadgeIndexPage.kt`, Settings, under Profiles, own account only) counts each level of a tiered badge as its own badge
@@ -1087,8 +1095,10 @@ never a name or how to earn it: keep it that way, the apps cannot hide what they
 (people only, deleted accounts included since they keep their row, so nobody's number moves), and the real count for Bug Hunter, Ideas, Gift Giver and App
 Developer; a badge staff overrode has none. Entries the account has collected come first, then what it lacks, each part A to Z by English name unless the owner's order below holds the collected ones (`heldThenLocked`,
 sorted on the server because the answer must not carry a locked badge's name; a new built-in badge needs its name in `badgeIndexNames`). A locked tile is the same tile as a collected one and only its mark
-differs: flat black with no edge, in a heavier line (the owner rejected a light rim, 2026-11-09). Built-in art has a `<name>-locked.svg` from `tools/badge_art.py`, and a badge staff
+differs: flat black with no edge (the owner rejected a light rim, 2026-11-09). Built-in art has a `<name>-locked.svg` from `tools/badge_art.py`, and a badge staff
 made is drawn black in the same line on both clients.
+
+The index has three parts in a fixed order, each entry's `category` (the owner's request, 2026-11-10): Obtainable (every built-in badge, Contributor too), Exclusive (OG) and Secret (the value is still `special` in the API, the database and the code). A badge staff made sets `badge_defs.index_kind` (migration 0061; `exclusive` by default, a save without it keeps what it was): `exclusive`, `special`, or `hidden`, which leaves it out of the index and its totals, holders included, and still shows on profiles. A locked Special carries only `category` and `art: "secret"`, drawn from `secret-locked.svg` (a padlock) with no colour version (`TestBadgeIndexKeepsSpecialSecret`). Four built-in Secret badges (the owner's request, 2026-11-10; `store.SecretBadges`) are kept once earned in `user_badges` with `granted_by` the holder's own id (`AwardSecretBadge`), so a staff save of given badges leaves them, and their tips never say how: Hopeful (a friend request to Nexa's account, still refused), Lucky (a 1 in `luckyOdds` draw on each message sent, at most one a minute by `limLucky`, `api/lucky.go`), and Curious and Nosy, which the apps report through `POST /users/@me/badges/found` (only `store.AppFoundBadges`, so they can be faked): holding a padlock in the Index for ten seconds, and typing `secret` or `badges.secretWord` into Search Settings (web `lib/secretBadges.ts`, Android `data/SecretBadges.kt`; never in the demo). Nothing on screen says one was found. Arrange shows one part at a time, and a place in the grid is a place in that part. `Badge.exist` is how many people hold a badge at that level or above (`store/badge_counts.go`: cached five minutes, `forget` on every staff change, staff ranks and plans included), shown as "X exist" on the badge's card.
 
 The owner can arrange the index for everyone (the owner's request, 2026-11-09; `ownerTools` on both apps, the Arrange button on the page, web
 `settings/BadgeArrange.tsx`, Android `Arrange` in `BadgeIndexPage.kt`). `GET` and `PUT /moderation/badges/index-order` (`rankOwner`) read and set the instance
@@ -1096,6 +1106,25 @@ setting `badge_index_order`, a JSON list of entry keys (an entry's `art`, or a s
 list does not name (a badge made since) follows it, A to Z. Only the owner's `GET` names every badge; `/users/@me/badges/index` stays as above, and
 `TestBadgeIndexOrderIsTheOwnersAlone` holds that. Use A to Z Order (`a_to_z` in the answer) only fills the grid, and Save applies it. Tiles on the web are `touch-action: none`, since a browser
 takes back a held touch it might scroll, so a swipe that starts on one scrolls the page by hand. Saving logs `badge_index_order`.
+
+The owner can also rewrite any badge's tooltip for everyone, in every language in place of the translations (the owner's request, 2026-11-10;
+Edit Descriptions beside Arrange, web `settings/BadgeDescriptions.tsx`, Android `Describe` in `BadgeIndexPage.kt`). `PUT
+/moderation/badges/descriptions` (`rankOwner`, body `key` and `description`, at most `MaxBadgeTip` characters, logged as `badge_description`)
+keeps built-in badges' words in the instance setting `badge_tips` (`store/badge_tips.go`), a JSON map by index key, so each level of a tiered
+badge has its own; empty text goes back to the translations. An `event:<id>` key writes that badge's own description instead. The words go on
+badges wherever the badge itself is sent (`describeBadges`, `describeIndex`), never on a locked index entry
+(`TestBadgeTipsAreTheOwnersAlone`), and the apps put a built-in badge's `description` in place of its tip (`badgeLook`, `Badges.look`).
+
+### Badge trades (`store/badge_holdings.go`, `store/badge_trades.go`, `api/badge_trades.go`; the owner's request, 2026-11-13)
+
+People trade badges in a window both share, in the style of Pet Simulator 99's: your badges on one side as a grid, the other person's offer filling slots on the other, a red Cancel and a green Ready!. The owner chose a live window and no category sidebar. Web `components/trades/` (`TradeWindow`, `TradeCard`, `LineList`; modal kind `trade` with `userId` or `tradeId`; entry in the profile's More menu and its action row), Android `ui/trades/TradeWindow.kt` (`openTradeWindow`) and `TradeRow` in `ui/chat/SystemMessage.kt`, state in `stores/trades.ts` and `data/Trades.kt`.
+
+- Earned badges are worked out and stored nowhere, so trading keeps what it changes beside them, per Badge Index key (`bug-3`, `og`, `years-2`, `event:12`; `TradeKey`, `ParseTradeKey`; each level of a tiered badge is its own badge, so an earned level 3 holds levels 1 to 3): `badge_holdings.copies` is what trades gave, `spent` says the one earned copy was traded away. Someone holds `copies` plus one if they earned it and have not spent it. An earned copy exists once and is never earned again (staff saying it again changes nothing), so only trades make more; nothing is written until a trade happens. `earnedBadges` applies it (`heldBadges`, `applyHoldings`): the profile shows the highest level held, and a badge trades touched carries no `count`.
+- Not tradable: staff ranks and plans (`ParseTradeKey` says no). Everything else is, Secret badges included (the owner's choice, 2026-11-13), so a trade shows a Secret badge's name to the person it is offered to; the Badge Index still shows a locked Secret as a padlock. Staff's holders lists and an override only touch the earned copy, while `Exist` counts copies as they are held now, so three copies in two people's hands read "3 exist" (`countTrades`).
+- The Badge Index entry carries `qty` for its own owner only, and the apps show "×N" from two copies up. Profiles and everyone else never get a quantity. What a person can offer is `GET /trades/holdings`, theirs alone.
+- A trade is one row (`badge_trades`) both edit: `from_offer` and `to_offer` (each side only offers its own badges), `from_ready`, `to_ready` and `version`. Any change to an offer clears both Ready marks and counts the version up, and `PUT /trades/{id}/ready` names the version it was given for (`trade_changed` otherwise), so nothing can be swapped in under someone's click. When the second Ready lands the trade happens in the same transaction: every removal is a conditional write (`take`), earned copy last, so a copy offered in two trades goes to the first and the other fails with `trade_they_short`; failing rolls the Ready back too. Routes: `POST /trades` opens one or returns the one already open between the two, `GET /trades/{id}`, `PUT /trades/{id}/offer`, `PUT /trades/{id}/ready`, `POST /trades/{id}/end` (declined by the one it was opened with, cancelled by the one who opened it). Only the two people can read or change it.
+- Opening follows the rules of a DM (`dmGate`, shared with `handleDMCreate`: blocks, DM privacy, a captcha for a first message to a stranger, never Nexa, bots or yourself), under `limTrade`, with at most `MaxPendingPerRecip` open per person and `MaxPendingTrades` in all; a block ends offers and Ready across it. It posts a `system_trade` message mentioning the other person (older apps draw it as a plain system line), whose current trade is attached when messages load (`hydrateTrades`) and updated by the `trade_update` event to both people. A trade left open stays until someone ends it, and can be joined later when the other person was not there. The account purge deletes holdings and trades.
+- Trades are new data Nexa keeps, so the Privacy Policy needs a line about them; the owner's rule is that legal text is not edited without being asked, so the proposed wording sits in a separate file until then.
 
 ### Profile widgets (`api/widgets.go`, web `lib/widgets.ts`, Android `ui/profile/Widgets.kt`)
 
@@ -1122,7 +1151,7 @@ several games with exactly one name, the most rated wins (`mostRated`): IGDB lis
 `t` and `b` only for image ids a fetched page named. Web `components/games/GamePage.tsx`, Android
 `ui/profile/GamePage.kt`. Store links confirm first.
 
-### Plans and payments (`api/billing.go`, `internal/stripe`)
+### Plans and payments (`api/billing.go`, `internal/whop`)
 
 - Supporter ($5 a month, $48 a year) and Pro ($10, $96) raise only what costs money (`planLimitsFor`): the
   largest file (`MAX_UPLOAD_BYTES` sizes only files no plan covers, from webhooks, apps and notes), uploads
@@ -1130,19 +1159,27 @@ several games with exactly one name, the most rated wins (`mostRated`): IGDB lis
   Flame: refused without a plan, `plan_required`, and sent as the first colour solid, `store.styleForPlan`)
   and Pro's two server boosts (`fileMaxFor`). Chatting, calls and everything else stay free. `users.plan` is
   public, as a badge.
-- Stripe Managed Payments is the merchant of record. Prices are found by lookup key (`nexa_*`) and cached.
-  `POST /billing/webhook` checks Stripe's signature and always rereads the subscription from Stripe, so
-  repeated or out-of-order events end the same way; an older subscription ending never overrides a newer one.
+- Whop took over from Stripe (the owner's decision, 2026-11-11, "Replace Stripe"; `internal/stripe` is gone). The
+  four renewing plans are Whop plans named in `WHOP_PLAN_*`, priced from their variants and cached; a gift of a
+  period costs what that plan renews at. Gifts and pay what you want are one-time plans made inline per checkout
+  under `WHOP_PRODUCT_ID`. Every checkout is kept in `whop_checkouts` (migration 0062, swept after 90 days), and a
+  `payment.succeeded` buys only what the checkout it names was made for: a payment or membership naming no
+  checkout of ours buys nothing, since a membership names only Whop's user. `billing.customer_id` is the Whop
+  user, `subscription_id` the membership. `POST /billing/webhook` checks the Standard Webhooks signature
+  (`webhook-id`, `webhook-timestamp`, `webhook-signature`) and always rereads the membership from Whop, so
+  repeated or out-of-order events end the same way; an older membership ending never overrides a newer one.
+  Gifts and paid time are applied once per payment id. Manage Subscription opens the membership's `manage_url`.
+  Whether Whop is the merchant of record depends on the tax setting chosen in Whop's dashboard.
 - An account wears the better of its subscription and a running gift (`plan_gifts`, never between people
   either of whom blocked the other). Gift links are claimed by whoever opens `/gift/<code>` first.
   `recomputePlanTx` writes `users.plan` and drops the boosts of an account no longer Pro. Deleting an account
   cancels its subscription (`endSubscription`) and deletes its plan records.
-- Pay what you want (`POST /billing/pay-what-you-want`): one Checkout payment, never renewed. `pwywSplit`
+- Pay what you want (`POST /billing/pay-what-you-want`): one Whop payment, never renewed. `pwywSplit`
   turns it into paid time, applied once by the webhook through `Store.AddPaidTime`; the apps show the same
-  split before Stripe's page opens. The Support page always shows a Refunds section (14 days, in full, the
+  split before Whop's page opens. The Support page always shows a Refunds section (14 days, in full, the
   contact line) and every pay button carries `support.refunds.line`; keep them in step with the Terms' section
   8.
-- Without `STRIPE_SECRET_KEY` plans cannot be bought (`billing_off`), but the limits hold. Web `lib/plans.ts`,
+- Without every `WHOP_*` setting but `WHOP_API_URL` and `WHOP_ACCOUNT_ID`, plans cannot be bought (`billing_off`), but the limits hold. Web `lib/plans.ts`,
   `stores/billing.ts`, `components/support/`; Android `data/Plans`, `ui/support/Support.kt`.
 
 ### Sticker and emoji packs
@@ -1283,7 +1320,8 @@ it off), `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`, `R2_ENDPOINT` for tests, `R
 `WARP_PROXY_PORT`), integrations (`KLIPY_API_KEY`, `IGDB_CLIENT_ID`, `IGDB_CLIENT_SECRET`, `TMDB_API_KEY`,
 `TELEGRAM_BOT_TOKEN`, `DISCORD_CLIENT_ID`, `DISCORD_CLIENT_SECRET`, `DISCORD_BOT_TOKEN`,
 `DISCORD_ACTIVITY_GUILD_ID`, `DISCORD_REDIRECT_URL` left empty, `DISCORD_API_URL` for the fake, `LASTFM_API_KEY`, `LASTFM_API_URL` for a fake), payments
-(`STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `STRIPE_API_URL` for a fake), logging (`LOG_LEVEL`,
+(`WHOP_API_KEY`, `WHOP_WEBHOOK_SECRET`, `WHOP_ACCOUNT_ID`, `WHOP_PRODUCT_ID`, `WHOP_PLAN_SUPPORTER_MONTHLY`,
+`WHOP_PLAN_SUPPORTER_YEARLY`, `WHOP_PLAN_PRO_MONTHLY`, `WHOP_PLAN_PRO_YEARLY`, `WHOP_API_URL` for the sandbox or a fake), logging (`LOG_LEVEL`,
 `LOG_FILE`), optional host maintenance (`MAINTENANCE_FILE`). A new setting goes in `config.go`,
 `chatd.env.example` and this list.
 
@@ -1380,7 +1418,7 @@ mentions, reactions, sizes.
   channel header shows no mark (whoever added the app knew, and the topic keeps its room). The reading glass
   in the portal and consent page shows which kind an app is.
 - Not end-to-end encrypted: webhook and app messages (`messages.plain`, marked in the app), interactions,
-  Nexa's case threads, poll and AutoMod notices the server writes, and everything public (profiles, avatars,
+  Nexa's case threads, poll and AutoMod notices the server writes, badge trades (the server moves the badges), and everything public (profiles, avatars,
   server names, emoji, stickers).
 
 ## Web app (`web/src`)
@@ -1492,7 +1530,9 @@ MIT copyright line in `LICENSE` stays as it is. `lib/legal.ts` also holds `LEGAL
 them from the file. A change to what the documents say bumps `LEGAL_EFFECTIVE`, which asks every account to
 agree again, and adds a `legal.new*` line (English in every locale) at the top of `LegalChanges` (web
 `LegalContent.tsx`, Android `Legal.kt`), with the older lines kept behind their version checks. 2026-11-07
-added `legal.newOwner`: zey, nexa.pm, and the server in France; 2026-11-08 added `legal.newOwnerAccess`: the owner's tools, and its second version that day `legal.newOwnerPreview`: Preview. The homepage names open source in its
+added `legal.newOwner`: zey, nexa.pm, and the server in France; 2026-11-08 added `legal.newOwnerAccess`:
+account security records. Revision .3 reuses `legal.newOwnerPreview` for the membership, app access and
+moderation wording and removes public owner-only access descriptions while keeping the tools and their logging. The homepage names open source in its
 introduction and as the first of its five promises and links GitHub; Settings has a GitHub shortcut on every
 platform; the About page and Settings, About explain the MIT license and invite contributions. README.md uses
 the synthetic `web/public/home/app.png`, which holds no personal conversations.

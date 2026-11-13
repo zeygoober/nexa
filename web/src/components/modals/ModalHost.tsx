@@ -1,4 +1,5 @@
 import type { DecryptedMessage } from "@/lib/decrypt";
+import { TradeWindow } from "@/components/trades/TradeWindow";
 import { Suspense, useCallback, type ComponentProps } from "react";
 import type { Badge } from "@/api/types";
 import { AllBadges } from "@/components/badges/Badges";
@@ -138,6 +139,7 @@ function ModalEntry({ modal }: { modal: ModalState }) {
       {modal?.kind === "reactionRoles" ? <ReactionRolesModal onClose={close} channelId={String(modal.props?.["channelId"])} messageId={String(modal.props?.["messageId"])} /> : null}
       {modal?.kind === "stickerPack" ? <StickerPackModal onClose={close} packId={String(modal.props?.["packId"])} pack={modal.props?.["pack"] as StickerPack | undefined} stickerId={modal.props?.["stickerId"] as string | undefined} /> : null}
       {modal?.kind === "serverProfile" ? <ServerProfileModal onClose={close} serverId={String(modal.props?.["serverId"])} userId={modal.props?.["userId"] as string | undefined} /> : null}
+      {modal?.kind === "trade" ? <TradeWindow onClose={close} userId={modal.props?.["userId"] as string | undefined} tradeId={modal.props?.["tradeId"] as string | undefined} /> : null}
       {modal?.kind === "block" ? <BlockDialog onClose={close} userId={String(modal.props?.["userId"])} /> : null}
       {modal?.kind === "folderSettings" ? <FolderSettingsModal onClose={close} folderId={modal.props?.["folderId"] as string | undefined} serverIds={modal.props?.["serverIds"] as string[] | undefined} /> : null}
       {modal?.kind === "joinInvite" ? <InviteDialog onClose={close} code={String(modal.props?.["code"])} hash={String(modal.props?.["hash"] ?? "")} /> : null}

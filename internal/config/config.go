@@ -100,12 +100,21 @@ type Config struct {
 	// DiscordAPIURL is Discord's REST API; only end-to-end tests point it at a fake.
 	DiscordAPIURL string
 
-	// Subscriptions (api/billing.go) are on once both Stripe keys are set:
-	// the secret key and the webhook endpoint's signing secret. StripeAPIURL
-	// is Stripe's API; only tests point it at a fake.
-	StripeSecretKey     string
-	StripeWebhookSecret string
-	StripeAPIURL        string
+	// Plans (api/billing.go) are sold through Whop, on once the API key, the
+	// webhook secret and the four plans' ids are set. WhopAPIURL is Whop's
+	// API: empty for the live one, the sandbox's to try it, a fake in tests.
+	// WhopProductID is the product the one-time plans made for a gift or a
+	// chosen amount belong to; WhopAccountID the business (biz_), sent with
+	// each checkout when set.
+	WhopAPIKey           string
+	WhopWebhookSecret    string
+	WhopAPIURL           string
+	WhopAccountID        string
+	WhopProductID        string
+	WhopSupporterMonthly string
+	WhopSupporterYearly  string
+	WhopProMonthly       string
+	WhopProYearly        string
 	// DiscordRedirectURL names the callback Discord sends people back through
 	// after linking, outright. Empty, as it is meant to be, the callback is
 	// chosen from the ones listed under OAuth2, Redirects in the Developer
@@ -242,9 +251,15 @@ func Load(getenv func(string) string) (Config, error) {
 	str("DISCORD_ACTIVITY_GUILD_ID", &c.DiscordGuildID)
 	str("DISCORD_API_URL", &c.DiscordAPIURL)
 	str("DISCORD_REDIRECT_URL", &c.DiscordRedirectURL)
-	str("STRIPE_SECRET_KEY", &c.StripeSecretKey)
-	str("STRIPE_WEBHOOK_SECRET", &c.StripeWebhookSecret)
-	str("STRIPE_API_URL", &c.StripeAPIURL)
+	str("WHOP_API_KEY", &c.WhopAPIKey)
+	str("WHOP_WEBHOOK_SECRET", &c.WhopWebhookSecret)
+	str("WHOP_API_URL", &c.WhopAPIURL)
+	str("WHOP_ACCOUNT_ID", &c.WhopAccountID)
+	str("WHOP_PRODUCT_ID", &c.WhopProductID)
+	str("WHOP_PLAN_SUPPORTER_MONTHLY", &c.WhopSupporterMonthly)
+	str("WHOP_PLAN_SUPPORTER_YEARLY", &c.WhopSupporterYearly)
+	str("WHOP_PLAN_PRO_MONTHLY", &c.WhopProMonthly)
+	str("WHOP_PLAN_PRO_YEARLY", &c.WhopProYearly)
 	str("TURNSTILE_SITE_KEY", &c.TurnstileSiteKey)
 	str("TURNSTILE_SECRET_KEY", &c.TurnstileSecretKey)
 	str("HCAPTCHA_SITE_KEY", &c.HCaptchaSiteKey)

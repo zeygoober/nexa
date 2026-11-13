@@ -208,6 +208,41 @@ func TestLoginRequiresSecondFactor(t *testing.T) {
 	}
 }
 
+// A phone that lost the answer to its second step asks again with the same
+// code (2026-11-11: a backup code was spent and nobody was signed in). Only
+// that ticket gets in again; the spent code stays spent for any other.
+func TestLostSecondStepAnswerCanBeAskedAgain(t *testing.T) {
+	srv, ts := newTestServer(t)
+	token, _ := register(t, ts, "alice")
+	_, backups := enableTOTP(t, ts, token)
+	login := func() string {
+		_, body := do(t, ts, "POST", "/api/v1/auth/login", "", map[string]any{"username": "alice", "auth_key": b64(key32)})
+		return body["ticket"].(string)
+	}
+	ticket := login()
+	for i := range 2 {
+		res, body := do(t, ts, "POST", "/api/v1/auth/login/mfa", "", map[string]any{"ticket": ticket, "backup_code": backups[0]})
+		if res.StatusCode != 200 || body["token"] == nil {
+			t.Fatalf("try %d with the same ticket and code should sign in: %d %v", i+1, res.StatusCode, body)
+		}
+	}
+	// another code on that ticket is not a repeat
+	res, body := do(t, ts, "POST", "/api/v1/auth/login/mfa", "", map[string]any{"ticket": ticket, "code": "123456"})
+	if res.StatusCode != 401 || errCode(body) != "invalid_code" {
+		t.Fatalf("a different code on a used ticket must be refused: %d %v", res.StatusCode, body)
+	}
+	srv.limAuthUsr.Reset("mfa:" + userIDOf(t, ts, token))
+	// the spent code on a new ticket is refused
+	res, body = do(t, ts, "POST", "/api/v1/auth/login/mfa", "", map[string]any{"ticket": login(), "backup_code": backups[0]})
+	if res.StatusCode != 401 || errCode(body) != "invalid_code" {
+		t.Fatalf("a spent backup code on another ticket must be refused: %d %v", res.StatusCode, body)
+	}
+	res, body = do(t, ts, "GET", "/api/v1/auth/mfa", token, nil)
+	if body["backup_codes_left"].(float64) != float64(backupCount-1) {
+		t.Fatalf("one code should be spent: %v", body)
+	}
+}
+
 func mustParseID(t *testing.T, s string) ids.ID {
 	t.Helper()
 	id, err := ids.Parse(s)

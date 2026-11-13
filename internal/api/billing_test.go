@@ -11,63 +11,53 @@ import (
 	"testing"
 	"time"
 
-	"evilion.xyz/chat/internal/stripe"
+	"evilion.xyz/chat/internal/whop"
 )
 
-const testWebhookSecret = "whsec_test"
+const testWebhookSecret = "ws_test"
 
-// fakeStripe plays the parts of Stripe's API billing.go calls.
-type fakeStripe struct {
+// fakeWhop plays the parts of Whop's API billing.go calls.
+type fakeWhop struct {
 	mu        sync.Mutex
-	subs      map[string]map[string]any
-	checkouts []map[string]string
+	mems      map[string]map[string]any
+	checkouts []map[string]any
 	canceled  []string
 }
 
-func newFakeStripe(t *testing.T) (*fakeStripe, *httptest.Server) {
-	f := &fakeStripe{subs: map[string]map[string]any{}}
+func newFakeWhop(t *testing.T) (*fakeWhop, *httptest.Server) {
+	f := &fakeWhop{mems: map[string]map[string]any{}}
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		f.mu.Lock()
 		defer f.mu.Unlock()
-		if v := r.Header.Get("Stripe-Version"); v != stripe.APIVersion {
-			t.Errorf("Stripe-Version %q", v)
+		if v := r.Header.Get("Api-Version-Date"); v != whop.APIVersionDate {
+			t.Errorf("Api-Version-Date %q", v)
 		}
-		_ = r.ParseForm()
+		var in map[string]any
+		_ = json.NewDecoder(r.Body).Decode(&in)
 		switch {
-		case r.Method == "GET" && r.URL.Path == "/v1/prices":
-			var data []map[string]any
-			for _, k := range r.Form["lookup_keys[]"] {
-				amount := 500
-				if strings.Contains(k, "pro") {
-					amount = 1000
-				}
-				data = append(data, map[string]any{"id": "price_" + k, "lookup_key": k, "unit_amount": amount, "currency": "usd"})
-			}
-			json.NewEncoder(w).Encode(map[string]any{"data": data})
-		case r.Method == "POST" && r.URL.Path == "/v1/checkout/sessions":
-			form := map[string]string{}
-			for k := range r.PostForm {
-				form[k] = r.PostForm.Get(k)
-			}
-			f.checkouts = append(f.checkouts, form)
-			json.NewEncoder(w).Encode(map[string]any{"url": "https://checkout.stripe.test/c/1"})
-		case r.Method == "POST" && r.URL.Path == "/v1/billing_portal/sessions":
-			json.NewEncoder(w).Encode(map[string]any{"url": "https://billing.stripe.test/p/" + r.PostForm.Get("customer")})
-		case strings.HasPrefix(r.URL.Path, "/v1/subscriptions/"):
-			id := strings.TrimPrefix(r.URL.Path, "/v1/subscriptions/")
-			sub, ok := f.subs[id]
+		case r.Method == "GET" && strings.HasPrefix(r.URL.Path, "/variants/"):
+			id := strings.TrimPrefix(r.URL.Path, "/variants/")
+			price := map[string]float64{"plan_sup_month": 5, "plan_sup_year": 48, "plan_pro_month": 10, "plan_pro_year": 96}[id]
+			json.NewEncoder(w).Encode(map[string]any{"id": id, "billing_type": "renewal", "initial_price": price, "renewal_price": price, "currency": "usd"})
+		case r.Method == "POST" && r.URL.Path == "/checkout_configurations":
+			f.checkouts = append(f.checkouts, in)
+			id := fmt.Sprintf("ch_%d", len(f.checkouts))
+			json.NewEncoder(w).Encode(map[string]any{"id": id, "purchase_url": "https://whop.test/checkout/" + id})
+		case strings.HasPrefix(r.URL.Path, "/memberships/"):
+			id, cancel := strings.CutSuffix(strings.TrimPrefix(r.URL.Path, "/memberships/"), "/cancel")
+			m, ok := f.mems[id]
 			if !ok {
 				w.WriteHeader(404)
-				json.NewEncoder(w).Encode(map[string]any{"error": map[string]any{"code": "resource_missing", "message": "no such subscription"}})
+				json.NewEncoder(w).Encode(map[string]any{"error": map[string]any{"type": "not_found", "message": "no such membership"}})
 				return
 			}
-			if r.Method == "DELETE" {
+			if cancel && r.Method == "POST" {
 				f.canceled = append(f.canceled, id)
-				sub["status"] = "canceled"
+				m["status"] = "canceled"
 			}
-			json.NewEncoder(w).Encode(sub)
+			json.NewEncoder(w).Encode(m)
 		default:
-			t.Errorf("unexpected Stripe call %s %s", r.Method, r.URL.Path)
+			t.Errorf("unexpected Whop call %s %s", r.Method, r.URL.Path)
 			w.WriteHeader(404)
 		}
 	}))
@@ -75,26 +65,37 @@ func newFakeStripe(t *testing.T) (*fakeStripe, *httptest.Server) {
 	return f, ts
 }
 
-func (f *fakeStripe) setSub(id, uid, lookup, status string) {
+func (f *fakeWhop) setMem(id, variant, status string) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
-	f.subs[id] = map[string]any{
-		"id": id, "customer": "cus_" + uid, "status": status, "cancel_at_period_end": false,
-		"metadata": map[string]string{"user_id": uid},
-		"items": map[string]any{"data": []any{map[string]any{
-			"price":              map[string]any{"id": "price_" + lookup, "lookup_key": lookup, "unit_amount": 500, "currency": "usd", "recurring": map[string]any{"interval": "month"}},
-			"current_period_end": time.Now().Add(30 * 24 * time.Hour).Unix(),
-		}}},
+	f.mems[id] = map[string]any{
+		"id": id, "user_id": "user_" + id, "variant_id": variant, "status": status, "cancel_at_period_end": false,
+		"current_period_end": time.Now().Add(30 * 24 * time.Hour).UTC().Format(time.RFC3339),
+		"manage_url":         "https://whop.test/manage/" + id,
 	}
 }
 
-// sendWebhook posts a signed event the way Stripe does.
-func sendWebhook(t *testing.T, ts *httptest.Server, typ string, object map[string]any, secret string) int {
+func (f *fakeWhop) last() map[string]any {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	return f.checkouts[len(f.checkouts)-1]
+}
+
+func (f *fakeWhop) lastID() string {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	return fmt.Sprintf("ch_%d", len(f.checkouts))
+}
+
+// sendWebhook posts a signed event the way Whop does.
+func sendWebhook(t *testing.T, ts *httptest.Server, typ string, data map[string]any, secret string) int {
 	t.Helper()
-	body, _ := json.Marshal(map[string]any{"id": "evt_1", "type": typ, "data": map[string]any{"object": object}})
+	body, _ := json.Marshal(map[string]any{"id": "msg_1", "type": typ, "data": data})
 	now := time.Now().Unix()
 	req, _ := http.NewRequest("POST", ts.URL+"/api/v1/billing/webhook", bytes.NewReader(body))
-	req.Header.Set("Stripe-Signature", fmt.Sprintf("t=%d,v1=%s", now, stripe.Sign(body, secret, now)))
+	req.Header.Set("webhook-id", "msg_1")
+	req.Header.Set("webhook-timestamp", fmt.Sprint(now))
+	req.Header.Set("webhook-signature", whop.Sign(body, secret, "msg_1", now))
 	res, err := http.DefaultClient.Do(req)
 	if err != nil {
 		t.Fatal(err)
@@ -103,11 +104,32 @@ func sendWebhook(t *testing.T, ts *httptest.Server, typ string, object map[strin
 	return res.StatusCode
 }
 
-func billingServer(t *testing.T) (*Server, *httptest.Server, *fakeStripe) {
+// paid sends the payment.succeeded of a checkout.
+func paid(t *testing.T, ts *httptest.Server, payID, checkoutID, membershipID string) {
+	t.Helper()
+	data := map[string]any{"id": payID, "status": "paid", "checkout_configuration_id": checkoutID, "membership_id": membershipID}
+	if code := sendWebhook(t, ts, "payment.succeeded", data, testWebhookSecret); code != 200 {
+		t.Fatalf("payment webhook: %d", code)
+	}
+}
+
+func billingServer(t *testing.T) (*Server, *httptest.Server, *fakeWhop) {
 	srv, ts := newTestServer(t)
-	f, fs := newFakeStripe(t)
-	srv.Cfg.StripeSecretKey, srv.Cfg.StripeWebhookSecret, srv.Cfg.StripeAPIURL = "sk_test", testWebhookSecret, fs.URL
+	f, fs := newFakeWhop(t)
+	c := &srv.Cfg
+	c.WhopAPIKey, c.WhopWebhookSecret, c.WhopAPIURL, c.WhopProductID = "apik_test", testWebhookSecret, fs.URL, "prod_nexa"
+	c.WhopSupporterMonthly, c.WhopSupporterYearly, c.WhopProMonthly, c.WhopProYearly = "plan_sup_month", "plan_sup_year", "plan_pro_month", "plan_pro_year"
 	return srv, ts, f
+}
+
+// subscribe buys a plan through a checkout and its payment.
+func subscribe(t *testing.T, ts *httptest.Server, f *fakeWhop, tok, plan, period, mem, variant string) {
+	t.Helper()
+	if res, body := do(t, ts, "POST", "/api/v1/billing/checkout", tok, map[string]any{"plan": plan, "period": period}); res.StatusCode != 200 {
+		t.Fatalf("checkout: %d %v", res.StatusCode, body)
+	}
+	f.setMem(mem, variant, "active")
+	paid(t, ts, "pay_"+mem, f.lastID(), mem)
 }
 
 func TestBillingCheckoutWebhookAndPlan(t *testing.T) {
@@ -115,43 +137,51 @@ func TestBillingCheckoutWebhookAndPlan(t *testing.T) {
 	tok, uid := register(t, ts, "payer")
 
 	res, body := do(t, ts, "POST", "/api/v1/billing/checkout", tok, map[string]any{"plan": "pro", "period": "year"})
-	if res.StatusCode != 200 || body["url"] != "https://checkout.stripe.test/c/1" {
+	if res.StatusCode != 200 || body["url"] != "https://whop.test/checkout/ch_1" {
 		t.Fatalf("checkout: %d %v", res.StatusCode, body)
 	}
-	got := f.checkouts[0]
-	if got["managed_payments[enabled]"] != "true" || got["mode"] != "subscription" || got["line_items[0][price]"] != "price_nexa_pro_yearly" || got["client_reference_id"] != uid || got["subscription_data[metadata][user_id]"] != uid {
-		t.Fatalf("checkout form: %v", got)
+	got := f.last()
+	if got["variant_id"] != "plan_pro_year" || got["mode"] != "payment" || got["metadata"].(map[string]any)["user_id"] != uid {
+		t.Fatalf("checkout body: %v", got)
 	}
 
 	// a forged event changes nothing
-	f.setSub("sub_1", uid, "nexa_pro_yearly", "active")
-	if code := sendWebhook(t, ts, "checkout.session.completed", map[string]any{"subscription": "sub_1", "client_reference_id": uid}, "whsec_wrong"); code != 400 {
+	f.setMem("mem_1", "plan_pro_year", "active")
+	if code := sendWebhook(t, ts, "payment.succeeded", map[string]any{"id": "pay_1", "checkout_configuration_id": "ch_1", "membership_id": "mem_1"}, "ws_wrong"); code != 400 {
 		t.Fatalf("forged webhook: %d", code)
 	}
+	// a membership alone names only Whop's user, so it goes on nobody
+	if code := sendWebhook(t, ts, "membership.activated", map[string]any{"id": "mem_1"}, testWebhookSecret); code != 200 {
+		t.Fatalf("membership webhook: %d", code)
+	}
+	// a payment for a checkout this server did not make buys nothing
+	f.setMem("mem_x", "plan_pro_year", "active")
+	paid(t, ts, "pay_x", "ch_someone_elses", "mem_x")
 	if u, _ := srv.Store.UserByID(t.Context(), modID(uid)); u.Plan != "" {
-		t.Fatalf("plan after forged webhook: %q", u.Plan)
+		t.Fatalf("plan before the payment: %q", u.Plan)
 	}
 
-	if code := sendWebhook(t, ts, "checkout.session.completed", map[string]any{"subscription": "sub_1", "client_reference_id": uid}, testWebhookSecret); code != 200 {
-		t.Fatalf("webhook: %d", code)
-	}
+	paid(t, ts, "pay_1", "ch_1", "mem_1")
 	_, me := do(t, ts, "GET", "/api/v1/users/@me", tok, nil)
 	if me["plan"] != "pro" {
 		t.Fatalf("plan: %v", me["plan"])
 	}
 	_, bill := do(t, ts, "GET", "/api/v1/billing", tok, nil)
-	if bill["plan"] != "pro" || bill["status"] != "active" || bill["manageable"] != true {
+	if bill["plan"] != "pro" || bill["status"] != "active" || bill["manageable"] != true || bill["period"] != "year" {
 		t.Fatalf("billing: %v", bill)
+	}
+	if p := bill["prices"].(map[string]any)["pro"].(map[string]any)["year"].(map[string]any); p["amount"].(float64) != 9600 || p["currency"] != "usd" {
+		t.Fatalf("prices: %v", bill["prices"])
 	}
 	if lim := bill["limits"].(map[string]any); lim["boosts"].(float64) != 2 || lim["file_max"].(float64) != float64(4<<30) {
 		t.Fatalf("limits: %v", lim)
 	}
 
-	// buying again goes through the portal
+	// buying again goes through the membership's own page
 	if res, body := do(t, ts, "POST", "/api/v1/billing/checkout", tok, map[string]any{"plan": "supporter", "period": "month"}); res.StatusCode != 409 || errCode(body) != "already_subscribed" {
 		t.Fatalf("second checkout: %d %v", res.StatusCode, body)
 	}
-	if res, body := do(t, ts, "POST", "/api/v1/billing/portal", tok, nil); res.StatusCode != 200 || body["url"] != "https://billing.stripe.test/p/cus_"+uid {
+	if res, body := do(t, ts, "POST", "/api/v1/billing/portal", tok, nil); res.StatusCode != 200 || body["url"] != "https://whop.test/manage/mem_1" {
 		t.Fatalf("portal: %d %v", res.StatusCode, body)
 	}
 
@@ -171,9 +201,9 @@ func TestBillingCheckoutWebhookAndPlan(t *testing.T) {
 		t.Fatalf("boosts on the server: %d", srv1.Boosts)
 	}
 
-	// the subscription ends: back to free, boosts gone
-	f.setSub("sub_1", uid, "nexa_pro_yearly", "canceled")
-	if code := sendWebhook(t, ts, "customer.subscription.deleted", map[string]any{"id": "sub_1"}, testWebhookSecret); code != 200 {
+	// the membership ends: back to free, boosts gone
+	f.setMem("mem_1", "plan_pro_year", "expired")
+	if code := sendWebhook(t, ts, "membership.deactivated", map[string]any{"id": "mem_1"}, testWebhookSecret); code != 200 {
 		t.Fatalf("webhook: %d", code)
 	}
 	if u, _ := srv.Store.UserByID(t.Context(), modID(uid)); u.Plan != "" {
@@ -189,11 +219,20 @@ func TestBillingCheckoutWebhookAndPlan(t *testing.T) {
 
 func TestBillingOlderSubscriptionEndingKeepsNewer(t *testing.T) {
 	srv, ts, f := billingServer(t)
-	_, uid := register(t, ts, "twice")
-	f.setSub("sub_new", uid, "nexa_supporter_monthly", "active")
-	sendWebhook(t, ts, "customer.subscription.created", map[string]any{"id": "sub_new"}, testWebhookSecret)
-	f.setSub("sub_old", uid, "nexa_pro_monthly", "canceled")
-	sendWebhook(t, ts, "customer.subscription.deleted", map[string]any{"id": "sub_old"}, testWebhookSecret)
+	tok, uid := register(t, ts, "twice")
+	subscribe(t, ts, f, tok, "pro", "month", "mem_old", "plan_pro_month")
+	f.setMem("mem_old", "plan_pro_month", "past_due")
+	sendWebhook(t, ts, "membership.updated", map[string]any{"id": "mem_old"}, testWebhookSecret)
+	// a second plan, bought while the first was still on
+	if _, err := srv.Store.DB().W.Exec(`UPDATE users SET plan = '' WHERE id = ?`, int64(modID(uid))); err != nil {
+		t.Fatal(err)
+	}
+	subscribe(t, ts, f, tok, "supporter", "month", "mem_new", "plan_sup_month")
+	f.setMem("mem_old", "plan_pro_month", "canceled")
+	if _, err := srv.Store.DB().W.Exec(`UPDATE billing SET subscription_id = 'mem_new'`); err != nil {
+		t.Fatal(err)
+	}
+	paid(t, ts, "pay_late", "ch_none", "mem_old") // the old one's last word
 	if u, _ := srv.Store.UserByID(t.Context(), modID(uid)); u.Plan != "supporter" {
 		t.Fatalf("plan: %q", u.Plan)
 	}
@@ -230,8 +269,7 @@ func TestPlanCaps(t *testing.T) {
 	if res, body := do(t, ts, "PATCH", "/api/v1/users/@me", tok, style); res.StatusCode != 403 || errCode(body) != "plan_required" {
 		t.Fatalf("free neon: %d %v", res.StatusCode, body)
 	}
-	f.setSub("sub_c", uid, "nexa_supporter_monthly", "active")
-	sendWebhook(t, ts, "customer.subscription.created", map[string]any{"id": "sub_c"}, testWebhookSecret)
+	subscribe(t, ts, f, tok, "supporter", "month", "mem_c", "plan_sup_month")
 	if res, body := do(t, ts, "PATCH", "/api/v1/users/@me", tok, style); res.StatusCode != 200 {
 		t.Fatalf("supporter neon: %d %v", res.StatusCode, body)
 	}
@@ -271,28 +309,26 @@ func TestGiftAPlan(t *testing.T) {
 	if res, body := do(t, ts, "POST", "/api/v1/billing/gift", tokA, map[string]any{"to": idA, "plan": "supporter", "period": "month"}); res.StatusCode != 400 || errCode(body) != "gift_self" {
 		t.Fatalf("a gift to yourself: %d %v", res.StatusCode, body)
 	}
-	res, body := do(t, ts, "POST", "/api/v1/billing/gift", tokA, map[string]any{"to": idB, "plan": "supporter", "period": "month"})
-	if res.StatusCode != 200 {
-		t.Fatalf("gift checkout: %d %v", res.StatusCode, body)
-	}
-	got := f.checkouts[len(f.checkouts)-1]
-	if got["mode"] != "payment" || got["metadata[gift_to]"] != idB || got["line_items[0][price]"] != "price_nexa_supporter_gift_month" || got["managed_payments[enabled]"] != "true" {
-		t.Fatalf("gift checkout form: %v", got)
-	}
-	paid := func(session, period string) {
+	gift := func() string {
 		t.Helper()
-		obj := map[string]any{"id": session, "mode": "payment", "payment_status": "paid", "metadata": map[string]string{"gift_from": idA, "gift_to": idB, "gift_plan": "supporter", "gift_period": period}}
-		if code := sendWebhook(t, ts, "checkout.session.completed", obj, testWebhookSecret); code != 200 {
-			t.Fatalf("gift webhook: %d", code)
+		if res, body := do(t, ts, "POST", "/api/v1/billing/gift", tokA, map[string]any{"to": idB, "plan": "supporter", "period": "month"}); res.StatusCode != 200 {
+			t.Fatalf("gift checkout: %d %v", res.StatusCode, body)
 		}
+		return f.lastID()
 	}
-	// an unpaid one gives nothing
-	if code := sendWebhook(t, ts, "checkout.session.completed", map[string]any{"id": "cs_unpaid", "mode": "payment", "payment_status": "unpaid", "metadata": map[string]string{"gift_to": idB, "gift_plan": "pro", "gift_period": "year"}}, testWebhookSecret); code != 200 {
+	first := gift()
+	v, _ := f.last()["variant"].(map[string]any)
+	if v["initial_price"] != 5.0 || v["billing_type"] != "one_time" || v["product_id"] != "prod_nexa" || f.last()["metadata"].(map[string]any)["gift_to"] != idB {
+		t.Fatalf("gift checkout body: %v", f.last())
+	}
+	second := gift()
+	// a payment not yet through gives nothing
+	if code := sendWebhook(t, ts, "payment.succeeded", map[string]any{"id": "pay_open", "status": "open", "checkout_configuration_id": first}, testWebhookSecret); code != 200 {
 		t.Fatalf("unpaid: %d", code)
 	}
-	paid("cs_1", "month")
-	paid("cs_1", "month") // Stripe sending it twice gives it once
-	paid("cs_2", "month") // a second month starts when the first ends
+	paid(t, ts, "pay_1", first, "")
+	paid(t, ts, "pay_1", first, "")  // Whop sending it twice gives it once
+	paid(t, ts, "pay_2", second, "") // a second month starts when the first ends
 	if u, _ := srv.Store.UserByID(t.Context(), modID(idB)); u.Plan != "supporter" {
 		t.Fatalf("plan: %q", u.Plan)
 	}
@@ -314,21 +350,18 @@ func TestGiftAPlan(t *testing.T) {
 
 func TestGiftLink(t *testing.T) {
 	srv, ts, f := billingServer(t)
-	tokA, idA := register(t, ts, "linkgiver")
+	tokA, _ := register(t, ts, "linkgiver")
 	tokB, idB := register(t, ts, "claimer")
 	tokC, _ := register(t, ts, "toolate")
 	if res, body := do(t, ts, "POST", "/api/v1/billing/gift", tokA, map[string]any{"link": true, "plan": "pro", "period": "year"}); res.StatusCode != 200 {
 		t.Fatalf("link checkout: %d %v", res.StatusCode, body)
 	}
-	got := f.checkouts[len(f.checkouts)-1]
-	if got["metadata[gift_link]"] != "1" || got["metadata[gift_to]"] != "" || got["line_items[0][price]"] != "price_nexa_pro_gift_year" {
-		t.Fatalf("link checkout form: %v", got)
+	meta := f.last()["metadata"].(map[string]any)
+	if meta["gift_link"] != "1" || meta["gift_to"] != nil || f.last()["variant"].(map[string]any)["initial_price"] != 96.0 {
+		t.Fatalf("link checkout body: %v", f.last())
 	}
-	obj := map[string]any{"id": "cs_link", "mode": "payment", "payment_status": "paid", "metadata": map[string]string{"gift_from": idA, "gift_link": "1", "gift_plan": "pro", "gift_period": "year"}}
 	for range 2 { // sent twice, made once
-		if code := sendWebhook(t, ts, "checkout.session.completed", obj, testWebhookSecret); code != 200 {
-			t.Fatalf("link webhook: %d", code)
-		}
+		paid(t, ts, "pay_link", f.lastID(), "")
 	}
 	_, bill := do(t, ts, "GET", "/api/v1/billing", tokA, nil)
 	links, _ := bill["gift_links"].([]any)
@@ -380,7 +413,7 @@ func TestPlansKeepTheirOwnFileSizes(t *testing.T) {
 	}
 }
 
-// Pay what you want: the split, the bounds, the session Stripe is asked for,
+// Pay what you want: the split, the bounds, the checkout Whop is asked for,
 // and the time going on once, Pro first and Supporter after it.
 func TestPayWhatYouWant(t *testing.T) {
 	for _, c := range []struct{ amount, pro, sup int64 }{{100, 0, 0}, {499, 0, 0}, {500, 0, 1}, {999, 0, 1}, {1000, 1, 0}, {1500, 1, 1}, {2499, 2, 0}, {9600, 9, 1}} {
@@ -395,24 +428,15 @@ func TestPayWhatYouWant(t *testing.T) {
 			t.Fatalf("%d: %d %v", amount, res.StatusCode, body)
 		}
 	}
-	if res, body := do(t, ts, "POST", "/api/v1/billing/pay-what-you-want", tok, map[string]any{"amount": 2550}); res.StatusCode != 200 {
+	if res, body := do(t, ts, "POST", "/api/v1/billing/pay-what-you-want", tok, map[string]any{"amount": 2550}); res.StatusCode != 200 || body["pro_months"].(float64) != 2 {
 		t.Fatalf("checkout: %d %v", res.StatusCode, body)
 	}
-	got := f.checkouts[len(f.checkouts)-1]
-	if got["mode"] != "payment" || got["line_items[0][price_data][unit_amount]"] != "2550" || got["metadata[pro_days]"] != "60" || got["metadata[supporter_days]"] != "30" || got["line_items[0][price_data][product_data][tax_code]"] == "" {
-		t.Fatalf("checkout form: %v", got)
+	got := f.last()
+	if v := got["variant"].(map[string]any); v["initial_price"] != 25.5 || v["billing_type"] != "one_time" || got["metadata"].(map[string]any)["pro_days"] != "60" {
+		t.Fatalf("checkout body: %v", got)
 	}
-	meta := map[string]string{}
-	for k, v := range got {
-		if strings.HasPrefix(k, "metadata[") {
-			meta[strings.TrimSuffix(strings.TrimPrefix(k, "metadata["), "]")] = v
-		}
-	}
-	obj := map[string]any{"id": "cs_pwyw", "mode": "payment", "payment_status": "paid", "metadata": meta}
-	for range 2 { // Stripe sending it twice gives it once
-		if code := sendWebhook(t, ts, "checkout.session.completed", obj, testWebhookSecret); code != 200 {
-			t.Fatalf("webhook: %d", code)
-		}
+	for range 2 { // Whop sending it twice gives it once
+		paid(t, ts, "pay_pwyw", f.lastID(), "")
 	}
 	if u, _ := srv.Store.UserByID(t.Context(), modID(id)); u.Plan != "pro" {
 		t.Fatalf("plan: %q", u.Plan)

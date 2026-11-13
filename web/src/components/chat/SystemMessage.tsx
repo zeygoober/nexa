@@ -3,6 +3,7 @@ import { ArrowLeftFromLine, ArrowRightToLine, ChartBar, Crown, Pencil, Image, Me
 import { useNavigate } from "react-router-dom";
 import { useChannels } from "@/stores/channels";
 import { AutomodAlert } from "./AutomodAlert";
+import { TradeCard } from "@/components/trades/TradeCard";
 import { CallLine } from "@/components/voice/CallLine";
 import type { DecryptedMessage } from "@/stores/messages";
 import { useUI } from "@/stores/ui";
@@ -18,6 +19,7 @@ import s from "./Chat.module.css";
 import { t, Tr } from "@/i18n";
 export function SystemMessage({ msg }: { msg: DecryptedMessage }) {
   if (msg.type === "system_automod") return <AutomodAlert msg={msg} />;
+  if (msg.type === "system_trade") return <TradeCard msg={msg} />;
   return <PlainSystemMessage msg={msg} />;
 }
 

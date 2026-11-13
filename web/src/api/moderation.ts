@@ -11,7 +11,7 @@ import type { ReportReceipt } from "./reports";
 import { api, type UploadOptions } from "./client";
 import type { GiftLink, Invite, Overwrite, Role } from "./types";
 import type { BugCounts, BugMessage, MemberBug } from "./bugs";
-import type { Activity, BadgeArrangement, BadgeDef, BadgeHolder, BadgeShape, Emoji, PublicUser, ServerTag, Snowflake, StickerPack } from "./types";
+import type { Activity, BadgeArrangement, BadgeDef, BadgeHolder, BadgeIndexKind, BadgeShape, Emoji, PublicUser, ServerTag, Snowflake, StickerPack } from "./types";
 
 /** What staff set on an event badge they make or change. */
 export interface BadgeDefBody {
@@ -25,6 +25,7 @@ export interface BadgeDefBody {
   shape: BadgeShape;
   /** "0" for no picture. */
   image_id: Snowflake;
+  index_kind: BadgeIndexKind;
 }
 
 /** A person's badges as staff set them (internal/api/badge_handlers.go writeUserBadges). */
@@ -774,9 +775,13 @@ export const moderation = {
   forgetGame(process: string): Promise<void> {
     return api.request("POST", "/moderation/games/forget", { process });
   },
-  /** The event badges staff made, and how many hold Contributor. */
-  badges(): Promise<{ badges: BadgeDef[]; contributors: number }> {
+  /** The event badges staff made, and how many hold each badge given by hand (Contributor, Legend, ...). */
+  badges(): Promise<{ badges: BadgeDef[]; contributors: number; hand?: Record<string, number> }> {
     return api.request("GET", "/moderation/badges");
+  },
+  /** The owner's: a badge's tooltip in their own words, by its Badge Index key ("og", "bug-3", "event:<id>"); "" goes back to the built-in text. */
+  setBadgeTip(key: string, description: string): Promise<{ ok: boolean }> {
+    return api.request("PUT", "/moderation/badges/descriptions", { key, description });
   },
   /** The owner's: every badge of the Badge Index, to arrange. */
   badgeArrangement(): Promise<BadgeArrangement> {

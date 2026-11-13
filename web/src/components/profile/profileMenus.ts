@@ -5,6 +5,8 @@ import { copyText } from "@/lib/clipboard";
 import { copyBotIdItem } from "@/lib/copyId";
 import { confirmRemoveFriend, openBlockDialog, unblockUser } from "@/lib/friendship";
 import { useRelationships } from "@/stores/relationships";
+import { useUI } from "@/stores/ui";
+import { isBot } from "@/lib/botCopies";
 import { t } from "@/i18n";
 
 export interface ProfileMoreCtx {
@@ -25,6 +27,8 @@ export const profileMoreMenu = defineMenu<ProfileMoreCtx>("profileMore", [
   [
     button("reportProfileContent", ({ user, serverId }) => reportItem({ kind: "user", id: user.id, ...(serverId ? { serverId } : {}) })),
     button("reportProfileApp", ({ user }) => (user.flags & 64) !== 0 && reportItem({ kind: "application", id: user.id }, "report-app")),
+    // people only; a block ends it, as it ends a message
+    button("tradeBadgesFromProfile", ({ user }) => !isBot(user) && useRelationships.getState().byUser[user.id]?.type !== "blocked" && { id: "trade", label: t("profile.profileCard.tradeBadges"), onSelect: () => useUI.getState().openModal("trade", { userId: user.id }) }),
     button("viewFullProfile", ({ compact, viewFull }) => compact && { id: "full", label: t("profile.profileCard.viewFullProfile"), onSelect: viewFull }),
     button("copyProfileCardLink", ({ popout, copyLink }) => popout && { id: "link", label: t("profileLink.copy"), onSelect: copyLink }),
   ],

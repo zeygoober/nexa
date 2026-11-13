@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"io"
+	"maps"
 	"net/http"
 	"strconv"
 	"strings"
@@ -14,17 +15,19 @@ import (
 	"evilion.xyz/chat/internal/auth"
 	"evilion.xyz/chat/internal/ids"
 	"evilion.xyz/chat/internal/store"
-	"evilion.xyz/chat/internal/stripe"
+	"evilion.xyz/chat/internal/whop"
 )
 
 // Subscriptions. Everything Nexa does stays free; a plan only raises what
 // costs money to keep: how big one file may be, how much an account keeps in
 // files each month, how sharp a screen share may be, and some name effects. Pro also
-// boosts servers, which lets every member there send bigger files. People buy
-// through Stripe Checkout (Managed Payments, Stripe the merchant of record)
-// and manage or cancel in Stripe's Billing Portal; the webhook is what puts an
-// account on a plan, always by reading the subscription back from Stripe, so
-// events arriving twice or out of order end the same way.
+// boosts servers, which lets every member there send bigger files. People pay
+// at Whop's checkout and manage or cancel at the membership's own page on
+// Whop. Every checkout this server makes is kept (whop_checkouts), and a
+// payment is matched to it by its checkout's id, so what a payment buys is
+// what this server asked for. The webhook is what puts an account on a plan,
+// always by reading the membership back from Whop, so events arriving twice or
+// out of order end the same way.
 
 // planLimits is what one plan allows. The apps read the table from
 // /api/v1/instance and draw their limits and offers from it.
@@ -73,11 +76,13 @@ func (s *Server) plansInfo() map[string]any {
 }
 
 func (s *Server) billingEnabled() bool {
-	return s.Cfg.StripeSecretKey != "" && s.Cfg.StripeWebhookSecret != ""
+	c := s.Cfg
+	return c.WhopAPIKey != "" && c.WhopWebhookSecret != "" && c.WhopProductID != "" &&
+		c.WhopSupporterMonthly != "" && c.WhopSupporterYearly != "" && c.WhopProMonthly != "" && c.WhopProYearly != ""
 }
 
-func (s *Server) stripeClient() *stripe.Client {
-	return stripe.New(s.Cfg.StripeSecretKey, s.Cfg.StripeAPIURL)
+func (s *Server) whopClient() *whop.Client {
+	return whop.New(s.Cfg.WhopAPIKey, s.Cfg.WhopAPIURL)
 }
 
 // planOf is the plan of the account making the request, free for anyone else.
@@ -128,62 +133,99 @@ func (s *Server) monthUsed(ctx context.Context, uid ids.ID) (used, freesAt int64
 	return used, oldest + uploadWindow.Milliseconds(), nil
 }
 
-// The prices, found by their lookup keys and kept for a while.
+// The prices, read from the plans' own variants at Whop and kept for a while.
 const priceLife = 10 * time.Minute
 
-var planPrices = map[string]map[string]string{
-	store.PlanSupporter: {"month": "nexa_supporter_monthly", "year": "nexa_supporter_yearly"},
-	store.PlanPro:       {"month": "nexa_pro_monthly", "year": "nexa_pro_yearly"},
-}
-
-// giftPrices are the one-time prices of a plan bought for someone else, a
-// month or a year of it, by their lookup keys.
-var giftPrices = map[string]map[string]string{
-	store.PlanSupporter: {"month": "nexa_supporter_gift_month", "year": "nexa_supporter_gift_year"},
-	store.PlanPro:       {"month": "nexa_pro_gift_month", "year": "nexa_pro_gift_year"},
+// planVariants are the renewing Whop plans each of Nexa's plans is sold as, by
+// period.
+func (s *Server) planVariants() map[string]map[string]string {
+	c := s.Cfg
+	return map[string]map[string]string{
+		store.PlanSupporter: {"month": c.WhopSupporterMonthly, "year": c.WhopSupporterYearly},
+		store.PlanPro:       {"month": c.WhopProMonthly, "year": c.WhopProYearly},
+	}
 }
 
 // giftDays is how long a gift of a period lasts.
 var giftDays = map[string]int{"month": 30, "year": 365}
 
+// price is what one period of a plan costs, in cents.
+type price struct {
+	Amount   int64  `json:"amount"`
+	Currency string `json:"currency"`
+}
+
 type priceCache struct {
 	mu     sync.Mutex
 	at     time.Time
-	prices map[string]stripe.Price
+	prices map[string]map[string]price // plan, period
 }
 
-func (s *Server) prices(ctx context.Context) (map[string]stripe.Price, error) {
+// prices are what each plan renews at, by period. A gift of a period costs the
+// same, once.
+func (s *Server) prices(ctx context.Context) (map[string]map[string]price, error) {
 	s.priceCache.mu.Lock()
 	defer s.priceCache.mu.Unlock()
 	if s.priceCache.prices != nil && time.Since(s.priceCache.at) < priceLife {
 		return s.priceCache.prices, nil
 	}
-	var keys []string
-	for _, table := range []map[string]map[string]string{planPrices, giftPrices} {
-		for _, byPeriod := range table {
-			for _, k := range byPeriod {
-				keys = append(keys, k)
+	got := map[string]map[string]price{}
+	for plan, byPeriod := range s.planVariants() {
+		got[plan] = map[string]price{}
+		for per, id := range byPeriod {
+			v, err := s.whopClient().GetVariant(ctx, id)
+			if err != nil {
+				return nil, err
+			}
+			if amount := v.Price(); amount > 0 {
+				got[plan][per] = price{Amount: amount, Currency: strings.ToLower(v.Currency)}
 			}
 		}
-	}
-	got, err := s.stripeClient().PricesByLookupKey(ctx, keys)
-	if err != nil {
-		return nil, err
 	}
 	s.priceCache.prices, s.priceCache.at = got, time.Now()
 	return got, nil
 }
 
-// planForLookupKey reads which plan and period a price is.
-func planForLookupKey(key string) (plan, period string) {
-	for p, byPeriod := range planPrices {
-		for per, k := range byPeriod {
-			if k == key {
+// planForVariant reads which plan and period a Whop plan is.
+func (s *Server) planForVariant(id string) (plan, period string) {
+	for p, byPeriod := range s.planVariants() {
+		for per, v := range byPeriod {
+			if v == id && id != "" {
 				return p, per
 			}
 		}
 	}
 	return "", ""
+}
+
+// errPaymentsDown is Whop out of reach, or refusing what it was asked.
+var errPaymentsDown = E(http.StatusBadGateway, "billing_unavailable", "Payments can't be reached right now. Try again in a minute.")
+
+// checkout makes a Whop checkout and keeps it, so its payment is known when
+// it comes in; it answers where to send the buyer.
+func (s *Server) checkout(ctx context.Context, uid ids.ID, kind string, meta map[string]string, p whop.CheckoutParams) (string, error) {
+	p.AccountID = s.Cfg.WhopAccountID
+	if p.Metadata == nil {
+		p.Metadata = map[string]string{}
+	}
+	p.Metadata["nexa_kind"], p.Metadata["user_id"] = kind, uid.String()
+	co, err := s.whopClient().CreateCheckout(ctx, p)
+	if err != nil {
+		return "", err
+	}
+	if err := s.Store.AddWhopCheckout(ctx, store.WhopCheckout{ID: co.ID, UserID: uid, Kind: kind, Meta: meta}); err != nil {
+		return "", err
+	}
+	return co.PurchaseURL, nil
+}
+
+// oneTime is a plan made for one checkout: a gift, or an amount of the
+// buyer's choosing, sold once under the configured product.
+func (s *Server) oneTime(title string, cents int64, meta map[string]string) *whop.InlineVariant {
+	return &whop.InlineVariant{
+		ProductID: s.Cfg.WhopProductID, Title: title, BillingType: "one_time",
+		InitialPrice: whop.Dollars(cents), Currency: "usd", Visibility: "hidden", Metadata: meta,
+	}
 }
 
 func (s *Server) billingRoutes(mux *http.ServeMux) {
@@ -196,11 +238,11 @@ func (s *Server) billingRoutes(mux *http.ServeMux) {
 	mux.Handle("POST /api/v1/gifts/{code}/claim", s.userLimited(s.limJoin, s.handleGiftClaim))
 	mux.Handle("POST /api/v1/billing/boosts", s.authed(s.handleBoostAdd))
 	mux.Handle("DELETE /api/v1/billing/boosts/{id}", s.authed(s.handleBoostRemove))
-	// Stripe's, signed with the endpoint's secret
+	// Whop's, signed with the webhook's secret
 	mux.Handle("POST /api/v1/billing/webhook", ipLimited(s.limLookup, s.handleBillingWebhook))
 }
 
-// handleBilling is the account's side of it: its plan and what Stripe said
+// handleBilling is the account's side of it: its plan and what Whop said
 // last, what it uploaded in the last 30 days, its boosts and the prices.
 func (s *Server) handleBilling(w http.ResponseWriter, r *http.Request) {
 	me := auth.UserFrom(r.Context())
@@ -233,23 +275,12 @@ func (s *Server) handleBilling(w http.ResponseWriter, r *http.Request) {
 	}
 	if b, err := s.Store.BillingFor(ctx, me.ID); err == nil {
 		out["period"], out["status"], out["period_end"], out["cancel_at_end"] = b.Period, b.Status, b.PeriodEnd, b.CancelAtEnd
-		out["manageable"] = b.CustomerID != "" && s.billingEnabled()
+		out["manageable"] = b.SubscriptionID != "" && s.billingEnabled()
 	}
 	if s.billingEnabled() {
 		if got, err := s.prices(ctx); err == nil {
-			view := func(table map[string]map[string]string) map[string]map[string]any {
-				v := map[string]map[string]any{}
-				for plan, byPeriod := range table {
-					v[plan] = map[string]any{}
-					for per, key := range byPeriod {
-						if p, ok := got[key]; ok {
-							v[plan][per] = map[string]any{"amount": p.UnitAmount, "currency": p.Currency}
-						}
-					}
-				}
-				return v
-			}
-			out["prices"], out["gift_prices"] = view(planPrices), view(giftPrices)
+			// a gift of a period costs what the plan renews at
+			out["prices"], out["gift_prices"] = got, got
 		} else {
 			s.Log.Warn("billing: prices", "err", err)
 		}
@@ -275,56 +306,43 @@ func (s *Server) handleCheckout(w http.ResponseWriter, r *http.Request) {
 		WriteError(w, err)
 		return
 	}
-	key := planPrices[req.Plan][req.Period]
-	if key == "" {
+	variant := s.planVariants()[req.Plan][req.Period]
+	if variant == "" {
 		WriteError(w, E(http.StatusBadRequest, "invalid_plan", "Pick supporter or pro, by the month or the year."))
 		return
 	}
 	b, _ := s.Store.BillingFor(r.Context(), me.ID)
-	// changing plan, or paying for one already running, is the portal's job
-	if me.Plan != store.PlanFree && b != nil && b.CustomerID != "" {
+	// changing plan, or paying for one already running, is the membership's own page's job
+	if me.Plan != store.PlanFree && b != nil && b.SubscriptionID != "" && planStatuses[b.Status] {
 		WriteError(w, E(http.StatusConflict, "already_subscribed", "You already have a plan. Change it from Manage Subscription."))
 		return
 	}
-	prices, err := s.prices(r.Context())
-	if err != nil {
-		s.Log.Error("billing: prices", "err", err)
-		WriteError(w, E(http.StatusBadGateway, "billing_unavailable", "Payments can't be reached right now. Try again in a minute."))
-		return
-	}
-	price, ok := prices[key]
-	if !ok {
-		s.Log.Error("billing: no active price", "lookup_key", key)
-		WriteError(w, E(http.StatusBadGateway, "billing_unavailable", "That plan can't be bought right now."))
-		return
-	}
-	p := stripe.CheckoutParams{PriceID: price.ID, UserID: me.ID.String(), SuccessURL: s.billingReturnURL(r) + "?checkout=done", CancelURL: s.billingReturnURL(r)}
-	if b != nil {
-		p.CustomerID = b.CustomerID
-	}
-	url, err := s.stripeClient().CreateCheckout(r.Context(), p)
+	url, err := s.checkout(r.Context(), me.ID, "plan", map[string]string{"plan": req.Plan, "period": req.Period},
+		whop.CheckoutParams{VariantID: variant, RedirectURL: s.billingReturnURL(r) + "?checkout=done"})
 	if err != nil {
 		s.Log.Error("billing: checkout", "err", err)
-		WriteError(w, E(http.StatusBadGateway, "billing_unavailable", "Payments can't be reached right now. Try again in a minute."))
+		WriteError(w, errPaymentsDown)
 		return
 	}
 	WriteJSON(w, http.StatusOK, map[string]string{"url": url})
 }
 
+// handlePortal answers the membership's own page at Whop, where it is changed
+// or cancelled.
 func (s *Server) handlePortal(w http.ResponseWriter, r *http.Request) {
 	me := auth.UserFrom(r.Context())
 	b, err := s.Store.BillingFor(r.Context(), me.ID)
-	if !s.billingEnabled() || err != nil || b.CustomerID == "" {
+	if !s.billingEnabled() || err != nil || b.SubscriptionID == "" {
 		WriteError(w, E(http.StatusNotFound, "no_subscription", "There's no subscription to manage."))
 		return
 	}
-	url, err := s.stripeClient().CreatePortal(r.Context(), b.CustomerID, s.billingReturnURL(r))
-	if err != nil {
-		s.Log.Error("billing: portal", "err", err)
-		WriteError(w, E(http.StatusBadGateway, "billing_unavailable", "Payments can't be reached right now. Try again in a minute."))
+	m, err := s.whopClient().GetMembership(r.Context(), b.SubscriptionID)
+	if err != nil || m.ManageURL == "" {
+		s.Log.Error("billing: manage page", "err", err)
+		WriteError(w, errPaymentsDown)
 		return
 	}
-	WriteJSON(w, http.StatusOK, map[string]string{"url": url})
+	WriteJSON(w, http.StatusOK, map[string]string{"url": m.ManageURL})
 }
 
 func (s *Server) handleBillingWebhook(w http.ResponseWriter, r *http.Request) {
@@ -337,104 +355,122 @@ func (s *Server) handleBillingWebhook(w http.ResponseWriter, r *http.Request) {
 		WriteError(w, E(http.StatusBadRequest, "bad_body", "The body could not be read."))
 		return
 	}
-	ev, err := stripe.VerifyWebhook(body, r.Header.Get("Stripe-Signature"), s.Cfg.StripeWebhookSecret, time.Now())
+	ev, err := whop.VerifyWebhook(body, r.Header.Get("webhook-id"), r.Header.Get("webhook-timestamp"), r.Header.Get("webhook-signature"), s.Cfg.WhopWebhookSecret, time.Now())
 	if err != nil {
 		WriteError(w, E(http.StatusBadRequest, "bad_signature", "The signature does not check out."))
 		return
 	}
-	var obj struct {
-		ID                string            `json:"id"`
-		Mode              string            `json:"mode"`
-		PaymentStatus     string            `json:"payment_status"`
-		Subscription      string            `json:"subscription"`
-		ClientReferenceID string            `json:"client_reference_id"`
-		Metadata          map[string]string `json:"metadata"`
-	}
-	_ = json.Unmarshal(ev.Data.Object, &obj)
-	var sub string
-	var hint ids.ID
-	switch ev.Type {
-	case "checkout.session.completed", "checkout.session.async_payment_succeeded":
-		if obj.Mode == "payment" && obj.Metadata["pwyw"] == "1" {
-			// an amount of the buyer's choosing, once its payment has come in
-			if obj.PaymentStatus == "paid" {
-				if err := s.applyPayWhatYouWant(r.Context(), obj.ID, obj.Metadata); err != nil {
-					s.Log.Error("billing: pay what you want", "event", ev.ID, "session", obj.ID, "err", err)
-					WriteError(w, E(http.StatusInternalServerError, "sync_failed", "Could not apply that yet."))
-					return
-				}
-			}
-			break
-		}
-		if obj.Mode == "payment" {
-			// a plan bought for someone else, once its payment has come in
-			if obj.PaymentStatus == "paid" {
-				if err := s.applyGift(r.Context(), obj.ID, obj.Metadata); err != nil {
-					s.Log.Error("billing: gift", "event", ev.ID, "session", obj.ID, "err", err)
-					WriteError(w, E(http.StatusInternalServerError, "sync_failed", "Could not apply that yet."))
-					return
-				}
-			}
-			break
-		}
-		sub = obj.Subscription
-		hint, _ = ids.Parse(obj.ClientReferenceID)
-	case "customer.subscription.created", "customer.subscription.updated", "customer.subscription.deleted":
-		sub = obj.ID
-	}
-	if sub != "" {
-		if err := s.syncSubscription(r.Context(), sub, hint); err != nil {
-			// Stripe sends it again later
-			s.Log.Error("billing: sync", "event", ev.ID, "subscription", sub, "err", err)
-			WriteError(w, E(http.StatusInternalServerError, "sync_failed", "Could not apply that yet."))
-			return
-		}
+	if err := s.billingEvent(r.Context(), ev); err != nil {
+		// Whop sends it again later
+		s.Log.Error("billing: webhook", "event", ev.ID, "type", ev.Type, "err", err)
+		WriteError(w, E(http.StatusInternalServerError, "sync_failed", "Could not apply that yet."))
+		return
 	}
 	WriteJSON(w, http.StatusOK, map[string]bool{"received": true})
 }
 
-// planStatuses are the subscription statuses that keep a plan on: a payment
-// that failed is retried for a while before Stripe ends it.
+// billingEvent applies one of Whop's events. A payment is what it bought by
+// the checkout this server made for it; a membership's change is read back
+// from Whop.
+func (s *Server) billingEvent(ctx context.Context, ev *whop.Event) error {
+	switch {
+	case ev.Type == "payment.succeeded":
+		var pay struct {
+			ID           string `json:"id"`
+			Status       string `json:"status"`
+			MembershipID string `json:"membership_id"`
+			CheckoutID   string `json:"checkout_configuration_id"`
+			Membership   struct {
+				ID string `json:"id"`
+			} `json:"membership"`
+		}
+		if err := json.Unmarshal(ev.Data, &pay); err != nil || pay.ID == "" {
+			s.Log.Warn("billing: a payment with no id", "event", ev.ID)
+			return nil
+		}
+		if pay.MembershipID == "" {
+			pay.MembershipID = pay.Membership.ID
+		}
+		if pay.Status != "" && pay.Status != "paid" {
+			return nil
+		}
+		co, err := s.Store.WhopCheckoutByID(ctx, pay.CheckoutID)
+		if errors.Is(err, store.ErrNotFound) {
+			// a renewal, or a payment for a checkout this server did not make
+			if pay.MembershipID != "" {
+				return s.syncMembership(ctx, pay.MembershipID, 0)
+			}
+			s.Log.Warn("billing: a payment for no checkout of ours", "payment", pay.ID)
+			return nil
+		}
+		if err != nil {
+			return err
+		}
+		switch co.Kind {
+		case "plan":
+			if pay.MembershipID == "" {
+				s.Log.Warn("billing: a plan payment with no membership", "payment", pay.ID)
+				return nil
+			}
+			return s.syncMembership(ctx, pay.MembershipID, co.UserID)
+		case "gift":
+			meta := maps.Clone(co.Meta)
+			meta["gift_from"] = co.UserID.String()
+			return s.applyGift(ctx, pay.ID, meta)
+		case "pwyw":
+			meta := maps.Clone(co.Meta)
+			meta["user_id"] = co.UserID.String()
+			return s.applyPayWhatYouWant(ctx, pay.ID, meta)
+		}
+	case strings.HasPrefix(ev.Type, "membership."):
+		var m struct {
+			ID string `json:"id"`
+		}
+		if json.Unmarshal(ev.Data, &m) == nil && m.ID != "" {
+			return s.syncMembership(ctx, m.ID, 0)
+		}
+	}
+	return nil
+}
+
+// planStatuses are the membership statuses that keep a plan on: a payment
+// that failed is retried for a while before Whop ends it.
 var planStatuses = map[string]bool{"active": true, "trialing": true, "past_due": true}
 
-// syncSubscription reads a subscription from Stripe and puts its account on
-// the plan it pays for, or back to free once it has ended. hint is the
-// account a Checkout session named, for a subscription made before its
-// metadata could be read back.
-func (s *Server) syncSubscription(ctx context.Context, subID string, hint ids.ID) error {
-	sub, err := s.stripeClient().GetSubscription(ctx, subID)
+// syncMembership reads a membership from Whop and puts its account on the
+// plan it pays for, or back to free once it has ended. hint is the account
+// whose checkout made it; without one, the membership must be one this server
+// already knows, since a membership names only Whop's user.
+func (s *Server) syncMembership(ctx context.Context, memID string, hint ids.ID) error {
+	m, err := s.whopClient().GetMembership(ctx, memID)
 	if err != nil {
 		return err
 	}
-	uid, _ := ids.Parse(sub.Metadata["user_id"])
+	uid := hint
 	if uid.IsZero() {
-		uid = hint
-	}
-	if uid.IsZero() {
-		if uid, err = s.Store.UserForCustomer(ctx, sub.Customer); err != nil {
-			s.Log.Warn("billing: subscription for nobody", "subscription", sub.ID, "customer", sub.Customer)
+		if uid, err = s.Store.UserForSubscription(ctx, m.ID); errors.Is(err, store.ErrNotFound) {
+			// its payment, which names the checkout, puts it on the account
+			s.Log.Info("billing: a membership not known yet", "membership", m.ID)
 			return nil
+		} else if err != nil {
+			return err
 		}
 	}
 	u, err := s.Store.UserByID(ctx, uid)
 	if errors.Is(err, store.ErrNotFound) || (err == nil && u.Flags&store.FlagDeleted != 0) {
-		s.Log.Warn("billing: subscription for a closed account", "subscription", sub.ID, "user", uid.String())
+		s.Log.Warn("billing: membership for a closed account", "membership", m.ID, "user", uid.String())
 		return nil
 	}
 	if err != nil {
 		return err
 	}
-	b := store.Billing{UserID: uid, CustomerID: sub.Customer, SubscriptionID: sub.ID, Status: sub.Status, CancelAtEnd: sub.CancelAtPeriodEnd}
-	if len(sub.Items.Data) > 0 {
-		item := sub.Items.Data[0]
-		b.Plan, b.Period = planForLookupKey(item.Price.LookupKey)
-		b.PeriodEnd = item.CurrentPeriodEnd * 1000
-	}
-	if !planStatuses[sub.Status] {
+	b := store.Billing{UserID: uid, CustomerID: m.UserID, SubscriptionID: m.ID, Status: m.Status, CancelAtEnd: m.CancelAtPeriodEnd, PeriodEnd: m.PeriodEnd()}
+	b.Plan, b.Period = s.planForVariant(m.VariantID)
+	if !planStatuses[m.Status] {
 		b.Plan = store.PlanFree
 	}
-	// The end of an older subscription says nothing about a newer one.
-	if old, err := s.Store.BillingFor(ctx, uid); err == nil && old.SubscriptionID != "" && old.SubscriptionID != sub.ID && planStatuses[old.Status] && b.Plan == store.PlanFree {
+	// The end of an older membership says nothing about a newer one.
+	if old, err := s.Store.BillingFor(ctx, uid); err == nil && old.SubscriptionID != "" && old.SubscriptionID != m.ID && planStatuses[old.Status] && b.Plan == store.PlanFree {
 		return nil
 	}
 	changed, unboosted, err := s.Store.SetBilling(ctx, b)
@@ -473,7 +509,7 @@ func (s *Server) endSubscription(ctx context.Context, uid ids.ID) {
 		return
 	}
 	if b.SubscriptionID != "" && planStatuses[b.Status] && s.billingEnabled() {
-		if err := s.stripeClient().CancelSubscription(ctx, b.SubscriptionID); err != nil {
+		if err := s.whopClient().CancelMembership(ctx, b.SubscriptionID, false); err != nil {
 			s.Log.Error("billing: cancel on account close", "user", uid.String(), "subscription", b.SubscriptionID, "err", err)
 		}
 	}
@@ -559,8 +595,7 @@ func (s *Server) handleGift(w http.ResponseWriter, r *http.Request) {
 		WriteError(w, err)
 		return
 	}
-	key := giftPrices[req.Plan][req.Period]
-	if key == "" {
+	if s.planVariants()[req.Plan][req.Period] == "" {
 		WriteError(w, E(http.StatusBadRequest, "invalid_plan", "Pick supporter or pro, for a month or a year."))
 		return
 	}
@@ -585,40 +620,47 @@ func (s *Server) handleGift(w http.ResponseWriter, r *http.Request) {
 	prices, err := s.prices(r.Context())
 	if err != nil {
 		s.Log.Error("billing: prices", "err", err)
-		WriteError(w, E(http.StatusBadGateway, "billing_unavailable", "Payments can't be reached right now. Try again in a minute."))
+		WriteError(w, errPaymentsDown)
 		return
 	}
-	price, ok := prices[key]
-	if !ok {
-		s.Log.Error("billing: no active price", "lookup_key", key)
+	p, ok := prices[req.Plan][req.Period]
+	if !ok || p.Currency != "usd" {
+		s.Log.Error("billing: no price for a gift", "plan", req.Plan, "period", req.Period)
 		WriteError(w, E(http.StatusBadGateway, "billing_unavailable", "That gift can't be bought right now."))
 		return
 	}
+	meta := map[string]string{"gift_plan": req.Plan, "gift_period": req.Period}
 	done := "?gift=done"
 	if req.Link {
-		done = "?gift=link"
+		meta["gift_link"], done = "1", "?gift=link"
+	} else {
+		meta["gift_to"] = toID
 	}
-	url, err := s.stripeClient().CreateGiftCheckout(r.Context(), stripe.GiftParams{
-		PriceID: price.ID, FromID: me.ID.String(), ToID: toID, Link: req.Link, Plan: req.Plan, Period: req.Period,
-		SuccessURL: s.billingReturnURL(r) + done, CancelURL: s.billingReturnURL(r),
+	title := "Nexa Supporter, a gift of a " + req.Period
+	if req.Plan == store.PlanPro {
+		title = "Nexa Pro, a gift of a " + req.Period
+	}
+	url, err := s.checkout(r.Context(), me.ID, "gift", meta, whop.CheckoutParams{
+		Variant: s.oneTime(title, p.Amount, meta), Metadata: maps.Clone(meta), RedirectURL: s.billingReturnURL(r) + done,
 	})
 	if err != nil {
 		s.Log.Error("billing: gift checkout", "err", err)
-		WriteError(w, E(http.StatusBadGateway, "billing_unavailable", "Payments can't be reached right now. Try again in a minute."))
+		WriteError(w, errPaymentsDown)
 		return
 	}
 	WriteJSON(w, http.StatusOK, map[string]string{"url": url})
 }
 
-// applyGift gives the plan a paid gift session names to its recipient, once,
-// or makes the gift link it bought. What the session says is what this
-// server wrote on it, under the secret key, so it is taken as it stands; a
-// gift to a closed account goes nowhere.
+// applyGift gives the plan a paid gift names to its recipient, once (by the
+// payment's id), or makes the gift link it bought. What it says is what this
+// server kept when it made the checkout, so it is taken as it stands; a gift
+// to a closed account goes nowhere.
 func (s *Server) applyGift(ctx context.Context, sessionID string, meta map[string]string) error {
 	from, _ := ids.Parse(meta["gift_from"])
 	days := giftDays[meta["gift_period"]]
 	plan := meta["gift_plan"]
-	if meta["gift_link"] == "1" && days > 0 && giftPrices[plan] != nil && !from.IsZero() {
+	known := plan == store.PlanSupporter || plan == store.PlanPro
+	if meta["gift_link"] == "1" && days > 0 && known && !from.IsZero() {
 		if _, err := s.Store.AddGiftLink(ctx, sessionID, from, plan, days); err != nil {
 			return err
 		}
@@ -626,7 +668,7 @@ func (s *Server) applyGift(ctx context.Context, sessionID string, meta map[strin
 		return nil
 	}
 	to, err := ids.Parse(meta["gift_to"])
-	if err != nil || days == 0 || giftPrices[plan] == nil {
+	if err != nil || days == 0 || !known {
 		s.Log.Warn("billing: a payment that is no gift", "session", sessionID)
 		return nil
 	}
@@ -706,7 +748,7 @@ func (s *Server) handleGiftClaim(w http.ResponseWriter, r *http.Request) {
 }
 
 // StartBilling ends gifts as their time runs out, every few minutes, putting
-// each account back on the plan it has without them.
+// each account back on the plan it has without them, and forgets old checkouts.
 func (s *Server) StartBilling(ctx context.Context) {
 	go func() {
 		t := time.NewTicker(5 * time.Minute)
@@ -724,6 +766,10 @@ func (s *Server) StartBilling(ctx context.Context) {
 				for uid, unboosted := range lapsed {
 					s.afterPlanChange(ctx, uid, true, unboosted)
 				}
+				// Whop gives up on a webhook within days; renewals are found by membership
+				if err := s.Store.SweepWhopCheckouts(ctx, time.Now().Add(-90*24*time.Hour).UnixMilli()); err != nil {
+					s.Log.Warn("billing: old checkouts", "err", err)
+				}
 			}
 		}
 	}()
@@ -734,13 +780,11 @@ func (s *Server) StartBilling(ctx context.Context) {
 // what is left buys months of Supporter at its month price; less than a month
 // of Supporter buys no plan time and is a thank-you. The apps work out the
 // same split from the same prices (web lib/plans.ts payWhatYouWant, Android
-// Plans.payWhatYouWant) and show it before Stripe's page opens.
+// Plans.payWhatYouWant) and show it before Whop's page opens.
 const (
 	pwywMin = int64(100)
-	// pwywMax is the most one Checkout payment in US dollars may be.
+	// pwywMax is the most one payment may be.
 	pwywMax = int64(99_999_999)
-	// pwywTaxCode is the plans' own: software as a service, for personal use.
-	pwywTaxCode = "txcd_10103000"
 )
 
 // pwywSplit is how many months of Pro and then Supporter an amount buys at
@@ -754,25 +798,25 @@ func pwywSplit(amount, supporterMonth, proMonth int64) (pro, supporter int64) {
 	return pro, supporter
 }
 
-// monthPrices are what a month of each plan costs once, in cents: the gift
-// prices, or the list prices when Stripe has not said.
+// monthPrices are what a month of each plan costs, in cents: what the plans
+// renew at, or the list prices when Whop has not said.
 func (s *Server) monthPrices(ctx context.Context) (supporter, pro int64, err error) {
 	supporter, pro = 500, 1000
 	got, err := s.prices(ctx)
 	if err != nil {
 		return 0, 0, err
 	}
-	if p, ok := got[giftPrices[store.PlanSupporter]["month"]]; ok && p.Currency == "usd" && p.UnitAmount > 0 {
-		supporter = p.UnitAmount
+	if p, ok := got[store.PlanSupporter]["month"]; ok && p.Currency == "usd" && p.Amount > 0 {
+		supporter = p.Amount
 	}
-	if p, ok := got[giftPrices[store.PlanPro]["month"]]; ok && p.Currency == "usd" && p.UnitAmount > 0 {
-		pro = p.UnitAmount
+	if p, ok := got[store.PlanPro]["month"]; ok && p.Currency == "usd" && p.Amount > 0 {
+		pro = p.Amount
 	}
 	return supporter, pro, nil
 }
 
 // handlePayWhatYouWant starts a payment of the amount the account chose, in
-// cents, and answers Stripe's page for it with what it buys.
+// cents, and answers Whop's page for it with what it buys.
 func (s *Server) handlePayWhatYouWant(w http.ResponseWriter, r *http.Request) {
 	me := auth.UserFrom(r.Context())
 	if !s.billingEnabled() {
@@ -797,25 +841,24 @@ func (s *Server) handlePayWhatYouWant(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	proMonths, supMonths := pwywSplit(req.Amount, sup, pro)
-	url, err := s.stripeClient().CreateAmountCheckout(r.Context(), stripe.AmountParams{
-		Amount: req.Amount, Currency: "usd", Name: "Nexa, pay what you want", TaxCode: pwywTaxCode, UserID: me.ID.String(),
-		Metadata: map[string]string{
-			"pwyw": "1", "user_id": me.ID.String(), "amount": strconv.FormatInt(req.Amount, 10),
-			"pro_days": strconv.FormatInt(proMonths*30, 10), "supporter_days": strconv.FormatInt(supMonths*30, 10),
-		},
-		SuccessURL: s.billingReturnURL(r) + "?paid=done", CancelURL: s.billingReturnURL(r),
+	meta := map[string]string{
+		"pwyw": "1", "amount": strconv.FormatInt(req.Amount, 10),
+		"pro_days": strconv.FormatInt(proMonths*30, 10), "supporter_days": strconv.FormatInt(supMonths*30, 10),
+	}
+	url, err := s.checkout(r.Context(), me.ID, "pwyw", meta, whop.CheckoutParams{
+		Variant: s.oneTime("Nexa, pay what you want", req.Amount, meta), Metadata: maps.Clone(meta), RedirectURL: s.billingReturnURL(r) + "?paid=done",
 	})
 	if err != nil {
 		s.Log.Error("billing: pay what you want checkout", "err", err)
-		WriteError(w, E(http.StatusBadGateway, "billing_unavailable", "Payments can't be reached right now. Try again in a minute."))
+		WriteError(w, errPaymentsDown)
 		return
 	}
 	WriteJSON(w, http.StatusOK, map[string]any{"url": url, "pro_months": proMonths, "supporter_months": supMonths})
 }
 
-// applyPayWhatYouWant puts the plan time a paid session bought on the account
-// that paid, once. The days are what this server wrote on the session when it
-// made it, under the secret key, so they are taken as they stand.
+// applyPayWhatYouWant puts the plan time a payment bought on the account that
+// paid, once (by the payment's id). The days are what this server kept when it
+// made the checkout, so they are taken as they stand.
 func (s *Server) applyPayWhatYouWant(ctx context.Context, sessionID string, meta map[string]string) error {
 	uid, err := ids.Parse(meta["user_id"])
 	if err != nil {

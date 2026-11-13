@@ -160,7 +160,21 @@ export async function passwordSignIn(username: string, password: string): Promis
     return {
       mfa: true,
       backupCodesLeft: res.backup_codes_left,
-      finish: async ({ code, backupCode }) => open(await authApi.loginMfa(ticket, backupCode ? { backup_code: backupCode } : { code: (code ?? "").replace(/\s/g, "") })),
+      finish: async ({ code, backupCode }) => {
+        const body = backupCode ? { backup_code: backupCode } : { code: (code ?? "").replace(/\s/g, "") };
+        let res: LoginResponse;
+        try {
+          res = await authApi.loginMfa(ticket, body);
+        } catch (err) {
+          // The answer never came (Safari's "Load failed" on switching apps, a dropped
+          // connection), but the server may have spent the code: asking again with the
+          // same ticket and code gets a session all the same (mfa_handlers.go mfaReplays).
+          if (!(err instanceof TypeError)) throw err;
+          await new Promise((r) => setTimeout(r, 1000));
+          res = await authApi.loginMfa(ticket, body);
+        }
+        return open(res);
+      },
     };
   }
   return { mfa: false, out: await open(res) };

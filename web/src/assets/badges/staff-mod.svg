@@ -1,10 +1,1 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24">
-  <defs>
-    <linearGradient id="staffmodp" x1="12" y1="2" x2="12" y2="22" gradientUnits="userSpaceOnUse">
-      <stop offset="0" stop-color="#a770ff"/><stop offset="1" stop-color="#9654ff"/>
-    </linearGradient>
-  </defs>
-  <g transform="translate(0.00 0.00) scale(1)" fill="url(#staffmodp)" fill-opacity=".22"><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/></g>
-  <g transform="translate(0.00 0.00) scale(1)" stroke="url(#staffmodp)" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round" fill="none"><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/><path d="m9 12 2 2 4-4"/></g>
-  
-</svg>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64"><defs><linearGradient id="b" gradientUnits="userSpaceOnUse" x1="32.01" y1="10.43" x2="32.01" y2="54.57"><stop stop-color="#c9a6ff"/><stop offset="1" stop-color="#6a35d8"/></linearGradient><linearGradient id="s" gradientUnits="userSpaceOnUse" x1="0" y1="0" x2="0" y2="30"><stop stop-color="#fff" stop-opacity=".42"/><stop offset="1" stop-color="#fff" stop-opacity=".1"/></linearGradient><mask id="m" maskUnits="userSpaceOnUse" x="0" y="0" width="64" height="64"><g transform="translate(-10.06 -11.71) scale(1.31)"><path d="M16 33L28 45L48 20" fill="none" stroke="#fff" stroke-width="10" stroke-linecap="round" stroke-linejoin="round"/></g></mask></defs><g transform="translate(0 2.6)"><g transform="translate(-10.06 -11.71) scale(1.31)"><path d="M16 33L28 45L48 20" fill="none" stroke="#2c1460" stroke-width="10" stroke-linecap="round" stroke-linejoin="round"/></g></g><g transform="translate(-10.06 -11.71) scale(1.31)"><path d="M16 33L28 45L48 20" fill="none" stroke="url(#b)" stroke-width="10" stroke-linecap="round" stroke-linejoin="round"/></g><ellipse mask="url(#m)" cx="32" cy="4" rx="46" ry="26" fill="url(#s)"/><g transform="translate(-10.06 -11.71) scale(1.31)"></g></svg>

@@ -139,6 +139,12 @@
   color: var(--text-strong);
   box-shadow: var(--shadow-low);
 }
+.kindHint {
+  margin: 8px 0 0;
+  font-size: 13px;
+  line-height: 18px;
+  color: var(--text-muted);
+}
 .picture {
   display: flex;
   align-items: center;

@@ -14,6 +14,7 @@ import (
 	"errors"
 	"net/http"
 	"strings"
+	"sync"
 	"time"
 
 	"evilion.xyz/chat/internal/auth"
@@ -92,6 +93,9 @@ type ticket struct {
 	User    string `json:"u"`
 	Exp     int64  `json:"e"`
 	Secret  string `json:"s,omitempty"`
+	// Nonce makes a sign-in's ticket its own: without it two in the same
+	// second were the same ticket, and a repeat (mfaReplays) has to name one
+	Nonce string `json:"n,omitempty"`
 }
 
 func (s *Server) signTicket(t ticket) string {
@@ -357,7 +361,9 @@ func (s *Server) handleBackupCodes(w http.ResponseWriter, r *http.Request) {
 
 // mfaChallenge is the reply to a password that was right but is not enough.
 func (s *Server) mfaChallenge(w http.ResponseWriter, u *store.User, start time.Time) {
-	tk := s.signTicket(ticket{Purpose: "login-mfa", User: u.ID.String(), Exp: time.Now().Add(mfaLoginTTL).Unix()})
+	nonce := make([]byte, 16)
+	_, _ = rand.Read(nonce)
+	tk := s.signTicket(ticket{Purpose: "login-mfa", User: u.ID.String(), Exp: time.Now().Add(mfaLoginTTL).Unix(), Nonce: base64.RawURLEncoding.EncodeToString(nonce)})
 	// This has no request to hang off — the caller does not pass one — so it
 	// gets a deadline of its own rather than none at all. The count is only
 	// shown beside the code box, so a failure leaves it unsaid rather than
@@ -372,6 +378,57 @@ func (s *Server) mfaChallenge(w http.ResponseWriter, u *store.User, start time.T
 		time.Sleep(minLoginTime - d)
 	}
 	WriteJSON(w, http.StatusOK, map[string]any{"mfa_required": true, "ticket": tk, "backup_codes_left": left})
+}
+
+// mfaReplays holds, for each sign-in ticket whose second step passed, which
+// code passed it, until the ticket lapses. A phone that loses the answer
+// (Safari's "Load failed" when someone switches apps, a dropped connection)
+// still spent the code, so asking again with it was refused and the person
+// was locked out of a code they never got to use, a backup code gone for
+// good. The same ticket with the same code gets a session again instead.
+// Only whoever passed the password step holds the ticket, and a code never
+// counts for any other ticket, so a code is still good for one sign-in.
+// In memory, per process, as chatd is one.
+type mfaReplays struct {
+	mu   sync.Mutex
+	done map[[32]byte]mfaReplay
+}
+
+type mfaReplay struct {
+	proof [32]byte
+	until time.Time
+}
+
+func mfaReplayKey(ticket string) [32]byte { return sha256.Sum256([]byte(ticket)) }
+
+// mfaProof is what a request presented, so a repeat can be told from another code.
+func (s *Server) mfaProof(uid ids.ID, code, backup string) [32]byte {
+	if strings.TrimSpace(backup) != "" {
+		return sha256.Sum256([]byte("backup\x00" + s.hashBackupCode(uid, backup)))
+	}
+	return sha256.Sum256([]byte("totp\x00" + strings.Join(strings.Fields(code), "")))
+}
+
+func (m *mfaReplays) remember(ticket string, proof [32]byte, until time.Time) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	now := time.Now()
+	if m.done == nil {
+		m.done = map[[32]byte]mfaReplay{}
+	}
+	for k, v := range m.done {
+		if now.After(v.until) {
+			delete(m.done, k)
+		}
+	}
+	m.done[mfaReplayKey(ticket)] = mfaReplay{proof: proof, until: until}
+}
+
+func (m *mfaReplays) repeated(ticket string, proof [32]byte) bool {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	v, ok := m.done[mfaReplayKey(ticket)]
+	return ok && time.Now().Before(v.until) && subtle.ConstantTimeCompare(v.proof[:], proof[:]) == 1
 }
 
 func (s *Server) handleLoginMFA(w http.ResponseWriter, r *http.Request) {
@@ -447,9 +504,16 @@ func (s *Server) handleLoginMFA(w http.ResponseWriter, r *http.Request) {
 			passed = fresh
 		}
 	}
+	proof := s.mfaProof(uid, req.Code, req.Backup)
 	if !passed {
-		fail()
-		return
+		// the same code again on the same ticket: the answer that signed in was lost on the way
+		// (a ticket from before nonces could be another sign-in's, so it never repeats)
+		if tk.Nonce == "" || !s.mfaAnswered.repeated(req.Ticket, proof) {
+			fail()
+			return
+		}
+	} else if tk.Nonce != "" {
+		s.mfaAnswered.remember(req.Ticket, proof, time.Unix(tk.Exp, 0))
 	}
 	token, err := s.newSession(r, uid)
 	if err != nil {

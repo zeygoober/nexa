@@ -455,7 +455,11 @@ fun MessageList(channel: Channel, modifier: Modifier = Modifier) {
                         else MessageRow(row.item, ctx, cm?.let { flashes[it.id] }, picked = cm != null && cm.id in ChatUi.picked, canPick = cm != null && !cm.m.ephemeral && canDelete(cm.m))
                         }
                     }
-                    is ListRow.System -> if (row.cm.m.type == "system_automod") fish.nexa.ui.automod.AutomodAlertRow(row.cm, ctx) else SystemRow(row.cm, ctx)
+                    is ListRow.System -> when (row.cm.m.type) {
+                        "system_automod" -> fish.nexa.ui.automod.AutomodAlertRow(row.cm, ctx)
+                        "system_trade" -> TradeRow(row.cm, ctx)
+                        else -> SystemRow(row.cm, ctx)
+                    }
                     is ListRow.Blocked -> BlockedRun(row, ctx) { blockedShown[row.key] = !row.shown }
                     ListRow.Start -> ConversationStart(channel)
                     ListRow.TopLoader -> Loader()

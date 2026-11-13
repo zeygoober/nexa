@@ -19,6 +19,8 @@ import fish.nexa.media.Media
 import fish.nexa.ui.components.AvatarColor
 import fish.nexa.ui.theme.NexaColors
 import fish.nexa.ui.theme.adjustOklch
+import fish.nexa.ui.theme.oklabLightness
+import fish.nexa.ui.theme.oklchChroma
 import fish.nexa.ui.theme.mixOklab
 import fish.nexa.ui.theme.mixSrgb
 import kotlin.math.pow
@@ -40,6 +42,9 @@ data class ProfileTokens(
     /** What a two-colour profile's badges sit on: opaque, from the card's own colour (web --badge-pill). */
     val badgePill: Color? = null,
 )
+
+/** The pill on a card with light text: a shade under the card, never so deep it goes black, and lifted on a near-black card (web --badge-pill). */
+private fun badgePillOn(top: Color): Color = adjustOklch(top, maxOf(oklabLightness(top) * 0.74f, 0.34f) - oklabLightness(top), -oklchChroma(top) * 0.15f)
 
 val LocalProfile = staticCompositionLocalOf { ProfileTokens(Color.Unspecified, Color.Unspecified, Color.Unspecified, Color.Unspecified, Color.Unspecified) }
 
@@ -86,7 +91,7 @@ object ProfileTheme {
             bubble = Color(14, 10, 24).copy(alpha = 0.74f),
             sheet = Color.Black.copy(alpha = 0.3f),
             top = theme.top, bottom = theme.bottom, text = "light",
-            badgePill = mixOklab(theme.top, Color.Black, 0.7f),
+            badgePill = badgePillOn(theme.top),
         ) else ProfileTokens(
             accent = adjustOklch(theme.top, -0.32f, 0.1f),
             chip = Color.White.copy(alpha = 0.55f),
@@ -94,7 +99,7 @@ object ProfileTheme {
             bubble = Color.White.copy(alpha = 0.88f),
             sheet = Color.White.copy(alpha = 0.42f),
             top = theme.top, bottom = theme.bottom, text = "dark",
-            badgePill = mixOklab(theme.top, Color.White, 0.8f),
+            badgePill = mixOklab(theme.top, Color.White, 0.4f),
         )
     }
 

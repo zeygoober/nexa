@@ -1,7 +1,7 @@
 import { Award, ImagePlus, PenLine, Pipette, Plus, Search, Trash2, Users, X } from "lucide-react";
 import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import { moderation as modApi } from "@/api/moderation";
-import type { Badge, BadgeDef, BadgeShape } from "@/api/types";
+import type { Badge, BadgeDef, BadgeIndexKind, BadgeShape } from "@/api/types";
 import { BadgeMark, BadgePill } from "@/components/badges/Badges";
 import { Button } from "@/components/common/Button";
 import { ColourInput } from "@/components/common/ColourInput";
@@ -10,7 +10,7 @@ import { LoadError } from "@/components/common/LoadError";
 import { Spinner } from "@/components/common/Spinner";
 import { Field, TextInput } from "@/components/common/TextInput";
 import { Toggle } from "@/components/common/Toggle";
-import { CONTRIBUTOR, defBadge, EVENT_COLOURS, EVENT_ICONS, EVENT_PREFIX, hexColour, OVERRIDABLE, type BadgeLook } from "@/lib/badges";
+import { CONTRIBUTOR, defBadge, HAND_BADGES, EVENT_COLOURS, EVENT_ICONS, EVENT_PREFIX, hexColour, OVERRIDABLE, type BadgeLook } from "@/lib/badges";
 import { describeError } from "@/lib/errors";
 import { useModEvents } from "@/stores/moderation";
 import { useUI } from "@/stores/ui";
@@ -48,7 +48,7 @@ export function BadgesTab() {
   const toast = useUI((u) => u.toast);
   const openModal = useUI((u) => u.openModal);
   const [list, setList] = useState<BadgeDef[] | null>(null);
-  const [contributors, setContributors] = useState(0);
+  const [hand, setHand] = useState<Record<string, number>>({});
   const [failed, setFailed] = useState(false);
   const [editing, setEditing] = useState<BadgeDef | null>(null);
   const [name, setName] = useState("");
@@ -60,6 +60,7 @@ export function BadgesTab() {
   const [shape, setShape] = useState<BadgeShape>("circle");
   const [image, setImage] = useState<{ id: string; url: string } | null>(null);
   const [mode, setMode] = useState<Mode>("icon");
+  const [indexKind, setIndexKind] = useState<BadgeIndexKind>("exclusive");
   const [query, setQuery] = useState("");
   const [crop, setCrop] = useState<File | null>(null);
   const [uploading, setUploading] = useState(false);
@@ -73,7 +74,7 @@ export function BadgesTab() {
       .badges()
       .then((r) => {
         setList(r.badges);
-        setContributors(r.contributors);
+        setHand(r.hand ?? { [CONTRIBUTOR]: r.contributors });
       })
       .catch(() => setFailed(true));
   }, []);
@@ -95,6 +96,7 @@ export function BadgesTab() {
     const pic = d?.image_id && d.image_id !== "0" ? { id: d.image_id, url: `/media/badge/${d.image_id}` } : null;
     setImage(pic);
     setMode(pic ? "picture" : "icon");
+    setIndexKind(d?.index_kind ?? "exclusive");
     setQuery("");
   };
   const nameLength = [...name.trim()].length;
@@ -127,6 +129,7 @@ export function BadgesTab() {
         glyph,
         shape,
         image_id: mode === "picture" && image ? image.id : "0",
+        index_kind: indexKind,
       };
       if (editing) {
         const d = await modApi.editBadge(editing.id, body);
@@ -311,6 +314,18 @@ export function BadgesTab() {
               </div>
             )}
 
+            <div>
+              <span className={b.label} id="badge-kind-label">{t("badges.staff.indexKind")}</span>
+              <div className={b.segment} role="radiogroup" aria-labelledby="badge-kind-label" data-glide="">
+                {(["exclusive", "special", "hidden"] as const).map((v) => (
+                  <button key={v} type="button" role="radio" aria-checked={indexKind === v} className={b.segmentItem} onClick={() => setIndexKind(v)} data-testid={`badge-kind-${v}`}>
+                    {t(v === "hidden" ? "badges.staff.indexKind.hidden" : `badges.index.${v}`)}
+                  </button>
+                ))}
+              </div>
+              <p className={b.kindHint}>{t(`badges.staff.indexKind.${indexKind}Hint`)}</p>
+            </div>
+
             <div className={m.annFooter}>
               {editing ? (
                 <Button size="sm" variant="ghost" onClick={() => startEdit(null)}>{t("chat.editMessage.cancel")}</Button>
@@ -358,11 +373,13 @@ export function BadgesTab() {
               <section aria-labelledby="badge-hand">
                 <h2 className={b.listTitle} id="badge-hand">{t("badges.staff.givenByHand")}</h2>
                 <ul className={b.rows}>
-                  <li className={b.row} data-testid="badge-def-contributor">
-                    <BadgePill badge={{ id: CONTRIBUTOR }} user={NOBODY} still named />
-                    <span className={b.desc}>{t("badges.staff.contributorNote")}</span>
-                    <span className={b.tools}>{holdersButton({ badge: { id: CONTRIBUTOR }, label: t("badges.contributor"), top: 1 }, contributors)}</span>
-                  </li>
+                  {HAND_BADGES.map((id) => (
+                    <li key={id} className={b.row} data-testid={`badge-def-${id}`}>
+                      <BadgePill badge={{ id }} user={NOBODY} still named />
+                      <span className={b.desc}>{t(`badges.staff.${id}Note`)}</span>
+                      <span className={b.tools}>{holdersButton({ badge: { id }, label: id === CONTRIBUTOR ? t("badges.contributor") : t(`badges.hand.${id}`), top: 1 }, hand[id] ?? 0)}</span>
+                    </li>
+                  ))}
                 </ul>
               </section>
 

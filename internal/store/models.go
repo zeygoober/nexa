@@ -679,6 +679,8 @@ type Message struct {
 	// Automod is, on AutoMod's note in an alert channel, what it caught and
 	// what it did; anything the member's app caught is sealed inside it.
 	Automod json.RawMessage `json:"automod,omitempty"`
+	// Trade is a trade request's current state, on its system_trade message.
+	Trade *Trade `json:"trade,omitempty"`
 	// Published says a post of an announcement channel has been published.
 	Published bool `json:"published,omitempty"`
 	// Thread is the thread started from this message, for drawing it under

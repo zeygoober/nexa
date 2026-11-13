@@ -235,6 +235,8 @@
 /* --sys-icon is where the line's icon starts, in the avatars' column */
 .system { --sys-icon: 16px; display: flex; align-items: center; gap: 12px; padding-block: 4px; padding-inline: 64px 12px; margin-inline: 8px; border-radius: var(--radius-sm); position: relative; min-height: 26px; margin-top: 17px; color: var(--text-muted); font-size: 15.5px; line-height: 22px; }
 .system:hover { background: var(--bg-message-hover); }
+/* a trade request has a card under its line */
+.system[data-trade] { align-items: flex-start; }
 /* centred on the first line: 4px of padding and half of what the 22px line has over the 18px icon */
 .sysIcon { position: absolute; inset-inline-start: var(--sys-icon); top: 6px; color: var(--text-muted); display: flex; }
 /* a join line its author or a moderator may take down: the message toolbar's Delete, on hover or from the keyboard */

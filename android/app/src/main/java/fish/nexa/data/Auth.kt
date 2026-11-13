@@ -244,10 +244,27 @@ class Auth(private val nx: Nexa) {
         if (!res.mfaRequired) return PasswordStep.Done(opened(res, encKey))
         val ticket = res.ticket ?: ""
         return PasswordStep.NeedsCode(res.backupCodesLeft) { code, backupCode ->
-            opened(nx.api.request("POST", "/auth/login/mfa", LoginResult.serializer(), buildJsonObject {
-                put("ticket", ticket)
-                if (!backupCode.isNullOrBlank()) put("backup_code", backupCode.trim()) else put("code", (code ?: "").replace(Regex("\\s"), ""))
-            }, auth = false), encKey)
+            opened(secondStep(ticket, code, backupCode), encKey)
+        }
+    }
+
+    /**
+     * The code for a sign-in. An answer lost on the way (the connection dropped)
+     * may still have spent the code, so it is asked once more with the same
+     * ticket and code, which the server answers with a session all the same
+     * (mfa_handlers.go mfaReplays; web stores/auth.ts).
+     */
+    private suspend fun secondStep(ticket: String, code: String?, backupCode: String?): LoginResult {
+        val body = buildJsonObject {
+            put("ticket", ticket)
+            if (!backupCode.isNullOrBlank()) put("backup_code", backupCode.trim()) else put("code", (code ?: "").replace(Regex("\\s"), ""))
+        }
+        return try {
+            nx.api.request("POST", "/auth/login/mfa", LoginResult.serializer(), body, auth = false)
+        } catch (e: ApiError) {
+            if (e.status != 0) throw e
+            kotlinx.coroutines.delay(1000)
+            nx.api.request("POST", "/auth/login/mfa", LoginResult.serializer(), body, auth = false)
         }
     }
 
@@ -306,10 +323,7 @@ class Auth(private val nx: Nexa) {
 
     suspend fun completeMfa(ticket: String, code: String?, backupCode: String?) {
         val enc = pendingEncKey ?: throw ApiError(401, "mfa_expired", "That sign-in timed out. Enter your password again.")
-        val res = nx.api.request("POST", "/auth/login/mfa", LoginResult.serializer(), buildJsonObject {
-            put("ticket", ticket)
-            if (!backupCode.isNullOrBlank()) put("backup_code", backupCode.trim()) else put("code", (code ?: "").replace(Regex("\\s"), ""))
-        }, auth = false)
+        val res = secondStep(ticket, code, backupCode)
         finish(res, enc)
         pendingEncKey = null
     }

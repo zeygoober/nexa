@@ -4,6 +4,8 @@ import (
 	"encoding/json"
 	"strings"
 	"testing"
+
+	"evilion.xyz/chat/internal/store"
 )
 
 // Badges staff give are theirs alone to give (a mod cannot), and one its
@@ -225,5 +227,177 @@ func TestBadgeIndexOrderIsTheOwnersAlone(t *testing.T) {
 	}
 	if art, _ := first(); art != "booster" {
 		t.Fatalf("clearing did not go back to A to Z: %v", art)
+	}
+}
+
+// A Special badge is a secret: someone without it is told only that there is
+// one in that part of the index, not its name, icon, picture or how many hold
+// it. A hidden one is not in the index at all, and still counts on its holder.
+func TestBadgeIndexKeepsSpecialSecret(t *testing.T) {
+	_, ts := newTestServer(t)
+	owner, _ := register(t, ts, "owner")
+	member, _ := register(t, ts, "member")
+	holder, holderID := register(t, ts, "holder")
+
+	make := func(name, kind string) string {
+		res, body := do(t, ts, "POST", "/api/v1/moderation/badges", owner, map[string]any{"name": name, "icon": "ghost", "color": 0x445566, "index_kind": kind})
+		if res.StatusCode != 200 {
+			t.Fatalf("make %s: %d %v", name, res.StatusCode, body)
+		}
+		id := "event:" + body["id"].(string)
+		if res, body := do(t, ts, "PUT", "/api/v1/moderation/badges/"+id+"/holders/"+holderID, owner, map[string]any{"state": "give"}); res.StatusCode != 204 {
+			t.Fatalf("give %s: %d %v", name, res.StatusCode, body)
+		}
+		return id
+	}
+	special := make("Hidden Door", "special")
+	hidden := make("Backstage", "hidden")
+
+	raw := func(token, path string) []byte {
+		res, body := do(t, ts, "GET", path, token, nil)
+		if res.StatusCode != 200 {
+			t.Fatalf("%s: %d", path, res.StatusCode)
+		}
+		out, _ := json.Marshal(body)
+		return out
+	}
+	lacking := raw(member, "/api/v1/users/@me/badges/index")
+	text := string(lacking)
+	for _, leak := range []string{"Hidden Door", "ghost", "Backstage", strings.TrimPrefix(special, "event:"), "exist", "hopeful", "curious", "nosy", "lucky"} {
+		if strings.Contains(text, leak) {
+			t.Errorf("the index told someone without it %q: %s", leak, text)
+		}
+	}
+	var got struct {
+		Entries []struct {
+			Category string `json:"category"`
+			Art      string `json:"art"`
+		} `json:"entries"`
+	}
+	if err := json.Unmarshal(lacking, &got); err != nil {
+		t.Fatal(err)
+	}
+	specials := 0
+	for _, e := range got.Entries {
+		if e.Category == "special" {
+			specials++
+			if e.Art != "secret" {
+				t.Errorf("a locked Special drew as %q", e.Art)
+			}
+		}
+	}
+	if want := 1 + len(store.SecretBadges); specials != want {
+		t.Fatalf("Special entries: %d, want %d (the hidden one left out)", specials, want)
+	}
+
+	var mine struct {
+		Badges []struct {
+			ID    string `json:"id"`
+			Exist int    `json:"exist"`
+		} `json:"badges"`
+	}
+	if err := json.Unmarshal(raw(holder, "/api/v1/users/@me/badges"), &mine); err != nil {
+		t.Fatal(err)
+	}
+	seen := map[string]int{}
+	for _, b := range mine.Badges {
+		seen[b.ID] = b.Exist
+	}
+	if seen[special] != 1 || seen[hidden] != 1 {
+		t.Errorf("holders counted: %v", seen)
+	}
+	held := string(raw(holder, "/api/v1/users/@me/badges/index"))
+	if !strings.Contains(held, "Hidden Door") || strings.Contains(held, "Backstage") {
+		t.Errorf("holder's index: %s", held)
+	}
+}
+
+// The Secret badges an app may report are only Curious and Nosy; the server
+// earns the rest itself. Staff saving what they gave keeps what was earned.
+func TestSecretBadgesAreEarnedNotClaimed(t *testing.T) {
+	_, ts := newTestServer(t)
+	owner, _ := register(t, ts, "owner")
+	tok, id := register(t, ts, "member")
+	for _, b := range []string{store.BadgeHopeful, store.BadgeLucky, "contributor"} {
+		if res, body := do(t, ts, "POST", "/api/v1/users/@me/badges/found", tok, map[string]any{"badge": b}); res.StatusCode != 400 {
+			t.Errorf("claimed %s: %d %v", b, res.StatusCode, body)
+		}
+	}
+	for _, want := range []bool{true, false} {
+		if _, body := do(t, ts, "POST", "/api/v1/users/@me/badges/found", tok, map[string]any{"badge": store.BadgeCurious}); body["new"] != want {
+			t.Errorf("curious new: %v, want %v", body["new"], want)
+		}
+	}
+	meNexa(t, ts, tok)
+	if res, body := do(t, ts, "POST", "/api/v1/users/@me/relationships", tok, map[string]any{"username": "nexa"}); res.StatusCode != 403 || errCode(body) != "nexa_system" {
+		t.Fatalf("befriend Nexa: %d %v", res.StatusCode, body)
+	}
+	if res, body := do(t, ts, "PUT", "/api/v1/moderation/users/"+id+"/badges", owner, map[string]any{"badges": []string{}}); res.StatusCode != 200 {
+		t.Fatalf("staff save: %d %v", res.StatusCode, body)
+	}
+	_, body := do(t, ts, "GET", "/api/v1/users/@me/badges", tok, nil)
+	held := map[string]bool{}
+	for _, b := range body["badges"].([]any) {
+		held[b.(map[string]any)["id"].(string)] = true
+	}
+	if !held[store.BadgeHopeful] || !held[store.BadgeCurious] || held[store.BadgeLucky] {
+		t.Errorf("held: %v", held)
+	}
+}
+
+// Only the owner writes a built-in badge's tooltip. It travels on the badge
+// where it is held, never on a locked entry of the index, where it could say
+// what the badge is or how to earn it.
+func TestBadgeTipsAreTheOwnersAlone(t *testing.T) {
+	_, ts := newTestServer(t)
+	owner, _ := register(t, ts, "owner")
+	admin, adminID := register(t, ts, "admin")
+	member, memberID := register(t, ts, "member")
+	setRank(t, ts, owner, adminID, "admin")
+
+	const path = "/api/v1/moderation/badges/descriptions"
+	const words = "Moved over with us. Thank you."
+	set := func(tok, key, text string) int {
+		res, _ := do(t, ts, "PUT", path, tok, map[string]any{"key": key, "description": text})
+		return res.StatusCode
+	}
+	for _, tok := range []string{admin, member} {
+		if code := set(tok, "mentor", words); code < 400 {
+			t.Fatalf("a non-owner wrote a badge's tooltip: %d", code)
+		}
+	}
+	if code := set(owner, "no-such-badge", words); code != 404 {
+		t.Fatalf("unknown badge: %d", code)
+	}
+	if code := set(owner, "mentor", strings.Repeat("a", 121)); code != 400 {
+		t.Fatalf("too long: %d", code)
+	}
+	if code := set(owner, "mentor", words); code != 200 {
+		t.Fatalf("save: %d", code)
+	}
+
+	_, index := do(t, ts, "GET", "/api/v1/users/@me/badges/index", member, nil)
+	if raw, _ := json.Marshal(index); strings.Contains(string(raw), words) {
+		t.Fatalf("a locked badge carried its tooltip: %s", raw)
+	}
+	if res, body := do(t, ts, "PUT", "/api/v1/moderation/users/"+memberID+"/badges", owner, map[string]any{"badges": []string{"mentor"}}); res.StatusCode != 200 {
+		t.Fatalf("give Mentor: %d %v", res.StatusCode, body)
+	}
+	_, mine := do(t, ts, "GET", "/api/v1/users/@me/badges", member, nil)
+	found := false
+	for _, b := range mine["badges"].([]any) {
+		if m := b.(map[string]any); m["id"] == "mentor" {
+			found = m["description"] == words
+		}
+	}
+	if !found {
+		t.Fatalf("the held badge lacks the owner's words: %v", mine)
+	}
+	if code := set(owner, "mentor", ""); code != 200 {
+		t.Fatalf("clear: %d", code)
+	}
+	_, mine = do(t, ts, "GET", "/api/v1/users/@me/badges", member, nil)
+	if raw, _ := json.Marshal(mine); strings.Contains(string(raw), words) {
+		t.Fatalf("clearing kept the words: %s", raw)
 	}
 }
