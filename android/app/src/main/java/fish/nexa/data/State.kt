@@ -238,10 +238,17 @@ class ServersStore(private val users: UsersStore, private val channels: Channels
         change(prev.serverId) { it }
     }
 
+    /**
+     * Whether someone holds every permission in a server: its owner, and Nexa's
+     * owner in any server they are a member of (the server agrees, permcache's
+     * privileged). Every other rank of staff is an ordinary member.
+     */
+    fun holdsEverything(st: ServerState, userId: String): Boolean =
+        st.server.ownerId == userId || fish.nexa.ui.profile.NexaOwner.isOwner(userId)
+
     fun serverPerms(st: ServerState, userId: String): Long {
         viewingAs(st, userId)?.let { return Perms.base(st.server.id, st.permissionRoles, PermMember(userId, it, false), false) }
-        // only the server's owner holds everything: Nexa's staff are ordinary members here
-        if (st.server.ownerId == userId) return P.ALL
+        if (holdsEverything(st, userId)) return P.ALL
         return Perms.base(st.server.id, st.permissionRoles, Perms.member(st.members[userId], userId), false)
     }
 
@@ -251,7 +258,7 @@ class ServersStore(private val users: UsersStore, private val channels: Channels
     fun channelPerms(st: ServerState, channelId: String, userId: String): Long {
         val ch = channels.get(channelId)
         val preview = viewingAs(st, userId)
-        val isOwner = preview == null && st.server.ownerId == userId
+        val isOwner = preview == null && holdsEverything(st, userId)
         val member = if (preview != null) PermMember(userId, preview, false) else Perms.member(st.members[userId], userId)
         // a thread answers to its channel
         if (ch != null && ch.isThread && ch.parentId != null) {
@@ -275,6 +282,8 @@ class ServersStore(private val users: UsersStore, private val channels: Channels
     fun memberHighest(st: ServerState, userId: String): Pair<Int, Boolean> {
         viewingAs(st, userId)?.let { return Perms.highestPosition(st.permissionRoles, PermMember(userId, it, false)) to false }
         val isOwner = st.server.ownerId == userId
+        // Nexa's owner is above every role, as on the server, but still answerable to the server's owner
+        if (!isOwner && fish.nexa.ui.profile.NexaOwner.isOwner(userId)) return (1 shl 30) - 1 to false
         return Perms.highestPosition(st.permissionRoles, Perms.member(st.members[userId], userId)) to isOwner
     }
 

@@ -49,6 +49,10 @@ object Badges {
         val count: Int? = null,
         /** How many people hold this badge, at this level or above. */
         val exist: Int? = null,
+        /** A capsule collectible's rarity (common, rare, epic, huge); its [level] is then its material, 1 (bronze) to 5 (prism). */
+        val rarity: String? = null,
+        /** A collectible's drawing (store.CollectibleArt), drawn at its level: badges/col-<art>-<level>.svg. */
+        val art: String? = null,
     ) {
         val isEvent get() = id.startsWith(EVENT_PREFIX)
     }
@@ -83,6 +87,8 @@ object Badges {
             image = s("image"),
             count = i("count"),
             exist = i("exist"),
+            rarity = s("rarity")?.takeIf { it.isNotEmpty() },
+            art = s("art")?.takeIf { it.isNotEmpty() },
         )
     }
 
@@ -133,8 +139,14 @@ object Badges {
     fun look(b: Badge, userId: String, flags: Long, plan: String): Look? {
         val look = builtInLook(b, userId, flags, plan)
         // the owner's own words for a built-in badge, in every language (store/badge_tips.go)
-        return if (look != null && !b.description.isNullOrEmpty() && b.id != "staff" && !b.isEvent) look.copy(tip = b.description) else look
+        val own = if (look != null && !b.description.isNullOrEmpty() && b.id != "staff" && !b.isEvent) look.copy(tip = b.description) else look
+        return own?.copy(tip = bareTip(own.tip))
     }
+
+    private val FINAL_STOP = Regex("(?<![.。])[.。]\\s*$")
+
+    /** A badge's description ends without a full stop (the owner's rule), whoever wrote it (web bareTip). */
+    fun bareTip(tip: String): String = tip.replace(FINAL_STOP, "").trimEnd()
 
     private fun builtInLook(b: Badge, userId: String, flags: Long, plan: String): Look? = when (b.id) {
         "staff" -> StaffRanks.of(userId, flags)?.let { Look("staff-${it.key}", it.label, it.tip) }
@@ -160,7 +172,9 @@ object Badges {
         // the Secret badges: their tooltips say nothing of how they are found
         "hopeful", "curious", "nosy", "lucky" -> Look(b.id, t("badges.secret.${b.id}"), t("badges.secret.${b.id}Tip"))
         // a badge staff made says what they wrote for it
-        else -> if (b.isEvent && b.name != null) Look(null, b.name, b.description ?: "", b.icon ?: "award", b.color, b.color2, b.dark, b.shape, b.image) else null
+        // a collectible is drawn at its material; a badge staff made says what they wrote for it
+        else -> if (b.isEvent && b.name != null && b.rarity != null && b.art != null) Look("col-${b.art}-${b.level.coerceIn(1, 5)}", b.name, b.description ?: "")
+        else if (b.isEvent && b.name != null) Look(null, b.name, b.description ?: "", b.icon ?: "award", b.color, b.color2, b.dark, b.shape, b.image) else null
     }
 
     /** A badge's name in a list (the designer, the staff panel), staff and plan included. */
@@ -228,12 +242,18 @@ object Badges {
         val imageId: String = "0",
         /** Where the Badge Index puts it: "exclusive", "special" or "hidden". */
         val indexKind: String = "exclusive",
+        /** Makes it a capsule collectible: common, rare, epic or huge; "" for a badge given by hand. */
+        val rarity: String = "",
+        /** A collectible's drawing; "" for every other badge. */
+        val art: String = "",
     ) {
         /** As a badge someone holds, for drawing it in the panel (web defBadge). */
         val badge get() = Badge(
             id = EVENT_PREFIX + id, name = name, icon = icon, color = color, description = description,
             color2 = color2.takeIf { it >= 0 }, dark = dark, shape = shape,
             image = imageId.takeIf { it != "0" && it.isNotEmpty() }?.let { "/media/badge/$it" },
+            rarity = rarity.takeIf { it.isNotEmpty() && art.isNotEmpty() }, art = art.takeIf { it.isNotEmpty() && rarity.isNotEmpty() },
+            level = if (rarity.isNotEmpty() && art.isNotEmpty()) 1 else 0,
         )
     }
 
@@ -245,6 +265,7 @@ object Badges {
             description = s("description") ?: "", color2 = i("color2") ?: -1, dark = s("glyph") == "dark",
             shape = s("shape")?.takeIf { it in SHAPES } ?: "circle", imageId = s("image_id") ?: "0",
             indexKind = s("index_kind") ?: "exclusive",
+            rarity = s("rarity") ?: "", art = s("art") ?: "",
         )
     }
 
@@ -272,6 +293,8 @@ object Badges {
         put("shape", d.shape)
         put("image_id", d.imageId)
         put("index_kind", d.indexKind)
+        put("rarity", d.rarity)
+        put("art", if (d.rarity.isNotEmpty()) d.art else "")
     }
 
     suspend fun createDef(d: Def): Def? =

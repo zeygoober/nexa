@@ -9,23 +9,14 @@ import (
 	"evilion.xyz/chat/internal/store"
 )
 
-// What the owner's server management must never hand out. A channel's
-// messages are read with View Channel and Read Message History (and Connect
-// for a voice channel's chat); Manage Roles in a channel gives the rest of
-// these. On the server, the rest are what would let an account take the same
-// steps through the ordinary routes.
-const (
-	guardChannelBits = perms.ViewChannel | perms.ReadMessageHistory | perms.Connect | perms.ManageRoles
-	guardServerBits  = perms.Administrator | perms.ManageRoles | perms.ManageServer | perms.ViewAuditLog
-)
-
-// manageWorld is what decides who can do what in a server, in memory, so a
-// change can be tried on it before it is made.
+// manageWorld is what decides who can see what in a server, read once per
+// action: which channels are private (for the view and a transfer's notice)
+// and who may not be handed the server.
 type manageWorld struct {
 	everyone ids.ID
 	roles    []perms.Role
 	channels []*worldChannel
-	// subjects are the accounts that must not gain anything: the owner acting,
+	// subjects are the accounts a transfer may not go to: the owner acting,
 	// members holding a staff rank, apps, accounts sharing an address with the
 	// owner, and an account with no roles at all, which stands for anyone who
 	// joins later (so also for the owner, by Join Server).
@@ -95,22 +86,6 @@ func (s *Server) loadManageWorld(ctx context.Context, srv *store.Server, me ids.
 	return w, nil
 }
 
-func (w *manageWorld) clone() *manageWorld {
-	out := &manageWorld{everyone: w.everyone, privileged: w.privileged}
-	out.roles = append([]perms.Role{}, w.roles...)
-	for _, c := range w.channels {
-		cc := *c
-		cc.overwrites = append([]perms.Overwrite{}, c.overwrites...)
-		out.channels = append(out.channels, &cc)
-	}
-	for _, m := range w.subjects {
-		mm := m
-		mm.RoleIDs = append([]ids.ID{}, m.RoleIDs...)
-		out.subjects = append(out.subjects, mm)
-	}
-	return out
-}
-
 func (w *manageWorld) channel(id ids.ID) *worldChannel {
 	for _, c := range w.channels {
 		if c.id == id {
@@ -118,139 +93,6 @@ func (w *manageWorld) channel(id ids.ID) *worldChannel {
 		}
 	}
 	return nil
-}
-
-func sameWorldOverwrites(a, b []perms.Overwrite) bool {
-	if len(a) != len(b) {
-		return false
-	}
-	byTarget := make(map[ids.ID]perms.Overwrite, len(a))
-	for _, o := range a {
-		byTarget[o.TargetID] = o
-	}
-	for _, o := range b {
-		if x, ok := byTarget[o.TargetID]; !ok || x != o {
-			return false
-		}
-	}
-	return true
-}
-
-func withoutOverwrite(list []perms.Overwrite, target ids.ID) []perms.Overwrite {
-	out := make([]perms.Overwrite, 0, len(list))
-	for _, o := range list {
-		if o.TargetID != target {
-			out = append(out, o)
-		}
-	}
-	return out
-}
-
-// synced lists a category's channels that follow it, before it changes.
-func (w *manageWorld) synced(cat *worldChannel) []*worldChannel {
-	if !cat.category {
-		return nil
-	}
-	var out []*worldChannel
-	for _, c := range w.channels {
-		if c.parent != nil && *c.parent == cat.id && sameWorldOverwrites(c.overwrites, cat.overwrites) {
-			out = append(out, c)
-		}
-	}
-	return out
-}
-
-func (w *manageWorld) setOverwrite(id ids.ID, o perms.Overwrite) {
-	c := w.channel(id)
-	if c == nil {
-		return
-	}
-	for _, x := range append(w.synced(c), c) {
-		x.overwrites = append(withoutOverwrite(x.overwrites, o.TargetID), o)
-	}
-}
-
-func (w *manageWorld) removeOverwrite(id, target ids.ID) {
-	c := w.channel(id)
-	if c == nil {
-		return
-	}
-	for _, x := range append(w.synced(c), c) {
-		x.overwrites = withoutOverwrite(x.overwrites, target)
-	}
-}
-
-// takeCategory gives a channel its category's overwrites.
-func (w *manageWorld) takeCategory(id, category ids.ID) {
-	c, cat := w.channel(id), w.channel(category)
-	if c == nil || cat == nil {
-		return
-	}
-	c.overwrites = append([]perms.Overwrite{}, cat.overwrites...)
-}
-
-func (w *manageWorld) setRolePerms(id ids.ID, p perms.Perm) {
-	for i := range w.roles {
-		if w.roles[i].ID == id {
-			w.roles[i].Permissions = p
-		}
-	}
-}
-
-// deleteRole also takes the role away from whoever held it, which can open a
-// channel: an overwrite denying that role goes with it.
-func (w *manageWorld) deleteRole(id ids.ID) {
-	kept := w.roles[:0:0]
-	for _, ro := range w.roles {
-		if ro.ID != id {
-			kept = append(kept, ro)
-		}
-	}
-	w.roles = kept
-	for _, c := range w.channels {
-		c.overwrites = withoutOverwrite(c.overwrites, id)
-	}
-	for i := range w.subjects {
-		w.subjects[i].RoleIDs = withoutID(w.subjects[i].RoleIDs, id)
-	}
-}
-
-func (w *manageWorld) memberRole(uid, role ids.ID, add bool) {
-	for i := range w.subjects {
-		if w.subjects[i].UserID != uid {
-			continue
-		}
-		w.subjects[i].RoleIDs = withoutID(w.subjects[i].RoleIDs, role)
-		if add {
-			w.subjects[i].RoleIDs = append(w.subjects[i].RoleIDs, role)
-		}
-	}
-}
-
-// gained says whether anyone guarded holds something in after that they did
-// not hold in w, in a server or a channel that already existed. A channel
-// made by the change holds no messages to reach.
-func (w *manageWorld) gained(after *manageWorld) bool {
-	for i, m := range w.subjects {
-		now := after.subjects[i]
-		was := perms.Compute(w.everyone, w.roles, m, false, nil)
-		is := perms.Compute(after.everyone, after.roles, now, false, nil)
-		if is&^was&guardServerBits != 0 {
-			return true
-		}
-		for _, c := range w.channels {
-			ac := after.channel(c.id)
-			if ac == nil {
-				continue
-			}
-			was := perms.Compute(w.everyone, w.roles, m, false, c.overwrites)
-			is := perms.Compute(after.everyone, after.roles, now, false, ac.overwrites)
-			if is&^was&guardChannelBits != 0 {
-				return true
-			}
-		}
-	}
-	return false
 }
 
 // isPrivate says whether someone with no roles cannot see a channel.

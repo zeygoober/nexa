@@ -151,6 +151,12 @@ type Badge struct {
 	// missing when staff set the level by hand, so the clients say the tier's.
 	// Friends, hours and streaks never get one: a badge says only the tier reached.
 	Count int `json:"count,omitempty"`
+	// Rarity is a collectible's (gems.go), whose Level is its material, 1
+	// (bronze) to 5 (prism).
+	Rarity string `json:"rarity,omitempty"`
+	// Art is a collectible's drawing, one of CollectibleArt; the apps draw
+	// col-<art>-<level>.svg, and an app that predates it draws Icon.
+	Art string `json:"art,omitempty"`
 }
 
 // BadgeDef is a badge staff made for an event.
@@ -165,9 +171,15 @@ type BadgeDef struct {
 	Shape       string `json:"shape"`  // one of BadgeShapes
 	ImageID     ids.ID `json:"image_id,omitempty"`
 	IndexKind   string `json:"index_kind"` // one of BadgeIndexKinds
-	CreatedBy   ids.ID `json:"created_by"`
-	CreatedAt   int64  `json:"created_at"`
-	Holders     int    `json:"holders"`
+	// Rarity makes it a collectible (gems.go): one of GemRarities, or "" for
+	// a badge staff give by hand. It is set when the badge is made, and a
+	// collectible can only change to another rarity.
+	Rarity string `json:"rarity"`
+	// Art is a collectible's drawing (CollectibleArt), "" for every other badge.
+	Art       string `json:"art"`
+	CreatedBy ids.ID `json:"created_by"`
+	CreatedAt int64  `json:"created_at"`
+	Holders   int    `json:"holders"`
 }
 
 // The parts of the Badge Index. Every built-in badge can still be earned but OG.
@@ -175,6 +187,8 @@ const (
 	BadgeObtainable = "obtainable"
 	BadgeExclusive  = "exclusive"
 	BadgeSpecial    = "special"
+	// BadgeCollectible is the index's part for capsule collectibles (gems.go), each material its own entry
+	BadgeCollectible = "collectible"
 	// BadgeIndexHidden keeps a badge staff made out of the index altogether.
 	BadgeIndexHidden = "hidden"
 )
@@ -360,6 +374,34 @@ func (s *Store) heldBadges(ctx context.Context, u *User, now time.Time) ([]Badge
 		for _, id := range events {
 			if d := defs[id]; d != nil {
 				out = append(out, d.badge())
+			}
+		}
+	}
+	// collectibles, held only as copies (event:<id>-<material>): each once, at the
+	// highest material held, the oldest made first
+	top := map[ids.ID]int{}
+	for k, n := range qty {
+		id, m, ok := ParseTradeKey(k)
+		if n <= 0 || !ok || m == 0 {
+			continue
+		}
+		if v, err := strconv.ParseInt(strings.TrimPrefix(id, EventBadgePrefix), 10, 64); err == nil && m > top[ids.ID(v)] {
+			top[ids.ID(v)] = m
+		}
+	}
+	if len(top) > 0 {
+		list := make([]ids.ID, 0, len(top))
+		for id := range top {
+			list = append(list, id)
+		}
+		defs, err := s.badgeDefsByID(ctx, list)
+		if err != nil {
+			return nil, nil, err
+		}
+		sort.Slice(list, func(i, j int) bool { return list[i] < list[j] })
+		for _, id := range list {
+			if d := defs[id]; d != nil && d.Rarity != "" {
+				out = append(out, collectibleBadge(d, top[id]))
 			}
 		}
 	}
@@ -593,7 +635,7 @@ func (s *Store) SetBadgeHolder(ctx context.Context, badge string, uid, by ids.ID
 					return ErrNotFound
 				}
 				var one int
-				if err := tx.QueryRowContext(ctx, `SELECT 1 FROM badge_defs WHERE id = ?`, v).Scan(&one); err != nil {
+				if err := tx.QueryRowContext(ctx, `SELECT 1 FROM badge_defs WHERE id = ? AND rarity = ''`, v).Scan(&one); err != nil {
 					if errors.Is(err, sql.ErrNoRows) {
 						return ErrNotFound
 					}
@@ -891,7 +933,7 @@ func (s *Store) badgeDefsByID(ctx context.Context, list []ids.ID) (map[ids.ID]*B
 	for i, id := range list {
 		args[i] = int64(id)
 	}
-	rows, err := s.db.R.QueryContext(ctx, `SELECT id, name, description, icon, color, color2, glyph, shape, image_id, index_kind, created_by, created_at FROM badge_defs WHERE id IN (?`+strings.Repeat(",?", len(list)-1)+`)`, args...)
+	rows, err := s.db.R.QueryContext(ctx, `SELECT id, name, description, icon, color, color2, glyph, shape, image_id, index_kind, rarity, art, created_by, created_at FROM badge_defs WHERE id IN (?`+strings.Repeat(",?", len(list)-1)+`)`, args...)
 	if err != nil {
 		return nil, err
 	}
@@ -909,7 +951,7 @@ func (s *Store) badgeDefsByID(ctx context.Context, list []ids.ID) (map[ids.ID]*B
 func scanBadgeDef(sc interface{ Scan(...any) error }) (*BadgeDef, error) {
 	var d BadgeDef
 	var id, img, by int64
-	if err := sc.Scan(&id, &d.Name, &d.Description, &d.Icon, &d.Color, &d.Color2, &d.Glyph, &d.Shape, &img, &d.IndexKind, &by, &d.CreatedAt); err != nil {
+	if err := sc.Scan(&id, &d.Name, &d.Description, &d.Icon, &d.Color, &d.Color2, &d.Glyph, &d.Shape, &img, &d.IndexKind, &d.Rarity, &d.Art, &by, &d.CreatedAt); err != nil {
 		return nil, err
 	}
 	d.ID, d.ImageID, d.CreatedBy = ids.ID(id), ids.ID(img), ids.ID(by)
@@ -1251,6 +1293,26 @@ func (s *Store) layBadgeIndex(ctx context.Context, held map[string]Badge, qty ma
 	// oldest first, so a new one joins the end
 	for i := len(defs) - 1; i >= 0; i-- {
 		d := defs[i]
+		if d.Rarity != "" {
+			// a collectible is a badge at each material; locked, it is its drawing blacked out, never its name
+			for m := 1; m <= GemMaterials; m++ {
+				key := TradeKey(EventBadgePrefix+d.ID.String(), m)
+				e := BadgeIndexEntry{Category: BadgeCollectible, event: key, name: d.Name}
+				_, have := held[EventBadgePrefix+d.ID.String()]
+				if qty != nil {
+					have = qty[key] > 0
+					e.Qty = qty[key]
+				}
+				if have {
+					b := collectibleBadge(d, m)
+					add(e, &b)
+				} else {
+					e.Art = "col-" + d.Art
+					add(e, nil)
+				}
+			}
+			continue
+		}
 		if d.IndexKind == BadgeIndexHidden {
 			continue
 		}
@@ -1400,7 +1462,7 @@ func (s *Store) SetBadgeIndexOrder(ctx context.Context, order []string) error {
 
 // BadgeDefs lists the event badges, newest first, with how many hold each.
 func (s *Store) BadgeDefs(ctx context.Context) ([]*BadgeDef, error) {
-	rows, err := s.db.R.QueryContext(ctx, `SELECT id, name, description, icon, color, color2, glyph, shape, image_id, index_kind, created_by, created_at FROM badge_defs ORDER BY id DESC`)
+	rows, err := s.db.R.QueryContext(ctx, `SELECT id, name, description, icon, color, color2, glyph, shape, image_id, index_kind, rarity, art, created_by, created_at FROM badge_defs ORDER BY id DESC`)
 	if err != nil {
 		return nil, err
 	}
@@ -1461,7 +1523,7 @@ func (s *Store) HandBadgeCounts(ctx context.Context) (map[string]int, error) {
 
 // BadgeDef returns one event badge.
 func (s *Store) BadgeDef(ctx context.Context, id ids.ID) (*BadgeDef, error) {
-	d, err := scanBadgeDef(s.db.R.QueryRowContext(ctx, `SELECT id, name, description, icon, color, color2, glyph, shape, image_id, index_kind, created_by, created_at FROM badge_defs WHERE id = ?`, int64(id)))
+	d, err := scanBadgeDef(s.db.R.QueryRowContext(ctx, `SELECT id, name, description, icon, color, color2, glyph, shape, image_id, index_kind, rarity, art, created_by, created_at FROM badge_defs WHERE id = ?`, int64(id)))
 	if errors.Is(err, sql.ErrNoRows) {
 		return nil, ErrNotFound
 	}
@@ -1471,15 +1533,15 @@ func (s *Store) BadgeDef(ctx context.Context, id ids.ID) (*BadgeDef, error) {
 // CreateBadgeDef makes an event badge.
 func (s *Store) CreateBadgeDef(ctx context.Context, d *BadgeDef) error {
 	d.ID, d.CreatedAt = ids.New(), nowMs()
-	_, err := s.db.W.ExecContext(ctx, `INSERT INTO badge_defs (id, name, description, icon, color, color2, glyph, shape, image_id, index_kind, created_by, created_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)`,
-		int64(d.ID), d.Name, d.Description, d.Icon, d.Color, d.Color2, d.Glyph, d.Shape, int64(d.ImageID), d.IndexKind, int64(d.CreatedBy), d.CreatedAt)
+	_, err := s.db.W.ExecContext(ctx, `INSERT INTO badge_defs (id, name, description, icon, color, color2, glyph, shape, image_id, index_kind, rarity, art, created_by, created_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+		int64(d.ID), d.Name, d.Description, d.Icon, d.Color, d.Color2, d.Glyph, d.Shape, int64(d.ImageID), d.IndexKind, d.Rarity, d.Art, int64(d.CreatedBy), d.CreatedAt)
 	return err
 }
 
 // UpdateBadgeDef changes how an event badge looks and what it says.
 func (s *Store) UpdateBadgeDef(ctx context.Context, d *BadgeDef) error {
-	res, err := s.db.W.ExecContext(ctx, `UPDATE badge_defs SET name = ?, description = ?, icon = ?, color = ?, color2 = ?, glyph = ?, shape = ?, image_id = ?, index_kind = ? WHERE id = ?`,
-		d.Name, d.Description, d.Icon, d.Color, d.Color2, d.Glyph, d.Shape, int64(d.ImageID), d.IndexKind, int64(d.ID))
+	res, err := s.db.W.ExecContext(ctx, `UPDATE badge_defs SET name = ?, description = ?, icon = ?, color = ?, color2 = ?, glyph = ?, shape = ?, image_id = ?, index_kind = ?, rarity = CASE WHEN rarity <> '' AND ? <> '' THEN ? ELSE rarity END, art = CASE WHEN rarity <> '' AND ? <> '' THEN ? ELSE art END WHERE id = ?`,
+		d.Name, d.Description, d.Icon, d.Color, d.Color2, d.Glyph, d.Shape, int64(d.ImageID), d.IndexKind, d.Rarity, d.Rarity, d.Art, d.Art, int64(d.ID))
 	if err != nil {
 		return err
 	}
@@ -1518,7 +1580,7 @@ func (s *Store) SetGrantedBadges(ctx context.Context, uid, by ids.ID, want []str
 					return ErrNotFound
 				}
 				var one int
-				if err := tx.QueryRowContext(ctx, `SELECT 1 FROM badge_defs WHERE id = ?`, v).Scan(&one); err != nil {
+				if err := tx.QueryRowContext(ctx, `SELECT 1 FROM badge_defs WHERE id = ? AND rarity = ''`, v).Scan(&one); err != nil {
 					if errors.Is(err, sql.ErrNoRows) {
 						return ErrNotFound
 					}

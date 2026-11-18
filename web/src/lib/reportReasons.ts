@@ -1,4 +1,4 @@
-import { Baby, CircleHelp, CircleOff, Fingerprint, Gavel, HeartCrack, LifeBuoy, Mails, MessageSquareWarning, ShieldAlert, Swords, UserX, VenetianMask, type LucideIcon } from "lucide-react";
+import { Baby, CircleHelp, CircleOff, Fingerprint, Gavel, Gem, HeartCrack, LifeBuoy, Mails, MessageSquareWarning, ShieldAlert, Swords, UserX, VenetianMask, type LucideIcon } from "lucide-react";
 
 /**
  * How each report reason looks wherever reports are shown: its icon, and how
@@ -22,6 +22,8 @@ const REASONS: Record<string, { icon: LucideIcon; tone: ReasonTone }> = {
   ban_evasion: { icon: UserX, tone: "routine" },
   illegal: { icon: Gavel, tone: "serious" },
   other: { icon: CircleHelp, tone: "routine" },
+  // filed by Nexa itself (api/gems.go), never offered in the form
+  gem_farming: { icon: Gem, tone: "serious" },
 };
 
 export function reasonIcon(reason: string): LucideIcon {

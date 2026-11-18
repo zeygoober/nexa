@@ -12,6 +12,7 @@ import { SettingsLayer, type NavGroup } from "./SettingsLayer";
 import { t } from "@/i18n";
 const OverviewPage = readyPage(() => import("./pages/ServerOverviewPage"));
 const ServerTagPage = readyPage(() => import("./pages/ServerTagPage"));
+const ServerTemplatePage = readyPage(() => import("./pages/ServerTemplatePage"));
 const RolesPage = readyPage(() => import("./pages/RolesPage"));
 const MembersPage = readyPage(() => import("./pages/MembersPage"));
 const BansPage = readyPage(() => import("./pages/BansPage"));
@@ -27,7 +28,7 @@ const DiscoverySettingsPage = readyPage(() => import("./pages/DiscoverySettingsP
 const SafetyPage = readyPage(() => import("./pages/SafetyPage"));
 
 const PAGES: Record<string, ReadyPage<never>> = {
-  overview: OverviewPage, tag: ServerTagPage, roles: RolesPage, members: MembersPage, bans: BansPage, invites: InvitesPage, audit: AuditLogPage,
+  overview: OverviewPage, tag: ServerTagPage, template: ServerTemplatePage, roles: RolesPage, members: MembersPage, bans: BansPage, invites: InvitesPage, audit: AuditLogPage,
   encryption: EncryptionPage, emoji: EmojiPage, stickers: ServerStickersPage, integrations: IntegrationsPage, delete: DeleteServerPage,
   automod: AutomodPage, discovery: DiscoverySettingsPage, safety: SafetyPage,
 } as unknown as Record<string, ReadyPage<never>>;
@@ -47,6 +48,7 @@ export default function ServerSettingsModal({ onClose, serverId, page: initial }
     { id: "integrations", label: t("integrations.title"), ok: canI(st, P.MANAGE_SERVER) || canI(st, P.MANAGE_WEBHOOKS) || Object.values(useChannels.getState().byId).some((c) => c.server_id === serverId && c.type === "text" && canI(st, P.MANAGE_WEBHOOKS, c.id)), group: 0 },
     { id: "encryption", label: t("server.encryption.encryption"), ok: true, group: 0 },
     { id: "discovery", label: t("discovery.title"), ok: canI(st, P.MANAGE_SERVER), group: 0 },
+    { id: "template", label: t("server.template.title"), ok: canI(st, P.MANAGE_SERVER), group: 0 },
     { id: "members", label: t("server.serverSettings.members"), ok: true, group: 1 },
     { id: "invites", label: t("server.invites.invites"), ok: canI(st, P.MANAGE_SERVER), group: 1 },
     { id: "bans", label: t("server.serverSettings.bans"), ok: canI(st, P.BAN_MEMBERS), group: 1 },
@@ -80,6 +82,7 @@ export default function ServerSettingsModal({ onClose, serverId, page: initial }
   const body =
     page === "overview" ? <OverviewPage serverId={serverId} /> :
     page === "tag" ? <ServerTagPage serverId={serverId} /> :
+    page === "template" ? <ServerTemplatePage serverId={serverId} /> :
     page === "roles" ? <RolesPage serverId={serverId} /> :
     page === "members" ? <MembersPage serverId={serverId} /> :
     page === "bans" ? <BansPage serverId={serverId} /> :

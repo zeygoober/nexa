@@ -1,0 +1,38 @@
+-- See the SQLite migration of the same number.
+ALTER TABLE badge_defs ADD COLUMN rarity TEXT NOT NULL DEFAULT '';
+ALTER TABLE badge_defs ADD COLUMN art TEXT NOT NULL DEFAULT '';
+
+CREATE TABLE gem_wallets (
+  user_id BIGINT PRIMARY KEY,
+  gems BIGINT NOT NULL DEFAULT 0,
+  carry INTEGER NOT NULL DEFAULT 0,
+  held BIGINT NOT NULL DEFAULT 0,
+  earned BIGINT NOT NULL DEFAULT 0,
+  last_earn BIGINT NOT NULL DEFAULT 0,
+  state TEXT NOT NULL DEFAULT '',
+  state_at BIGINT NOT NULL DEFAULT 0,
+  off_until BIGINT NOT NULL DEFAULT 0,
+  checked_at BIGINT NOT NULL DEFAULT 0,
+  report_id BIGINT NOT NULL DEFAULT 0
+);
+
+CREATE TABLE gem_ledger (
+  id BIGINT PRIMARY KEY,
+  user_id BIGINT NOT NULL,
+  delta BIGINT NOT NULL,
+  kind TEXT NOT NULL,
+  ref TEXT NOT NULL DEFAULT '',
+  created_at BIGINT NOT NULL
+);
+CREATE INDEX gem_ledger_user ON gem_ledger(user_id, id);
+
+CREATE TABLE gem_watch (
+  user_id BIGINT NOT NULL,
+  day INTEGER NOT NULL,
+  earns INTEGER NOT NULL DEFAULT 0,
+  quick INTEGER NOT NULL DEFAULT 0,
+  alone INTEGER NOT NULL DEFAULT 0,
+  hours BIGINT NOT NULL DEFAULT 0,
+  sizes BIGINT NOT NULL DEFAULT 0,
+  PRIMARY KEY (user_id, day)
+);

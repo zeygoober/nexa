@@ -169,6 +169,9 @@ Small fixes and polish need none.
   Checkbox and toggle labels use sentence case ("Hide their messages completely").
 - Descriptions, hints, toasts and errors are short, plain sentences that sound like a person. Avoid em dashes;
   use a comma, a full stop or parentheses.
+- Badge descriptions (the tooltip and card under a badge's name) end without a full stop (the owner's rule,
+  2026-11-16): the catalogue strings have none, and `bareTip` (web `lib/badges.ts`, Android `Badges.bareTip`)
+  drops one from the owner's own words and staff-made descriptions as they are shown.
 - Never describe the owner in the third person or sell Nexa as run by one person (app, home page, Terms).
   Contact details read "Contact the owner (zey) here: ...". There is no public contact email for now (the
   owner's decision, 2026-11-07): `CONTACT_EMAIL` in `lib/legal.ts` is "", so every contact link is
@@ -488,7 +491,7 @@ serves until SIGINT or SIGTERM.
   `limReact`, `limMsgAll` (beside per-channel `limMsg`), `limSearch`, `limLookup` (signed-out lookups, per
   address), `limBuild` (things people create, servers included), `limForward`, `limReport`, `limTurn`, `limUsername` (two real
   changes an hour; a taken or unchanged name spends nothing), `limFriend`, `limRelate`, `limDM`, `limJoin`, `limPin`,
-  `limTyping`, `limDelete`, `limBilling`, `limManage` (server management), `limReactRole` (roles gained or lost by reacting), `limLastfm` (usernames tried) and `limTrade` (badge trades opened). `limLookup` and
+  `limTyping`, `limDelete`, `limBilling`, `limManage` (server management, and the owner's Gems), `limReactRole` (roles gained or lost by reacting), `limLastfm` (usernames tried) and `limTrade` (badge trades opened). `limLookup` and
   `limBuild` step up (`stepup.go`): past the free allowance a captcha (action `lookup` or `build`) buys a
   batch, those captchas capped per address and per account; batches are in memory, per process. A server holds
   at most 500 channels and 250 roles (`store.MaxServerChannels`, `MaxServerRoles`, counted in the creating
@@ -538,6 +541,19 @@ serves until SIGINT or SIGTERM.
   unique index): 3 to 32 of a-z, 0-9 and hyphens with a letter or number at each end, minus `reservedVanity`.
   One never expires or runs out, is found in any case by `InviteByCodeAny` after an exact match, and stays out
   of the invite list, Revoke All and account purges. Joins through it have no inviter.
+- Server templates (`api/server_templates.go`, `store/server_templates.go`, table `server_templates`, migration 0065; added
+  2026-11-17): a server has at most one, a snapshot (`store.SnapshotServer` into a `TemplateSpec`) under a 12-character code
+  shared as `PUBLIC_URL/template/<code>`. Making, renaming, syncing (`POST .../template/sync` takes the snapshot again under the
+  same code) and deleting need Manage Server and go in the audit log (`template_create`, `template_update`, `template_sync`,
+  `template_delete`); `GET /servers/templates/nexa/{code}` previews and `POST /servers/import/nexa` makes a server, open to anyone
+  signed in, through the same `CreateServerFromTemplate` a Discord template uses. What must not leak: the snapshot keeps custom
+  roles and role overwrites but never a bot's managed role, a member's overwrite, the server's own emoji (`custom:` glyphs, forum
+  emoji), pinned posts or anything of members or messages (`TestServerTemplateKeepsRolesAndPrivacyButNoMembers`). Create Server's
+  Import a Template has a Discord or Nexa switch, and a link of the other kind flips it (web `CreateServerModal.tsx`,
+  `lib/nexaTemplate.ts`; Android `CreateServerSheet`, `Invites.parseNexaTemplate`); a `/template/<code>` link opens it with the
+  link in (web `pages/TemplateLinkPage.tsx`, Android `Nav.openPath` and the manifest). Server Settings, Server Template: web
+  `server/pages/ServerTemplatePage.tsx`, Android `ui/server/ServerTemplatePage.kt`. Importing from Yapin waits on the owner
+  sending one of its template links (its site refuses this network).
 - Group chat activity is posted as `system_*` messages (none for a rename to the same name or removing an
   absent icon). Leaving takes `?silent=true` to omit the leave message; removing someone else always posts
   one. Subchats (`subchat_handlers`) can require a password for protected operations, deletion included.
@@ -591,7 +607,7 @@ serves until SIGINT or SIGTERM.
   kind, `dm_participants`, `channel_overwrites`, `channel_unlocks`, `thread_members`, `channel_follows`,
   `crossposts`), messages (`messages` with `ciphertext`, and `plain` for webhook and system text;
   `attachments`, `reactions`, `reaction_roles`, `pins`, `read_states`, `polls`, `poll_votes`), keys (`key_epochs`, `key_grants`,
-  `key_flags`, `key_rejections`), servers (`servers`, `server_members`, `roles`, `member_roles`, `invites`, `bans`, `audit_log`,
+  `key_flags`, `key_rejections`), servers (`servers`, `server_members`, `roles`, `member_roles`, `invites`, `bans`, `audit_log`, `server_templates`,
   `automod_rules`, `automod_events`), plans (`billing`, `whop_checkouts`, `server_boosts`, `plan_gifts`, `gift_links`,
   `users.plan`, `servers.boosts`), expressions (`emojis`, `sticker_packs`, `stickers`, `sticker_installs`,
   `recent_stickers`, `blocked_images`), games people share (`game_submissions`, `known_games`), files (`blobs`, `uploads`, `remote_blobs`, `storage_usage`), calls
@@ -606,7 +622,7 @@ serves until SIGINT or SIGTERM.
   `application_guild_installs`, `application_user_installs`, `oauth_codes`, `oauth_tokens` (gone with its
   refresh token, 90 days unused), `interactions` and `ephemeral_messages` (15 minutes), `ephemeral_files`,
   `interaction_files` (a day), `bot_copies`, `roles.managed_by`), badges (`badge_defs`, `user_badges`,
-  `badge_overrides`, `badge_prefs`, `badge_progress`, `badge_holdings`, `badge_trades`), the instance (`instance_settings`).
+  `badge_overrides`, `badge_prefs`, `badge_progress`, `badge_holdings`, `badge_trades`), Gems (`gem_wallets`, `gem_ledger`, `gem_watch`), the instance (`instance_settings`).
 - Channel types: `dm`, `group_dm`, `subchat`, `text`, `voice`, `category`, `announcement`, `forum`, `media`,
   `link`, `thread`, `private_thread`. `store.IsForum` is forum or media (posts only), `store.HoldsNoMessages`
   is category or link (no messages, invites, read states, mentions or own key). A channel's `key_conv_id`
@@ -909,7 +925,7 @@ it:
   belong to is on screen.
 - Staff ranks (`api/staff.go`, web `lib/staffRank.ts`, Android `data/StaffRanks.kt`) are public user flags,
   each holding everything below it; the owner's rule (2026-11-04) is that each rank's powers fit its job, and
-  that no rank gives rights in other people's servers or group chats (the exceptions are the owner's panel join and Manage Server, both below, and only for the owner). Helper (1024): support and triage: the
+  that no rank gives rights in other people's servers or group chats (the exception is the owner, below, who holds every permission in servers they are in). Helper (1024): support and triage: the
   report queue (claim, notes, dismiss; never Action Taken), bug reports, and reading people, cases and the
   log; acts on nobody. Mod (512): takes reported content down, mutes and bans for at most 30 days
   (`modMaxDuration`; never permanent, never shortening a longer one), replies in cases and lifts, closes and
@@ -922,8 +938,11 @@ it:
   holding a rank cannot be moderated. Routes state their least rank with `s.staff(rank, h)`, as does
   `emitStaff`. The apps ask `can(rank, capability)` (web `STAFF_CAN`, Android `StaffCan`), kept equal to the
   routes.
-- Staff are ordinary members of the servers and group chats they join: only a server's owner holds every
-  permission there (`serverSnapshot.privileged`), only a group's owner manages it (`managesGroup` on all
+- Staff are ordinary members of the servers and group chats they join: only a server's owner, and Nexa's owner
+  (the instance owner, the owner's decision 2026-11-17, "Everything, reading included"), hold every permission
+  there, private channels and their keys included (`serverSnapshot.privileged`, `nexaOwner`; web `holdsEverything` in
+  `stores/servers.ts`, Android `holdsEverything` in `data/State.kt`; `actorHighest` and `memberHighest` rank Nexa's owner
+  just under a server's owner, so they cannot remove or ban that owner). Only a group's owner manages it (`managesGroup` on all
   three), and staff delete other people's messages only through a report's Take Action. Until 2026-11-04
   Developers held every permission in every server they were in, private channels and their keys included;
   keys handed out then stay with them until those channels' keys rotate.
@@ -941,28 +960,24 @@ it:
   topics or keys, so it never shows more than a join would; Gift Links (`/moderation/gift-links`, the panel's `gifts` place, web
   `GiftLinksTab.tsx`, Android `ui/moderation/GiftLinks.kt`): free links in `gift_links` claimed at the usual `/gift/<code>`, whose
   `session_id` starts `owner:` (`ownerGiftPrefix`) and whose `plan_gifts` row starts `owner-link:` (`ownerGiftClaim`), which keeps
-  them out of the Your Links list and out of the Gift Giver badge. Nexa collects no email address, so there is none to show.
+  them out of the Your Links list and out of the Gift Giver badge; Give or Take Gems and Give or Take Collectables on a person's page (see Gems). Nexa collects no email address, so there is none to show.
 - Manage Server (the owner's decision, 2026-11-09; `api/moderation_manage.go`, `moderation_manage_guard.go`,
   `store/moderation_manage.go`; web `moderation/manage/`, Android `ui/moderation/Manage.kt`), `rankOwner` only, on a server's page,
   member or not: `GET /moderation/servers/{id}/manage` (logged as `owner_server_view`), `.../manage/members` and `POST .../manage`
   with one named `action` and a required reason, under `limManage`. Each action runs the handler a server's own managers use, as the
-  owner's real account; `privileged` in `permcache.go` is unchanged, and nothing else in the panel changed rank. Reading messages,
-  receiving or rotating keys, adding an app, editing or deleting messages (a report's Take Action aside), DMs and group chats are not
-  on the list, and the action list is the only way in. What must not break is the guard: every change that could open a channel is
-  first tried on an in-memory copy of the server's permissions (`manageWorld.gained`), and is refused (`owner_access_refused`, logged
-  as `owner_server_refused`, nothing reaches the server's log) if it would give View Channel, Read Message History, Connect or Manage
-  Roles in any channel, or Administrator, Manage Roles, Manage Server or View Audit Log on the server, to the owner, a member with a
-  staff rank, an app, an account sharing an address with the owner, or anyone joining later. A new action that touches roles,
-  overwrites, a channel's category or ownership needs its `mutate`, and a case in `TestOwnerManageRefusesIndirectAccess`. `transfer`
-  takes only a server whose owner is deleted, disabled or banned (`owner_active` otherwise) and never goes to one of those same
-  accounts. Every action writes `mod_log` as `owner_server_begin` and `audit_log` with `before` and `nexa_owner: true` (Done By:
-  Nexa's Owner), and the server's owner gets a case of action `server_manage` they can appeal in; anyone removed or banned gets a
-  notice, and a transfer posts `system_server_transfer`. No silent mode exists. An action holds its server's edit gate alone (`store/edit_gate.go`, `LockServerEdits`) from reading the server to its final
+  owner's real account, who holds every permission there anyway (see above). Reading messages, receiving or rotating keys, adding an
+  app, editing or deleting messages (a report's Take Action aside), DMs and group chats are not on the list. Nothing is refused for
+  what it opens (the guard went with the owner's decision of 2026-11-17); `manageWorld` now only marks private channels and keeps
+  `transfer` from going to the owner, a member with a staff rank, an app or an account sharing an address with the owner
+  (`owner_access_refused`, logged as `owner_server_refused`). `transfer` takes only a server whose owner is deleted, disabled or
+  banned (`owner_active` otherwise). Every action writes `mod_log` as `owner_server_begin` and `audit_log` with `before` and
+  `nexa_owner: true` (Done By: Nexa's Owner); nobody gets a case or a notice (the owner chose "Audit log only"), and a transfer
+  posts `system_server_transfer`. No silent mode exists. An action holds its server's edit gate alone (`store/edit_gate.go`, `LockServerEdits`) from reading the server to its final
   record, and every write that can change who sees what takes the shared side (`ShareServerEdits`, always gate then writer, ten seconds at most),
-  so nothing lands between the guard's check and the change; `TestAccessWritesTakeTheEditGate` fails on a new such write that does not, and the
+  so nothing lands between reading the server and the change; `TestAccessWritesTakeTheEditGate` fails on a new such write that does not, and the
   gate lives in the process, as chatd is one. Handlers commit on their own, so only the attempt (`owner_server_begin`) is written before the change,
-  which fails closed if it cannot be. A failed change adds a failed line and tells the server nothing; a committed one writes `audit_log`, the
-  cases and `owner_server_<action>` in one transaction (`OwnerManageRecord`, tried three times), and only then notifies anyone.
+  which fails closed if it cannot be. A failed change adds a failed line and tells the server nothing; a committed one writes `audit_log` and
+  `owner_server_<action>` in one transaction (`OwnerManageRecord`, tried three times), and only then notifies anyone.
 - One-character names (added 2026-11-09): usernames are 2 to 32 characters unless the account holds a gift for one. A
   Gift Link with plan `short_name` (`store.GiftShortName`, length 0) adds one `users.short_name_credits` (migration 0056)
   when claimed, and renaming to a single letter or number spends one inside `UpdateProfile`, or fails with `ErrNoShortName`
@@ -1098,7 +1113,7 @@ sorted on the server because the answer must not carry a locked badge's name; a 
 differs: flat black with no edge (the owner rejected a light rim, 2026-11-09). Built-in art has a `<name>-locked.svg` from `tools/badge_art.py`, and a badge staff
 made is drawn black in the same line on both clients.
 
-The index has three parts in a fixed order, each entry's `category` (the owner's request, 2026-11-10): Obtainable (every built-in badge, Contributor too), Exclusive (OG) and Secret (the value is still `special` in the API, the database and the code). A badge staff made sets `badge_defs.index_kind` (migration 0061; `exclusive` by default, a save without it keeps what it was): `exclusive`, `special`, or `hidden`, which leaves it out of the index and its totals, holders included, and still shows on profiles. A locked Special carries only `category` and `art: "secret"`, drawn from `secret-locked.svg` (a padlock) with no colour version (`TestBadgeIndexKeepsSpecialSecret`). Four built-in Secret badges (the owner's request, 2026-11-10; `store.SecretBadges`) are kept once earned in `user_badges` with `granted_by` the holder's own id (`AwardSecretBadge`), so a staff save of given badges leaves them, and their tips never say how: Hopeful (a friend request to Nexa's account, still refused), Lucky (a 1 in `luckyOdds` draw on each message sent, at most one a minute by `limLucky`, `api/lucky.go`), and Curious and Nosy, which the apps report through `POST /users/@me/badges/found` (only `store.AppFoundBadges`, so they can be faked): holding a padlock in the Index for ten seconds, and typing `secret` or `badges.secretWord` into Search Settings (web `lib/secretBadges.ts`, Android `data/SecretBadges.kt`; never in the demo). Nothing on screen says one was found. Arrange shows one part at a time, and a place in the grid is a place in that part. `Badge.exist` is how many people hold a badge at that level or above (`store/badge_counts.go`: cached five minutes, `forget` on every staff change, staff ranks and plans included), shown as "X exist" on the badge's card.
+The index has four parts in a fixed order, each entry's `category` (the owner's request, 2026-11-10; Collectable added 2026-11-16, see Gems): Obtainable (every built-in badge, Contributor too), Collectable (`collectible` in the API and the code), Exclusive (OG) and Secret (the value is still `special` in the API, the database and the code). The part names are adjectives in every language that has them (the owner renamed Collectibles to Collectable, 2026-11-16). Arrange and Edit Descriptions switch parts with a switch as wide as its words, a name never breaking: when a language's names do not fit it scrolls sideways (web `.parts`, Android `PartSwitch`). A badge staff made sets `badge_defs.index_kind` (migration 0061; `exclusive` by default, a save without it keeps what it was): `exclusive`, `special`, or `hidden`, which leaves it out of the index and its totals, holders included, and still shows on profiles. A locked Special carries only `category` and `art: "secret"`, drawn from `secret-locked.svg` (a padlock) with no colour version (`TestBadgeIndexKeepsSpecialSecret`). Four built-in Secret badges (the owner's request, 2026-11-10; `store.SecretBadges`) are kept once earned in `user_badges` with `granted_by` the holder's own id (`AwardSecretBadge`), so a staff save of given badges leaves them, and their tips never say how: Hopeful (a friend request to Nexa's account, still refused), Lucky (a 1 in `luckyOdds` draw on each message sent, at most one a minute by `limLucky`, `api/lucky.go`), and Curious and Nosy, which the apps report through `POST /users/@me/badges/found` (only `store.AppFoundBadges`, so they can be faked): holding a padlock in the Index for ten seconds, and typing `secret` or `badges.secretWord` into Search Settings (web `lib/secretBadges.ts`, Android `data/SecretBadges.kt`; never in the demo). Nothing on screen says one was found. Arrange shows one part at a time, and a place in the grid is a place in that part. `Badge.exist` is how many people hold a badge at that level or above (`store/badge_counts.go`: cached five minutes, `forget` on every staff change, staff ranks and plans included), shown as "X exist" on the badge's card.
 
 The owner can arrange the index for everyone (the owner's request, 2026-11-09; `ownerTools` on both apps, the Arrange button on the page, web
 `settings/BadgeArrange.tsx`, Android `Arrange` in `BadgeIndexPage.kt`). `GET` and `PUT /moderation/badges/index-order` (`rankOwner`) read and set the instance
@@ -1125,6 +1140,64 @@ People trade badges in a window both share, in the style of Pet Simulator 99's: 
 - A trade is one row (`badge_trades`) both edit: `from_offer` and `to_offer` (each side only offers its own badges), `from_ready`, `to_ready` and `version`. Any change to an offer clears both Ready marks and counts the version up, and `PUT /trades/{id}/ready` names the version it was given for (`trade_changed` otherwise), so nothing can be swapped in under someone's click. When the second Ready lands the trade happens in the same transaction: every removal is a conditional write (`take`), earned copy last, so a copy offered in two trades goes to the first and the other fails with `trade_they_short`; failing rolls the Ready back too. Routes: `POST /trades` opens one or returns the one already open between the two, `GET /trades/{id}`, `PUT /trades/{id}/offer`, `PUT /trades/{id}/ready`, `POST /trades/{id}/end` (declined by the one it was opened with, cancelled by the one who opened it). Only the two people can read or change it.
 - Opening follows the rules of a DM (`dmGate`, shared with `handleDMCreate`: blocks, DM privacy, a captcha for a first message to a stranger, never Nexa, bots or yourself), under `limTrade`, with at most `MaxPendingPerRecip` open per person and `MaxPendingTrades` in all; a block ends offers and Ready across it. It posts a `system_trade` message mentioning the other person (older apps draw it as a plain system line), whose current trade is attached when messages load (`hydrateTrades`) and updated by the `trade_update` event to both people. A trade left open stays until someone ends it, and can be joined later when the other person was not there. The account purge deletes holdings and trades.
 - Trades are new data Nexa keeps, so the Privacy Policy needs a line about them; the owner's rule is that legal text is not edited without being asked, so the proposed wording sits in a separate file until then.
+
+### Gems (`store/gems.go`, `api/gems.go`, migration 0064; the owner's request, 2026-11-16)
+
+A currency earned by chatting, spent on capsules of collectibles, fused and traded. Web `api/gems.ts`, `stores/gems.ts`, `lib/gems.ts`,
+`settings/GemsPage.tsx`, `components/gems/` (`FuseMachine`, `GemIcon`), `shell/GemHoldBanner.tsx`, `reports/GemFarming.tsx`; Android
+`data/Gems.kt`, `ui/gems/` (`GemsPage`, `FuseMachine`, `GemIcon`), `GemHoldBanner` in `ui/shell/MaintenanceBanner.kt`, the farming panel in
+`ui/moderation/ReportDecision.kt`. Settings, Gems on both. Gems are not end-to-end encrypted: the server keeps and moves them.
+
+- Earning: a stored message earns its sender one Gem at most once a minute (`limGem`, `earnGem` after the insert; people only), times the
+  team. A failure costs the Gem, never the message. Nothing about the message is kept beyond `gem_watch`'s per-day counts below.
+- The team is the first `GemTeamSize` (five) badges the profile shows (`GemTeam`, cached five minutes in `gemTeams`). Each adds percent
+  (`gemPower`): 2, or 2 per level up to 10 for a tiered badge; a collectible its rarity's power (`gemRarityPower`: 4, 8, 16, 40) times its
+  material; a staff rank, plan, Booster or Gift Giver 0, since those come of paying and Gems are never bought.
+- Collectibles are staff-made badges with `badge_defs.rarity` (common, rare, epic, huge) and `art`, a drawing from `CollectibleArt`
+  picked in the panel's Badges tab (web `COLLECTIBLE_ART` from the files, Android `Ota.list("badges")`). Picking a drawing fills the description with its line, `gems.artDesc.<art>` in the viewer's language, only over an empty description or the line the last drawing brought, never the name (web `pickArt` in `BadgesTab.tsx`, Android `artLine` in `BadgeTab.kt`). A collectible stays one and a hand-given badge never becomes one. They are held only as `badge_holdings` copies under `event:<id>-<material>`, material 1 (bronze) to 5 (prism),
+  and come only from capsules, fusing and trades. Art: `badges/col-<art>-<material>.svg`, `col-<art>-locked.svg`, `gem.svg` (the currency)
+  and `capsule.svg`, all from `tools/badge_art.py`, copied to Android and sent over the air.
+- A held collectible shows on its holder's profile at the highest material held (`heldBadges` adds it after the earned and given badges,
+  so it can sit in the team too), and the Badge Index has a Collectable part (`category` `collectible`, between Obtainable and Exclusive)
+  with each material its own entry, keyed `event:<id>-<material>`. A locked one carries only `art: "col-<art>"`, never the name
+  (`TestCollectiblesShowAndStaySecretLocked`). `SetBadgeTip` takes a material's key and edits the definition's description.
+- `POST /gems/capsule` (`limGemSpend`) spends `GemCapsulePrice` (50, the owner's price from 2026-11-17) and draws a rarity at `GemOdds` (hundredths of a percent: 70, 25, 4.9,
+  0.1), then a collectible of it at bronze. `POST /gems/fuse` takes 1 to `GemFuseCost` (5) copies of one material; each copy is a 20% chance
+  of one copy of the next material, five always work, and the copies are spent either way. The server rolls through `fuseRoll`, which tests
+  replace. The apps only animate to the answer: the capsule rocks while it waits and reveals over 1.5 s (2.3 s for a Huge, which a press
+  skips). The fuse dial winds back 12 degrees, lets go and slows on a cubic over 3 or 4 laps and 4.4 to 5.6 s, holds still 450 ms, then
+  shows the answer (`rollPlan`, `angleAt`, `WIND_MS`, `HOLD_MS`, kept equal on both apps). Where it stops must vary (the owner's complaint,
+  2026-11-16, when every roll stopped at the same spot): about a third land clear of both lines, two fifths just on the right side of one
+  (the arc's far edge or the top), and a quarter teeter, stopping just on the wrong side, hanging there, then creeping over or falling
+  back. The marker always rests at least `CLEAR` degrees from a line, and the arc is inset by its round caps (`CAP_DEG`) so a line is
+  where it looks. A press skips; Reduced motion shows the answer at once.
+- Sounds (the owner chose them from samples, 2026-11-16): `tools/gem_sounds.py` writes `web/public/sounds/gem-*.m4a` (Android copies them
+  and takes them over the air), played by web `lib/gemSounds.ts` and Android `media/GemSounds.kt` (a SoundPool loaded through `Ota.load`
+  only while a Gems screen is open). The dial clicks once per 15 degree peg, softer and lower while winding, knocks each time it crosses
+  the line it ends beside on the last lap, then a win or a loss; a capsule rattles, builds and opens with chimes by rarity. Off with the
+  synced `gemSounds` (Settings, Sounds), at the sounds volume.
+- The owner gives and takes collectables (the owner's request, 2026-11-17; `store/gems_owner.go`): `GET` and `POST
+  /moderation/users/{id}/collectables` (`rankOwner`, `POST` under `limManage`), body `badge` (`event:<id>-<material>`), a signed
+  `amount` up to `MaxOwnerCopies` (100) and an optional reason. `Store.OwnerCollectible` refuses a badge that is not a collectible
+  (`not_collectable`) and taking more than is held (`copies_short`), and writes `mod_log` (`collectable_give`, `collectable_take`)
+  in the same transaction. Give or Take Collectables on a person's page (web `moderation/CollectablesModal.tsx`, Android
+  `ui/moderation/OwnerCollectables.kt`) picks a collectable, then a material showing the copies held of each.
+- Trades carry Gems as the line `gems` (`GemsKey`, quantity is the amount, at most `MaxTradeGems`), drawn first in both offers. Gems never go
+  between accounts sharing an address (`trade_gems_linked`, through the alts check) or out of a wallet with a hold open (`trade_gems_held`).
+- The owner gives and takes Gems (the owner's request, 2026-11-16; Give or Take Gems on a person's page, web
+  `moderation/GemsModal.tsx`, Android `ui/moderation/OwnerGems.kt`): `GET` and `POST /moderation/users/{id}/gems` (`rankOwner`, `POST`
+  under `limManage`), a signed `amount` up to `MaxTradeGems` and an optional reason. `Store.OwnerGems` changes the wallet, writes
+  `gem_ledger` (`owner_given`, `owner_taken`) and `mod_log` (`gems_give`, `gems_take` with the amount and the balance after) in one
+  transaction. Taking stops at what the person can spend (`gems_short`); held Gems and the farming check are left alone. People only.
+- Farming (`gem_watch`, kept `gemWatchDays`, 14): per UTC day, earns, earns right after the cooldown, earns where nobody else spoke for half an
+  hour, which hours and which message sizes earned. A day scoring past `gemFlagScore` puts the wallet in `check`: new Gems are held and the
+  apps show the hold banner until `POST /gems/confirm` (captcha action `gems`) releases them. Still scoring after that files a Gem Farming
+  report (reason `gem_farming`, held in `report`) whose staff page shows the days, never messages. Take Action (Mod and up) opens a case
+  `gem_farming` that turns earning off for 30 days (`GemOffFor`) and takes what was held; lifting the case gives both back. Staff are never
+  reported (it stays a check). `users`' `gem_state` reaches only its owner, and `gems_update` tells them of changes they did not make.
+- `GET /gems/record` is the person's wallet, ledger (`gem_ledger`: spending, trades and held Gems, never earning) and watch days, in the data
+  export as `gems.json`; the legal report prints the same. The account purge deletes all three tables. The Privacy Policy does not mention
+  Gems yet: the proposed wording is in `docs/proposals/gems-disclosure.md` until the owner asks for the legal text to change.
 
 ### Profile widgets (`api/widgets.go`, web `lib/widgets.ts`, Android `ui/profile/Widgets.kt`)
 
@@ -1361,6 +1434,10 @@ mentions, reactions, sizes.
   a member lacks (a waiting device asks again with `POST /keys/request`), and `key_rotation_needed` asks one
   for a new epoch when membership shrinks. Invite links can carry the root key in the fragment
   (`#k=<epoch>.<key>`), which never reaches the server.
+- Nexa's owner (the owner's decision, 2026-11-17) holds every permission in servers they are a member of (Permissions),
+  so `keys_needed` asks for every key there, private channels' included, as for a server's owner, and members' apps hand
+  them over because the owner is in the member list (`lib/convMembers.ts` checks membership only). Never in group chats
+  or DMs. Keys handed over stay with the owner until those channels' keys rotate.
 - Who may make an epoch (`epochCreator` in `api/key_handlers.go`; the owner's rule after 2026-11-06, when one
   member's `POST /keys/epochs` with the reason "probe" stopped every channel on a 350-person server's key): the
   newest epoch is the only one messages can use from the moment it exists, before anyone holds its key, so a new
@@ -1418,7 +1495,7 @@ mentions, reactions, sizes.
   channel header shows no mark (whoever added the app knew, and the topic keeps its room). The reading glass
   in the portal and consent page shows which kind an app is.
 - Not end-to-end encrypted: webhook and app messages (`messages.plain`, marked in the app), interactions,
-  Nexa's case threads, poll and AutoMod notices the server writes, badge trades (the server moves the badges), and everything public (profiles, avatars,
+  Nexa's case threads, poll and AutoMod notices the server writes, badge trades and Gems (the server moves them), and everything public (profiles, avatars,
   server names, emoji, stickers).
 
 ## Web app (`web/src`)
@@ -1647,8 +1724,9 @@ and must stay in step and compatible with installed apps (anything new is option
   `python3 tools/desktop_release.py` publishes the current version regardless (`--republish` replaces it).
   `make desktop` is the Mac's own build into `desktop/dist` and publishes nothing.
 - Signed updates (from 1.2.8): updaters verify platform-bound Ed25519 signatures over the exact manifest bytes
-  before parsing checksums, with no unsigned fallback. `releaseKey.ts` holds only the public anchor, a new key
-  the owner authorized after the original was unavailable. The private key is at
+  before parsing checksums, with no unsigned fallback. `releaseKey.ts` holds only the public anchor, a key
+  made on 2026-11-17 for nexa.pm, since the relaunch never had upstream's private key (`MANUAL_SIGNATURE_VERSION`
+  1.2.12, so older copies install 1.2.12 by hand). The private key is at
   `~/.local/share/nexa-signing/update-key.pem` on the Mac and the build server (0600 in a 0700 directory);
   never commit, replace or regenerate it while building. `NEXA_DESKTOP_SIGNING_KEY` may name another path, but
   its public key must match the pinned anchor. `tools/publish_desktop.py` signs staged manifests before
@@ -1817,7 +1895,8 @@ talks to the server as deployed, so it never depends on unreleased server change
   builds an APK, removing any pack, numbered after the published one (passed as `-PnexaVersionCode` and
   `-PnexaVersionName`, so nothing in git changes), signs it with the private key configured in
   `android/signing` and publishes it; chatd offers it at once and phones update. `make publish-android` builds
-  one regardless. Builds up to 1.1.0 used an older, lost key and cannot update; those phones reinstall.
+  one regardless. The relaunch signs with its own key, made on 2026-11-17, since upstream's never came with it, so
+  phones holding an upstream build (and builds up to 1.1.0, from an older lost key) cannot update and reinstall.
   Release builds need the JDK and SDK (as under Commands).
 
 ## Tools (`tools/`)
@@ -1831,7 +1910,7 @@ talks to the server as deployed, so it never depends on unreleased server change
 - Releases: `android_release.py`, `desktop_release.py`, `mac_package.py`, `publish_desktop.py`, `desktop_dev_build.py`
   (test builds, publishing nothing), `licenses.py`
   (license texts in `licenses/`).
-- Assets: `badge_art.py` (the badge pictures), `twemoji_font.py`, `twemoji_font_check.py`, `twemoji_sprites.py`, `trace_wordmark.py`,
+- Assets: `badge_art.py` (the badge pictures), `gem_sounds.py` (the Gems sounds), `twemoji_font.py`, `twemoji_font_check.py`, `twemoji_sprites.py`, `trace_wordmark.py`,
   `home_shots.py`, `home_gifs.py`; `android/tools/name_fonts.py`. `requirements.txt` needs Brotli 1.2.1 or
   newer for the WOFF tooling.
 - Video: `trailer.py` films raw footage with a real-size macOS pointer. `advert.py` films a seeded world,

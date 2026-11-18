@@ -58,6 +58,7 @@ import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import fish.nexa.Nexa
 import fish.nexa.data.Ids
@@ -465,6 +466,8 @@ fun Segmented(
     label: String,
     fill: Boolean = true,
     tones: Map<String, Color> = emptyMap(),
+    /** Each choice's side padding; five choices on a phone need less than the usual 16. */
+    itemPad: Dp = 16.dp,
     extra: @Composable (String) -> Unit = {},
 ) {
     val c = Nx.colors
@@ -492,7 +495,7 @@ fun Segmented(
                     .clip(pill)
                     .pressable(remember { MutableInteractionSource() }) { onPick(key) }
                     .semantics { role = Role.RadioButton; selected = on }
-                    .padding(horizontal = 16.dp),
+                    .padding(horizontal = itemPad),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally),
             ) {

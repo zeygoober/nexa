@@ -28,6 +28,7 @@ var reportParts = map[string][]string{
 	"role":        {"whole", "name", "icon", "custom"},
 	"other":       {"custom"},
 }
+
 // reportReasons in the order the forms list them. A reason a kind of content
 // cannot have (reasonKinds) is left out of its form and refused.
 var reportReasons = []string{"harassment", "hate", "violence", "self_harm", "sexual", "child_safety", "underage", "spam", "scam", "privacy", "ban_evasion", "illegal", "other"}
@@ -680,6 +681,7 @@ func (s *Server) handleModReportReview(w http.ResponseWriter, r *http.Request) {
 	}
 	if now, err := s.Store.SafetyReportByID(r.Context(), v.ID); err == nil {
 		s.emitReportChanges(r.Context(), now.Status != v.Status, false, append([]*store.SafetyReport{now}, closed...)...)
+		s.settleGemReports(r.Context(), me, note, append([]*store.SafetyReport{now}, closed...)...)
 	}
 	s.handleModReport(w, r)
 }

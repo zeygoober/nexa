@@ -487,3 +487,81 @@ export function stopCalling(): void {
   stopOutgoing?.();
   stopOutgoing = null;
 }
+
+/**
+ * Sounds that answer what someone does on screen (the Gems capsule and fuse
+ * dial, lib/gemSounds.ts), as against alerts: Nexa's own recordings in
+ * /sounds, at the sounds' volume, never from a pack or in `off`.
+ */
+export interface Effects {
+  /** Plays `name` `when` seconds from now; anything not decoded yet is left out rather than played late. */
+  play(name: string, when?: number, o?: { gain?: number; rate?: number; pan?: number }): void;
+  /** Stops everything this set has started or scheduled. */
+  stop(): void;
+}
+
+function effectRecording(name: string): { key: string; get: () => Promise<ArrayBuffer> } {
+  return {
+    key: `fx:${name}`,
+    get: () => fetch(`/sounds/${name}.m4a`).then((r) => (r.ok ? r.arrayBuffer() : Promise.reject(new Error(String(r.status))))),
+  };
+}
+
+/** From inside a press: wakes audio (iOS starts it only there) and starts decoding `names`, so they are ready when the moment comes. */
+export function primeEffects(names: readonly string[]): void {
+  if (hiddenHomeScreenApp()) return;
+  const k = audio();
+  if (!k) return;
+  void k.want();
+  for (const n of names) void decodeRecording(effectRecording(n));
+}
+
+/** A set of effects to play, once audio runs and `names` are decoded; null when there is no audio to play them on. */
+export async function effects(names: readonly string[]): Promise<Effects | null> {
+  if (hiddenHomeScreenApp()) return null;
+  const k = audio();
+  if (!k) return null;
+  starting++;
+  try {
+    const [running] = await Promise.all([k.started(STALE_MS), ...names.map((n) => decodeRecording(effectRecording(n)))]);
+    if (!running || keeper !== k || k.released) return null;
+  } finally {
+    starting--;
+  }
+  const ac = k.ac;
+  const live = new Set<AudioBufferSourceNode>();
+  return {
+    play(name, when = 0, o = {}) {
+      const buf = buffers.get(`fx:${name}`);
+      if (!buf || keeper !== k || k.released) return;
+      const src = ac.createBufferSource();
+      src.buffer = buf;
+      src.playbackRate.value = o.rate ?? 1;
+      const g = ac.createGain();
+      g.gain.value = FILE_GAIN * level() * (o.gain ?? 1);
+      let out: AudioNode = src.connect(g);
+      if (o.pan && ac.createStereoPanner) {
+        const p = ac.createStereoPanner();
+        p.pan.value = o.pan;
+        out = out.connect(p);
+      }
+      out.connect(ac.destination);
+      const at = Math.max(0, when);
+      src.start(ac.currentTime + at);
+      live.add(src);
+      src.onended = () => live.delete(src);
+      quietFrom = Math.max(quietFrom, Date.now() + (at + buf.duration / (o.rate ?? 1)) * 1000);
+      restLater();
+    },
+    stop() {
+      for (const src of live) {
+        try {
+          src.stop();
+        } catch {
+          // never started: nothing to stop
+        }
+      }
+      live.clear();
+    },
+  };
+}

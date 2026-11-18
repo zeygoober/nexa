@@ -20,10 +20,11 @@ import (
 // The owner's server management: named changes the owner of Nexa can make to a
 // server from the panel, whether or not they belong to it. Each runs the same
 // handler a server's own managers use, as the owner's real account, so people
-// see who did it. Nothing here may reach a conversation's messages or keys:
-// every change is first tried on a copy of the server's permissions
-// (moderation_manage_guard.go) and refused if it would give the owner, staff,
-// apps or new members access to anything they lack.
+// see who did it. The owner holds every permission in a server they are in
+// (permcache.go), so nothing here is refused for what it opens (the owner's
+// decision, 2026-11-17); every change goes in the server's audit log and this
+// panel's log. A transfer alone still never goes to the owner, staff, an app or
+// an account sharing the owner's address (moderation_manage_guard.go).
 
 func (s *Server) modManageRoutes(mux *http.ServeMux) {
 	mux.Handle("GET /api/v1/moderation/servers/{id}/manage", s.staff(rankOwner, s.handleModManageView))
@@ -97,7 +98,7 @@ type manageRequest struct {
 }
 
 // managePlan is an action made ready: which handler runs and with what, what
-// it is recorded as, and what it would do to who can see what.
+// it is recorded as.
 type managePlan struct {
 	handler    http.HandlerFunc
 	method     string
@@ -109,10 +110,8 @@ type managePlan struct {
 	target     *ids.ID
 	targetName string
 	before     map[string]any
-	// subject is someone the action happens to, who is told; notice says how
+	// subject is someone the action happens to (a transfer's heir)
 	subject *store.User
-	notice  string
-	mutate  func(*manageWorld)
 }
 
 type manageCall struct {
@@ -268,14 +267,7 @@ func (m *manageCall) plan() (*managePlan, error) {
 			return nil, err
 		}
 		private := m.isPrivateChannel(ch.ID)
-		fields := m.pick("name", "nsfw", "slowmode_seconds", "user_limit", "glyph")
-		// a private channel's topic is its members' to read, so also to replace
-		if t, ok := m.req.Data["topic"]; ok {
-			if private {
-				return nil, E(http.StatusForbidden, "private_topic", "A private channel's topic cannot be changed here.")
-			}
-			fields["topic"] = t
-		}
+		fields := m.pick("name", "topic", "nsfw", "slowmode_seconds", "user_limit", "glyph")
 		if len(fields) == 0 {
 			return nil, errManageBody
 		}
@@ -302,16 +294,7 @@ func (m *manageCall) plan() (*managePlan, error) {
 			item["position"] = n
 		}
 		return &managePlan{handler: s.handleServerChannelPositions, method: "PATCH", path: map[string]string{"id": sid}, body: []any{item}, audit: "channel_update", targetType: "channel", target: &ch.ID, targetName: ch.Name,
-			before: map[string]any{"name": ch.Name, "parent_id": ch.ParentID, "position": ch.Position},
-			mutate: func(w *manageWorld) {
-				// whether it syncs depends on what it had; the worst is that it does
-				if pid != nil {
-					w.takeCategory(ch.ID, *pid)
-					if c := w.channel(ch.ID); c != nil {
-						c.parent = pid
-					}
-				}
-			}}, nil
+			before: map[string]any{"name": ch.Name, "parent_id": ch.ParentID, "position": ch.Position}}, nil
 	case "channel_delete":
 		ch, err := m.channel()
 		if err != nil {
@@ -340,10 +323,7 @@ func (m *manageCall) plan() (*managePlan, error) {
 				before = o
 			}
 		}
-		return &managePlan{handler: s.handleOverwritePut, method: "PUT", path: map[string]string{"id": ch.ID.String(), "target": target.String()}, body: body, audit: "overwrite_update", targetType: "channel", target: &ch.ID, targetName: ch.Name, before: map[string]any{"overwrite": before},
-			mutate: func(w *manageWorld) {
-				w.setOverwrite(ch.ID, perms.Overwrite{TargetID: target, Kind: body.Type, Allow: body.Allow &^ body.Deny, Deny: body.Deny})
-			}}, nil
+		return &managePlan{handler: s.handleOverwritePut, method: "PUT", path: map[string]string{"id": ch.ID.String(), "target": target.String()}, body: body, audit: "overwrite_update", targetType: "channel", target: &ch.ID, targetName: ch.Name, before: map[string]any{"overwrite": before}}, nil
 	case "overwrite_remove":
 		ch, err := m.channel()
 		if err != nil || m.req.TargetID == nil {
@@ -359,8 +339,7 @@ func (m *manageCall) plan() (*managePlan, error) {
 		if before == nil {
 			return nil, errManageTarget
 		}
-		return &managePlan{handler: s.handleOverwriteDelete, method: "DELETE", path: map[string]string{"id": ch.ID.String(), "target": target.String()}, audit: "overwrite_delete", targetType: "channel", target: &ch.ID, targetName: ch.Name, before: map[string]any{"overwrite": before},
-			mutate: func(w *manageWorld) { w.removeOverwrite(ch.ID, target) }}, nil
+		return &managePlan{handler: s.handleOverwriteDelete, method: "DELETE", path: map[string]string{"id": ch.ID.String(), "target": target.String()}, audit: "overwrite_delete", targetType: "channel", target: &ch.ID, targetName: ch.Name, before: map[string]any{"overwrite": before}}, nil
 	case "overwrite_sync":
 		ch, err := m.channel()
 		if err != nil {
@@ -369,9 +348,7 @@ func (m *manageCall) plan() (*managePlan, error) {
 		if ch.ParentID == nil {
 			return nil, E(http.StatusBadRequest, "no_category", "That channel is not in a category.")
 		}
-		parent := *ch.ParentID
-		return &managePlan{handler: s.handlePermissionsSync, method: "POST", path: map[string]string{"id": ch.ID.String()}, audit: "overwrite_sync", targetType: "channel", target: &ch.ID, targetName: ch.Name, before: map[string]any{"overwrites": ch.Overwrites},
-			mutate: func(w *manageWorld) { w.takeCategory(ch.ID, parent) }}, nil
+		return &managePlan{handler: s.handlePermissionsSync, method: "POST", path: map[string]string{"id": ch.ID.String()}, audit: "overwrite_sync", targetType: "channel", target: &ch.ID, targetName: ch.Name, before: map[string]any{"overwrites": ch.Overwrites}}, nil
 
 	case "role_create":
 		fields := m.pick("name", "color", "hoist", "mentionable", "permissions", "color2", "color3", "icon_emoji")
@@ -385,26 +362,19 @@ func (m *manageCall) plan() (*managePlan, error) {
 		if len(fields) == 0 {
 			return nil, errManageBody
 		}
-		next, set := ro.Permissions, false
 		if v, ok := fields["permissions"]; ok {
+			var next perms.Perm
 			if json.Unmarshal(v, &next) != nil {
 				return nil, errManageBody
 			}
-			set = true
 		}
-		return &managePlan{handler: s.handleRolePatch, method: "PATCH", path: map[string]string{"id": sid, "rid": ro.ID.String()}, body: fields, audit: "role_update", targetType: "role", target: &ro.ID, targetName: ro.Name, before: roleBefore(ro),
-			mutate: func(w *manageWorld) {
-				if set {
-					w.setRolePerms(ro.ID, next)
-				}
-			}}, nil
+		return &managePlan{handler: s.handleRolePatch, method: "PATCH", path: map[string]string{"id": sid, "rid": ro.ID.String()}, body: fields, audit: "role_update", targetType: "role", target: &ro.ID, targetName: ro.Name, before: roleBefore(ro)}, nil
 	case "role_delete":
 		ro, err := m.role()
 		if err != nil {
 			return nil, err
 		}
-		return &managePlan{handler: s.handleRoleDelete, method: "DELETE", path: map[string]string{"id": sid, "rid": ro.ID.String()}, audit: "role_delete", targetType: "role", target: &ro.ID, targetName: ro.Name, before: roleBefore(ro),
-			mutate: func(w *manageWorld) { w.deleteRole(ro.ID) }}, nil
+		return &managePlan{handler: s.handleRoleDelete, method: "DELETE", path: map[string]string{"id": sid, "rid": ro.ID.String()}, audit: "role_delete", targetType: "role", target: &ro.ID, targetName: ro.Name, before: roleBefore(ro)}, nil
 	case "member_role_add", "member_role_remove":
 		add := m.req.Action == "member_role_add"
 		u, err := m.member()
@@ -419,22 +389,21 @@ func (m *manageCall) plan() (*managePlan, error) {
 		if add {
 			audit = "member_role_add"
 		}
-		return &managePlan{handler: s.handleMemberRole(add), method: map[bool]string{true: "PUT", false: "DELETE"}[add], path: map[string]string{"id": sid, "uid": u.ID.String(), "rid": ro.ID.String()}, audit: audit, targetType: "user", target: &u.ID, targetName: u.Username, before: map[string]any{"role": ro.Name},
-			mutate: func(w *manageWorld) { w.memberRole(u.ID, ro.ID, add) }}, nil
+		return &managePlan{handler: s.handleMemberRole(add), method: map[bool]string{true: "PUT", false: "DELETE"}[add], path: map[string]string{"id": sid, "uid": u.ID.String(), "rid": ro.ID.String()}, audit: audit, targetType: "user", target: &u.ID, targetName: u.Username, before: map[string]any{"role": ro.Name}}, nil
 
 	case "member_remove":
 		u, err := m.person()
 		if err != nil {
 			return nil, err
 		}
-		return &managePlan{handler: s.handleMemberKick, method: "DELETE", path: map[string]string{"id": sid, "uid": u.ID.String()}, query: url.Values{"reason": {m.req.Reason}}, audit: "member_kick", targetType: "user", target: &u.ID, targetName: u.Username, before: map[string]any{"username": u.Username}, subject: u, notice: "removed"}, nil
+		return &managePlan{handler: s.handleMemberKick, method: "DELETE", path: map[string]string{"id": sid, "uid": u.ID.String()}, query: url.Values{"reason": {m.req.Reason}}, audit: "member_kick", targetType: "user", target: &u.ID, targetName: u.Username, before: map[string]any{"username": u.Username}, subject: u}, nil
 	case "member_ban":
 		u, err := m.person()
 		if err != nil {
 			return nil, err
 		}
 		// a ban here never takes anyone's messages with it
-		return &managePlan{handler: s.handleBanPut, method: "PUT", path: map[string]string{"id": sid, "uid": u.ID.String()}, body: map[string]any{"reason": m.req.Reason, "delete_message_days": 0}, audit: "member_ban", targetType: "user", target: &u.ID, targetName: u.Username, before: map[string]any{"username": u.Username}, subject: u, notice: "banned"}, nil
+		return &managePlan{handler: s.handleBanPut, method: "PUT", path: map[string]string{"id": sid, "uid": u.ID.String()}, body: map[string]any{"reason": m.req.Reason, "delete_message_days": 0}, audit: "member_ban", targetType: "user", target: &u.ID, targetName: u.Username, before: map[string]any{"username": u.Username}, subject: u}, nil
 	case "member_unban":
 		if m.req.UserID == nil {
 			return nil, errManageTarget
@@ -493,9 +462,6 @@ func (m *manageCall) plan() (*managePlan, error) {
 
 	case "automod_create":
 		fields := m.pick("name", "kind", "enabled", "config", "actions", "exempt_roles", "exempt_channels")
-		if err := automodFieldsSafe(fields); err != nil {
-			return nil, err
-		}
 		return &managePlan{handler: s.handleAutomodRuleSave, method: "POST", path: map[string]string{"id": sid}, body: fields, audit: "automod_rule_create", targetType: "automod_rule", before: map[string]any{}}, nil
 	case "automod_edit":
 		rule, err := m.rule()
@@ -505,14 +471,6 @@ func (m *manageCall) plan() (*managePlan, error) {
 		fields := m.pick("name", "kind", "enabled", "config", "actions", "exempt_roles", "exempt_channels")
 		if len(fields) == 0 {
 			return nil, errManageBody
-		}
-		if automodAlerts(rule.Actions) {
-			// a rule that copies what it catches somewhere can only be turned off
-			if v, ok := fields["enabled"]; !ok || len(fields) != 1 || strings.TrimSpace(string(v)) != "false" {
-				return nil, errManageAlerts
-			}
-		} else if err := automodFieldsSafe(fields); err != nil {
-			return nil, err
 		}
 		return &managePlan{handler: s.handleAutomodRuleSave, method: "PATCH", path: map[string]string{"id": sid, "rid": rule.ID.String()}, body: fields, audit: "automod_rule_update", targetType: "automod_rule", target: &rule.ID, targetName: rule.Name, before: map[string]any{"name": rule.Name, "kind": rule.Kind, "enabled": rule.Enabled}}, nil
 	case "automod_delete":
@@ -535,7 +493,7 @@ func (m *manageCall) plan() (*managePlan, error) {
 		if m.world.privileged[u.ID] || u.ID == m.me.ID {
 			return nil, errManageOpensAccess
 		}
-		return &managePlan{handler: s.handleServerTransfer, method: "POST", path: map[string]string{"id": sid}, body: map[string]any{"user_id": u.ID}, audit: "server_transfer", targetType: "user", target: &u.ID, targetName: u.Username, before: map[string]any{"owner_id": m.owner.ID, "owner_username": m.owner.Username}, subject: u, notice: "heir"}, nil
+		return &managePlan{handler: s.handleServerTransfer, method: "POST", path: map[string]string{"id": sid}, body: map[string]any{"user_id": u.ID}, audit: "server_transfer", targetType: "user", target: &u.ID, targetName: u.Username, before: map[string]any{"owner_id": m.owner.ID, "owner_username": m.owner.Username}, subject: u}, nil
 	}
 	return nil, E(http.StatusBadRequest, "unknown_action", "That is not something the owner can do here.")
 }
@@ -550,8 +508,6 @@ func (m *manageCall) rule() (*store.AutomodRule, error) {
 	}
 	return rule, nil
 }
-
-var errManageAlerts = E(http.StatusForbidden, "automod_alert", "A rule that posts what it catches can only be turned off or deleted here: it would copy private messages somewhere they can be read.")
 
 // automodAlerts says whether a rule's actions post what it catches. The list
 // is parsed strictly: anything unreadable counts as posting.
@@ -571,13 +527,6 @@ func automodAlerts(raw json.RawMessage) bool {
 		}
 	}
 	return false
-}
-
-func automodFieldsSafe(fields map[string]json.RawMessage) error {
-	if v, ok := fields["actions"]; ok && automodAlerts(v) {
-		return errManageAlerts
-	}
-	return nil
 }
 
 // errManageNotRecorded is a change that was made and could not be written up.
@@ -665,7 +614,7 @@ func (s *Server) handleModManage(w http.ResponseWriter, r *http.Request) {
 	req.Reason = reason
 
 	// Everything from reading the server to the final record happens with its
-	// gate held, so what the guard reads is what the change is made to. Past
+	// gate held, so what the plan reads is what the change is made to. Past
 	// this point a client going away cannot leave an action half done.
 	held, unlock, err := s.Store.LockServerEdits(ctx, mod.ID)
 	if err != nil {
@@ -704,15 +653,6 @@ func (s *Server) handleModManage(w http.ResponseWriter, r *http.Request) {
 		WriteError(w, err)
 		return
 	}
-	if plan.mutate != nil {
-		after := world.clone()
-		plan.mutate(after)
-		if world.gained(after) {
-			s.logManageRefused(ctx, me, srv, &req, reason)
-			WriteError(w, errManageOpensAccess)
-			return
-		}
-	}
 
 	action := store.LogOwnerServerPrefix + req.Action
 	details := func(status string, extra map[string]json.RawMessage) json.RawMessage {
@@ -736,16 +676,8 @@ func (s *Server) handleModManage(w http.ResponseWriter, r *http.Request) {
 		Log:   &store.ModLogEntry{Action: action, ModeratorID: me.ID, ModeratorUsername: me.Username, TargetID: &owner.ID, TargetUsername: owner.Username, Reason: reason},
 		Audit: &store.AuditEntry{ServerID: srv.ID, ActorID: me.ID, Action: plan.audit, TargetType: plan.targetType, TargetID: plan.target, Reason: reason},
 	}
-	notice := func(u *store.User, kind string) *store.ModCase {
-		return &store.ModCase{UserID: u.ID, ModeratorID: me.ID, Action: store.ActionServerManage, Reason: reason, TargetUsername: u.Username, TargetDisplayName: u.DisplayName,
-			Details: mustJSON(map[string]any{"server_id": srv.ID, "server_name": srv.Name, "what": req.Action, "notice": kind, "target": plan.targetName})}
-	}
-	if owner.Flags&store.FlagDeleted == 0 {
-		rec.Cases = append(rec.Cases, notice(owner, "owner"))
-	}
-	if plan.subject != nil {
-		rec.Cases = append(rec.Cases, notice(plan.subject, plan.notice))
-	}
+	// the server's audit log and this log are the whole record: nobody is sent
+	// a case or a notice (the owner's decision, 2026-11-17)
 	s.manageStage("validated")
 	// only the attempt is written first: an action that cannot say it was tried
 	// does not go ahead, and the server hears of nothing until it has happened
@@ -788,10 +720,6 @@ func (s *Server) handleModManage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	s.emitServerWithPerm(ctx, srv.ID, perms.ViewAuditLog, "audit_log_entry", rec.Audit)
-	for _, c := range rec.Cases {
-		s.notifyMember(ctx, c)
-		s.emitCaseStaff(ctx, c)
-	}
 	s.emitLog(ctx, rec.Log)
 	if req.Action == "transfer" {
 		s.announceTransfer(r, srv, me, plan.subject, world)
@@ -931,10 +859,9 @@ func (s *Server) writeManageView(w http.ResponseWriter, r *http.Request, serverI
 		if v.Overwrites == nil {
 			v.Overwrites = []store.Overwrite{}
 		}
+		v.Topic = c.Topic
 		if wc := world.channel(c.ID); wc == nil || world.isPrivate(wc) {
 			v.Private = true
-		} else {
-			v.Topic = c.Topic
 		}
 		channels = append(channels, v)
 	}

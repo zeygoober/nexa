@@ -238,6 +238,7 @@ fun noticeTitle(action: String, d: kotlinx.serialization.json.JsonObject): Strin
         else -> t("nexa.notice.titlePack")
     }
     "mute" -> t("nexa.notice.titleMute")
+    "gem_farming" -> t("nexa.notice.titleGemFarming")
     "ban" -> t("nexa.notice.titleBan")
     else -> t("nexa.notice.titleDelete")
 }
@@ -266,6 +267,7 @@ private fun noticeExplainer(c: MemberCase): String {
             else -> t("nexa.notice.explainPackItems", "name" to (detailsStr(d, "pack_name") ?: ""))
         }
         "mute" -> t("nexa.notice.explainMute")
+        "gem_farming" -> t("nexa.notice.explainGemFarming", "count" to ((d["held"] as? kotlinx.serialization.json.JsonPrimitive)?.content?.toLongOrNull() ?: 0L))
         "ban" -> if (c.expiresAt == null) t("nexa.notice.explainBanPermanent") else t("nexa.notice.explainBan")
         else -> t("nexa.notice.explainDelete")
     }
@@ -273,7 +275,7 @@ private fun noticeExplainer(c: MemberCase): String {
 
 /** caseStanding: where a mute or a ban stands, for its chip. */
 fun caseStanding(c: MemberCase, now: Long = System.currentTimeMillis()): Pair<String, String>? {
-    if (c.action != "mute" && c.action != "ban") return null
+    if (c.action != "mute" && c.action != "ban" && c.action != "gem_farming") return null
     if (c.liftedAt != null) return t("nexa.standing.lifted") to "done"
     if (c.inEffect && (c.expiresAt == null || c.expiresAt > now)) {
         if (c.expiresAt == null) return t("nexa.standing.permanent") to "danger"
@@ -428,7 +430,7 @@ fun NoticeCard(
                 "servers" to n("owned_servers"), "groups" to n("owned_groups"),
             ) + if (incomplete) " " + t("moderation.delete.incomplete") else "")
         }
-        if (c.action == "mute" || c.action == "ban") {
+        if (c.action == "mute" || c.action == "ban" || c.action == "gem_farming") {
             val until = c.expiresAt
             val span = (d["duration_ms"] as? kotlinx.serialization.json.JsonPrimitive)?.content?.toLongOrNull()
             DetailLine("Clock", if (until == null) t("nexa.notice.permanent") else t("nexa.notice.duration", "span" to (span?.let { formatSpan(it) } ?: Time.relativeTo(until)), "until" to Time.full(until)))

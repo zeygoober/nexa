@@ -4,3 +4,4 @@
 .words strong { font-weight: 600; font-variant-numeric: tabular-nums; }
 .words span { color: var(--text); }
 @media (max-width: 767px) { .words { flex-direction: column; align-items: flex-start; } }
+.action { margin-inline-start: auto; flex: none; }

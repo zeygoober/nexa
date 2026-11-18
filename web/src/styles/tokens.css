@@ -48,6 +48,8 @@
      lib/theme.ts works the same value out for a chosen accent. */
   --focus-ring: #b77aff;
   --link: #86b8f7;
+  /* Gems: the glyph, the balance and the capsule's top (GemsPage); follows the link colour in every theme */
+  --gem: var(--link);
   --text-brand: #c6a4ff;
   --mention-bg: rgba(128, 0, 255, 0.24);
   --mention-bg-hover: rgba(128, 0, 255, 0.38);

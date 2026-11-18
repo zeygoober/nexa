@@ -650,36 +650,7 @@ func buildTemplateSpec(tpl *discordGuildTemplate, customName string) (store.Temp
 		}
 	}
 
-	// Build preview channels with privacy flags computed the same way as the store.
-	const fakeEveryoneID = ids.ID(1)
-	permRoles := make([]perms.Role, 0, len(roles)+1)
-	permRoles = append(permRoles, perms.Role{ID: fakeEveryoneID, Position: 0, Permissions: everyonePerms})
-	for i, r := range roles {
-		permRoles = append(permRoles, perms.Role{ID: ids.ID(i + 2), Position: i + 1, Permissions: r.Permissions})
-	}
-	previewChans := make([]discordTemplatePreviewChannel, len(channels))
-	for i, ch := range channels {
-		priv := false
-		if ch.Type != "category" {
-			pows := make([]perms.Overwrite, len(ch.Overwrites))
-			for j, ow := range ch.Overwrites {
-				target := fakeEveryoneID
-				if ow.RoleIndex >= 0 {
-					target = ids.ID(ow.RoleIndex + 2)
-				}
-				pows[j] = perms.Overwrite{TargetID: target, Kind: "role", Allow: ow.Allow, Deny: ow.Deny}
-			}
-			priv = !perms.Compute(fakeEveryoneID, permRoles, perms.Member{}, false, pows).Has(perms.ViewChannel)
-		}
-		previewChans[i] = discordTemplatePreviewChannel{
-			ID:          i,
-			Type:        ch.Type,
-			Name:        ch.Name,
-			Topic:       ch.Topic,
-			ParentIndex: ch.ParentIndex,
-			Private:     priv,
-		}
-	}
+	previewChans := templatePreviewChannels(everyonePerms, roles, channels)
 
 	spec := store.TemplateSpec{
 		Name:                 serverName,
@@ -765,4 +736,39 @@ func (s *Server) handleDiscordTemplateImport(w http.ResponseWriter, r *http.Requ
 	}
 	s.Bcast.EmitUsers([]ids.ID{me.ID}, "server_create", serverCreateEvent{view, users})
 	WriteJSON(w, http.StatusCreated, view)
+}
+
+// templatePreviewChannels lists a template's channels for its preview, each
+// marked private the way the store will flag it (@everyone cannot view it).
+func templatePreviewChannels(everyonePerms perms.Perm, roles []store.TemplateRole, channels []store.TemplateChannel) []discordTemplatePreviewChannel {
+	const fakeEveryoneID = ids.ID(1)
+	permRoles := make([]perms.Role, 0, len(roles)+1)
+	permRoles = append(permRoles, perms.Role{ID: fakeEveryoneID, Position: 0, Permissions: everyonePerms})
+	for i, r := range roles {
+		permRoles = append(permRoles, perms.Role{ID: ids.ID(i + 2), Position: i + 1, Permissions: r.Permissions})
+	}
+	previewChans := make([]discordTemplatePreviewChannel, len(channels))
+	for i, ch := range channels {
+		priv := false
+		if ch.Type != "category" {
+			pows := make([]perms.Overwrite, len(ch.Overwrites))
+			for j, ow := range ch.Overwrites {
+				target := fakeEveryoneID
+				if ow.RoleIndex >= 0 {
+					target = ids.ID(ow.RoleIndex + 2)
+				}
+				pows[j] = perms.Overwrite{TargetID: target, Kind: "role", Allow: ow.Allow, Deny: ow.Deny}
+			}
+			priv = !perms.Compute(fakeEveryoneID, permRoles, perms.Member{}, false, pows).Has(perms.ViewChannel)
+		}
+		previewChans[i] = discordTemplatePreviewChannel{
+			ID:          i,
+			Type:        ch.Type,
+			Name:        ch.Name,
+			Topic:       ch.Topic,
+			ParentIndex: ch.ParentIndex,
+			Private:     priv,
+		}
+	}
+	return previewChans
 }

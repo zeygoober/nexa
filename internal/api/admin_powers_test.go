@@ -9,12 +9,17 @@ import (
 
 // Nexa's staff, Developers included, are ordinary members of other people's
 // servers and group chats: no permissions, private channels or ownership the
-// owner did not give them (the owner's rule, 2026-11-04).
+// server's owner did not give them (the owner's rule, 2026-11-04). The one
+// exception is Nexa's owner, who holds every permission in a server they are
+// in, private channels included (the owner's decision, 2026-11-17), and still
+// nothing in a group chat.
 func TestStaffHaveNoRightsInOthersServersOrGroups(t *testing.T) {
 	_, ts := newTestServer(t)
-	tokA, idA := register(t, ts, "alice") // the first account: owner and Developer
+	tokA, idA := register(t, ts, "alice") // the first account: Nexa's owner
 	tokB, idB := register(t, ts, "bob")
 	tokC, idC := register(t, ts, "carol")
+	tokD, idD := register(t, ts, "dave")
+	setRank(t, ts, tokA, idD, "developer")
 
 	view := createServer(t, ts, tokB, "Bob's")
 	sid := view["id"].(string)
@@ -22,6 +27,7 @@ func TestStaffHaveNoRightsInOthersServersOrGroups(t *testing.T) {
 	code := inviteFor(t, ts, tokB, general)
 	join(t, ts, tokA, code)
 	join(t, ts, tokC, code)
+	join(t, ts, tokD, code)
 	epoch := createEpoch(t, ts, tokB, sid)
 	res, body := do(t, ts, "POST", "/api/v1/servers/"+sid+"/channels", tokB, map[string]any{"type": "text", "name": "secret"})
 	if res.StatusCode != 201 {
@@ -32,27 +38,41 @@ func TestStaffHaveNoRightsInOthersServersOrGroups(t *testing.T) {
 		t.Fatalf("overwrite: %d %v", res.StatusCode, body)
 	}
 
-	// her permissions are @everyone's, and the private channel stays private
-	if _, body = do(t, ts, "GET", "/api/v1/servers/"+sid, tokA, nil); body["server"].(map[string]any)["my_permissions"] == permStr(perms.All) {
+	// a Developer's permissions are @everyone's, and the private channel stays private
+	if _, body = do(t, ts, "GET", "/api/v1/servers/"+sid, tokD, nil); body["server"].(map[string]any)["my_permissions"] == permStr(perms.All) {
 		t.Error("a Developer holds every permission in someone else's server")
 	}
-	if res, _ = do(t, ts, "GET", "/api/v1/channels/"+secret+"/messages", tokA, nil); res.StatusCode != 403 && res.StatusCode != 404 {
+	if res, _ = do(t, ts, "GET", "/api/v1/channels/"+secret+"/messages", tokD, nil); res.StatusCode != 403 && res.StatusCode != 404 {
 		t.Errorf("a Developer reads a private channel: %d", res.StatusCode)
 	}
+	// Nexa's owner holds them all and reads it
+	if _, body = do(t, ts, "GET", "/api/v1/servers/"+sid, tokA, nil); body["server"].(map[string]any)["my_permissions"] != permStr(perms.All) {
+		t.Errorf("Nexa's owner lacks permissions: %v", body["server"].(map[string]any)["my_permissions"])
+	}
+	if res, _ = do(t, ts, "GET", "/api/v1/channels/"+secret+"/messages", tokA, nil); res.StatusCode != 200 {
+		t.Errorf("Nexa's owner cannot read a private channel: %d", res.StatusCode)
+	}
 
-	// she cannot take down someone else's message or remove anyone
+	// the Developer cannot take down someone else's message or remove anyone; the owner can
 	res, body = sendMsg(t, ts, tokC, general, sid, epoch, "carol's", "", nil)
 	if res.StatusCode != 201 {
 		t.Fatalf("send: %d %v", res.StatusCode, body)
 	}
-	if res, _ = do(t, ts, "DELETE", "/api/v1/channels/"+general+"/messages/"+body["id"].(string), tokA, nil); res.StatusCode != 403 {
+	msg := body["id"].(string)
+	if res, _ = do(t, ts, "DELETE", "/api/v1/channels/"+general+"/messages/"+msg, tokD, nil); res.StatusCode != 403 {
 		t.Errorf("a Developer deletes another's message: %d", res.StatusCode)
 	}
-	if res, _ = do(t, ts, "DELETE", "/api/v1/servers/"+sid+"/members/"+idC, tokA, nil); res.StatusCode != 403 {
+	if res, _ = do(t, ts, "DELETE", "/api/v1/servers/"+sid+"/members/"+idC, tokD, nil); res.StatusCode != 403 {
 		t.Errorf("a Developer kicks a member: %d", res.StatusCode)
 	}
+	if res, _ = do(t, ts, "DELETE", "/api/v1/servers/"+sid+"/members/"+idB, tokA, nil); res.StatusCode == 204 || res.StatusCode == 200 {
+		t.Errorf("Nexa's owner removed the server's owner: %d", res.StatusCode)
+	}
+	if res, _ = do(t, ts, "DELETE", "/api/v1/channels/"+general+"/messages/"+msg, tokA, nil); res.StatusCode != 204 {
+		t.Errorf("Nexa's owner cannot delete a message: %d", res.StatusCode)
+	}
 
-	// in a group chat she is a member like any other
+	// in a group chat everyone, the owner too, is a member like any other
 	friend(t, ts, tokB, "alice", tokA, idB)
 	friend(t, ts, tokB, "carol", tokC, idB)
 	res, body = do(t, ts, "POST", "/api/v1/users/@me/channels", tokB, map[string]any{"recipient_ids": []string{idA, idC}, "name": "bob's"})
@@ -61,10 +81,10 @@ func TestStaffHaveNoRightsInOthersServersOrGroups(t *testing.T) {
 	}
 	g := body["id"].(string)
 	if res, body = do(t, ts, "DELETE", "/api/v1/channels/"+g+"/recipients/"+idC, tokA, nil); res.StatusCode != 403 || errCode(body) != "not_owner" {
-		t.Errorf("a Developer removes a group member: %d %v", res.StatusCode, body)
+		t.Errorf("Nexa's owner removes a group member: %d %v", res.StatusCode, body)
 	}
 	if res, body = do(t, ts, "PATCH", "/api/v1/channels/"+g, tokA, map[string]any{"owner_id": idA}); res.StatusCode != 403 {
-		t.Errorf("a Developer takes a group: %d %v", res.StatusCode, body)
+		t.Errorf("Nexa's owner takes a group: %d %v", res.StatusCode, body)
 	}
 }
 

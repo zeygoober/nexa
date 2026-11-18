@@ -9,6 +9,9 @@ import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
 import androidx.compose.ui.AbsoluteAlignment
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import fish.nexa.ui.server.noSwipeWhileTouched
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
@@ -92,7 +95,7 @@ import kotlinx.serialization.json.intOrNull
 private class IndexEntry(val art: String?, val icon: String?, val image: String?, val badge: Badges.Badge?, val category: String, val qty: Int = 0)
 
 /** The parts of the index, always in this order (web BADGE_SECTIONS). */
-private val SECTIONS = listOf("obtainable", "exclusive", "special")
+private val SECTIONS = listOf("obtainable", "collectible", "exclusive", "special")
 
 private class BadgeIndex(val collected: Int, val total: Int, val entries: List<IndexEntry>)
 
@@ -312,7 +315,7 @@ private fun Arrange(userId: String, flags: Long, done: (saved: Boolean) -> Unit)
     }
     Spacer(Modifier.height(20.dp))
     if (parts.size > 1) {
-        Segmented(parts.map { it to t("badges.index.$it") }, part.orEmpty(), { if (heldKey == null) chosen = it }, t("badges.index.arrangeTitle"))
+        PartSwitch(parts, part.orEmpty(), { if (heldKey == null) chosen = it }, t("badges.index.arrangeTitle"))
         Spacer(Modifier.height(14.dp))
     }
     BoxWithConstraints(Modifier.fillMaxWidth()) {
@@ -435,7 +438,7 @@ private fun Describe(userId: String, flags: Long, done: () -> Unit) {
     NxButton(t("badges.index.describeDone"), done, size = ButtonSize.SM)
     Spacer(Modifier.height(20.dp))
     if (parts.size > 1) {
-        Segmented(parts.map { it to t("badges.index.$it") }, part.orEmpty(), { chosen = it }, t("badges.index.describeTitle"))
+        PartSwitch(parts, part.orEmpty(), { chosen = it }, t("badges.index.describeTitle"))
         Spacer(Modifier.height(14.dp))
     }
     BoxWithConstraints(Modifier.fillMaxWidth()) {
@@ -522,5 +525,16 @@ private fun openDescribeSheet(item: ArrangeItem, userId: String, flags: Long, sa
             )
             if (builtIn != null) Txt(t("badges.index.describeEmptyHint"), style = Nx.type.bodySmall.copy(fontSize = Nx.type.sp(13f)), color = c.textMuted)
         }
+    }
+}
+
+/**
+ * The parts' switch, as wide as its words like the web's. Longer languages
+ * scroll it sideways rather than cut a part's name short (the web's wraps).
+ */
+@Composable
+private fun PartSwitch(parts: List<String>, part: String, onPick: (String) -> Unit, label: String) {
+    Box(Modifier.fillMaxWidth().noSwipeWhileTouched().horizontalScroll(rememberScrollState())) {
+        Segmented(parts.map { it to t("badges.index.$it") }, part, onPick, label, fill = false, itemPad = 10.dp)
     }
 }

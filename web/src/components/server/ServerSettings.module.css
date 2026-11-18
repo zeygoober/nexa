@@ -187,6 +187,8 @@
 .vanityHost { flex: 0 1 auto; min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; direction: rtl; color: var(--text-muted); font-size: 15px; }
 .vanityInput { flex: 1 0 96px; min-width: 96px; height: 100%; padding: 0; background: none; border: 0; outline: none; color: var(--text-strong); font-size: 16px; font-weight: 600; }
 .vanityInput::placeholder { color: var(--text-placeholder); font-weight: 400; }
+/* A template's code in the same well, read only (ServerTemplatePage). */
+.templateCode { flex: 1 0 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--text-strong); font-size: 16px; font-weight: 600; user-select: all; }
 .vanityError { margin: 6px 0 0; font-size: 13px; color: var(--text-danger); }
 .vanityFoot { display: flex; flex-direction: column; align-items: flex-start; gap: 8px; margin-top: 12px; }
 .vanityUses { font-size: 13.5px; color: var(--text-muted); }

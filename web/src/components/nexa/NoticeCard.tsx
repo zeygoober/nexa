@@ -164,7 +164,7 @@ export function NoticeCard({ c, people, perspective, onOpenThread, bare = false 
         </p>
       ) : null}
 
-      {c.action === "mute" || c.action === "ban" ? (
+      {c.action === "mute" || c.action === "ban" || c.action === "gem_farming" ? (
         <p className={s.detailLine}>
           <Clock size={14} aria-hidden="true" />
           {c.expires_at === null

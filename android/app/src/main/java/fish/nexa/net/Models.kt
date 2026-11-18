@@ -111,6 +111,8 @@ data class MeUser(
     @SerialName("dm_privacy") val dmPrivacy: String = "friends_servers",
     @SerialName("has_recovery") val hasRecovery: Boolean = false,
     @SerialName("short_name_credits") val shortNameCredits: Int = 0,
+    /** Set while Gems are on hold or earning is off: "check", "report" or "off" (api/gems.go). */
+    @SerialName("gem_state") val gemState: String? = null,
     @SerialName("mfa_enabled") val mfaEnabled: Boolean = false,
     @SerialName("backup_codes_left") val backupCodesLeft: Int = 0,
     val nexa: JsonElement? = null,

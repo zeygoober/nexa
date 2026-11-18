@@ -1,4 +1,4 @@
-import { ChevronRight, Hash, Images, Lock, Megaphone, MessagesSquare, PanelsTopLeft, Volume2 } from "lucide-react";
+import { ChevronRight, Hash, Images, Link2, Lock, Megaphone, MessagesSquare, PanelsTopLeft, Volume2 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { ApiError } from "@/api/client";
@@ -12,6 +12,7 @@ import { t } from "@/i18n";
 import { initials } from "@/lib/avatarColor";
 import { guarded } from "@/lib/captcha";
 import { isDiscordTemplateUrl, parseDiscordTemplate } from "@/lib/discordTemplate";
+import { isNexaTemplateUrl, parseNexaTemplate } from "@/lib/nexaTemplate";
 import { useAuth } from "@/stores/auth";
 import { useChannels } from "@/stores/channels";
 import { useKeys } from "@/stores/keys";
@@ -24,7 +25,21 @@ function ChannelGlyph({ type }: { type: DiscordTemplatePreviewChannel["type"] })
   if (type === "announcement") return <Megaphone size={13} />;
   if (type === "forum") return <MessagesSquare size={13} />;
   if (type === "media") return <Images size={13} />;
+  if (type === "link") return <Link2 size={13} />;
   return <Hash size={13} />;
+}
+
+type Source = "discord" | "nexa";
+
+/** Which kind of link this is, when it is a link of either kind (a bare code says nothing). */
+function sourceOfLink(raw: string): Source | null {
+  if (isNexaTemplateUrl(raw)) return "nexa";
+  if (isDiscordTemplateUrl(raw)) return "discord";
+  return null;
+}
+
+function parseFor(source: Source, raw: string): { ok: true; code: string } | { ok: false; reason: string } {
+  return source === "nexa" ? parseNexaTemplate(raw) : parseDiscordTemplate(raw);
 }
 
 function roleHex(color: number): string {
@@ -32,18 +47,21 @@ function roleHex(color: number): string {
   return `#${color.toString(16).padStart(6, "0")}`;
 }
 
-export function CreateServerModal({ onClose }: { onClose: () => void }) {
+/** template: a template link to start on (a /template/ link opened), which opens the dialog on Import a Template. */
+export function CreateServerModal({ onClose, template }: { onClose: () => void; template?: string | undefined }) {
   const nav = useNavigate();
   const me = useAuth((a) => a.me);
   const toast = useUI((u) => u.toast);
   const openModal = useUI((u) => u.openModal);
-  const [mode, setMode] = useState<"create" | "join" | "template">("create");
+  const nexaExample = `${window.location.origin}/template/aB3dE5fG7hJ9`;
+  const [mode, setMode] = useState<"create" | "join" | "template">(template ? "template" : "create");
   const [name, setName] = useState(() => (me ? t("modals.createServer.namedServer", { name: me.display_name || me.username }) : t("modals.createServer.myServer")));
   const [code, setCode] = useState("");
   const [icon, setIcon] = useState<PickedIcon | null>(null);
   const [busy, setBusy] = useState(false);
 
-  const [templateUrl, setTemplateUrl] = useState("");
+  const [templateUrl, setTemplateUrl] = useState(template ?? "");
+  const [source, setSource] = useState<Source>(() => (template ? (sourceOfLink(template) ?? "nexa") : "discord"));
   const [templateName, setTemplateName] = useState("");
   const [templateNameEdited, setTemplateNameEdited] = useState(false);
   const [preview, setPreview] = useState<DiscordTemplatePreview | null>(null);
@@ -60,7 +78,13 @@ export function CreateServerModal({ onClose }: { onClose: () => void }) {
       setTemplateErr(null);
       return;
     }
-    const parsed = parseDiscordTemplate(raw);
+    // a link of the other kind switches the source and keeps what was pasted
+    const kind = sourceOfLink(raw);
+    if (kind && kind !== source) {
+      setSource(kind);
+      return;
+    }
+    const parsed = parseFor(source, raw);
     if (!parsed.ok) {
       setPreview(null);
       setPreviewLoading(false);
@@ -71,8 +95,7 @@ export function CreateServerModal({ onClose }: { onClose: () => void }) {
     setPreviewLoading(true);
     const seq = ++previewSeq.current;
     const timer = setTimeout(() => {
-      void serversApi
-        .previewDiscordTemplate(parsed.code)
+      void (source === "nexa" ? serversApi.previewNexaTemplate(parsed.code) : serversApi.previewDiscordTemplate(parsed.code))
         .then((res) => {
           if (seq !== previewSeq.current) return;
           setPreview(res);
@@ -89,7 +112,7 @@ export function CreateServerModal({ onClose }: { onClose: () => void }) {
     }, 250);
     return () => clearTimeout(timer);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [mode, templateUrl]);
+  }, [mode, templateUrl, source]);
 
   const finishCreatedServer = async (view: ServerView) => {
     useChannels.getState().upsert(view.channels);
@@ -131,16 +154,20 @@ export function CreateServerModal({ onClose }: { onClose: () => void }) {
   const importTemplate = async () => {
     const raw = templateUrl.trim();
     if (!raw || busy) return;
-    const parsed = parseDiscordTemplate(raw);
+    const parsed = parseFor(source, raw);
     if (!parsed.ok) {
-      setTemplateErr(parsed.reason === "invite" ? t("modals.createServer.inviteNotTemplate") : t("modals.createServer.invalidTemplateLink"));
+      setTemplateErr(
+        parsed.reason === "invite" ? t("modals.createServer.inviteNotTemplate") : t(source === "nexa" ? "modals.createServer.invalidNexaTemplateLink" : "modals.createServer.invalidTemplateLink", { example: nexaExample }),
+      );
       return;
     }
     setBusy(true);
     setTemplateErr(null);
     try {
       const custom = templateName.trim();
-      const view = await guarded("create_server", (captcha) => serversApi.importDiscordTemplate(raw, custom || undefined, captcha));
+      const view = await guarded("create_server", (captcha) =>
+        source === "nexa" ? serversApi.importNexaTemplate(raw, custom || undefined, captcha) : serversApi.importDiscordTemplate(raw, custom || undefined, captcha),
+      );
       await finishCreatedServer(view);
     } catch (err) {
       setTemplateErr(err instanceof ApiError ? err.message : t("modals.createServer.couldNotCreateTheServer"));
@@ -152,7 +179,9 @@ export function CreateServerModal({ onClose }: { onClose: () => void }) {
   const join = () => {
     // a pasted link often ends in a space, which would cut the key off the end of the hash
     const c = code.trim();
-    if (isDiscordTemplateUrl(c)) {
+    const kind = sourceOfLink(c);
+    if (kind) {
+      setSource(kind);
       setTemplateUrl(c);
       setMode("template");
       return;
@@ -188,7 +217,7 @@ export function CreateServerModal({ onClose }: { onClose: () => void }) {
       <Modal
         open
         onClose={onClose}
-        title={t("modals.createServer.importTemplate")}
+        title={t("modals.createServer.importATemplate")}
         width={460}
         footer={
           <>
@@ -202,12 +231,32 @@ export function CreateServerModal({ onClose }: { onClose: () => void }) {
         }
       >
         <div className={s.form}>
-          <p className={s.hint}>{t("modals.createServer.importTemplateHint")}</p>
+          <p className={s.hint}>{t(source === "nexa" ? "modals.createServer.importNexaTemplateHint" : "modals.createServer.importTemplateHint")}</p>
+          <div className={s.sources} role="radiogroup" aria-label={t("modals.createServer.templateFrom")} data-glide="">
+            {(["discord", "nexa"] as const).map((k) => (
+              <button
+                key={k}
+                type="button"
+                role="radio"
+                aria-checked={source === k}
+                className={s.source}
+                onClick={() => {
+                  // choosing a source by hand wins over a link of the other kind, which would switch it straight back
+                  const kind = sourceOfLink(templateUrl);
+                  if (kind && kind !== k) setTemplateUrl("");
+                  setSource(k);
+                }}
+                data-testid={`template-source-${k}`}
+              >
+                {k === "nexa" ? "Nexa" : "Discord"}
+              </button>
+            ))}
+          </div>
           <Field label={t("modals.createServer.templateLink")} required>
             <TextInput
               value={templateUrl}
               onChange={(e) => setTemplateUrl(e.target.value)}
-              placeholder={t("modals.createServer.templatePlaceholder")}
+              placeholder={source === "nexa" ? nexaExample : t("modals.createServer.templatePlaceholder")}
               autoComplete="off"
               spellCheck={false}
               autoFocus
@@ -221,7 +270,9 @@ export function CreateServerModal({ onClose }: { onClose: () => void }) {
             </p>
           ) : null}
           {previewLoading && !preview ? <p className={s.fine}>{t("modals.createServer.readingTemplate")}</p> : null}
-          {!preview && !previewLoading && !templateErr ? <p className={s.fine}>{t("modals.createServer.templatesLookLike")}</p> : null}
+          {!preview && !previewLoading && !templateErr ? (
+            <p className={s.fine}>{source === "nexa" ? t("modals.createServer.nexaTemplatesLookLike", { example: nexaExample }) : t("modals.createServer.templatesLookLike")}</p>
+          ) : null}
           {preview ? (
             <>
               <div className={s.templateCard} data-testid="discord-template-preview">
@@ -314,8 +365,8 @@ export function CreateServerModal({ onClose }: { onClose: () => void }) {
         <button type="button" className={s.actionCard} onClick={() => setMode("template")} data-testid="open-discord-template">
           <span className={s.typeIcon}><PanelsTopLeft size={20} /></span>
           <span className={s.typeText}>
-            <span className={s.typeLabel}>{t("modals.createServer.importTemplate")}</span>
-            <span className={s.typeDesc}>{t("modals.createServer.importTemplateDesc")}</span>
+            <span className={s.typeLabel}>{t("modals.createServer.importATemplate")}</span>
+            <span className={s.typeDesc}>{t("modals.createServer.importATemplateDesc")}</span>
           </span>
           <span className={s.typeIcon}><ChevronRight size={18} /></span>
         </button>

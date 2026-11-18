@@ -1,0 +1,412 @@
+/* Settings, Gems: the wallet, then the capsule as the page's one big thing (its art on a pool of the
+   Gem's blue, which turns the colour of what came out), then the collection and the team as quiet tiles */
+.wallet {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+  margin-bottom: 8px;
+}
+.count {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  margin: 0;
+  flex: 1 1 auto;
+  font-size: 15px;
+  color: var(--text-muted);
+}
+.count strong {
+  font-family: var(--font-display);
+  font-size: 34px;
+  font-weight: 800;
+  line-height: 1;
+  color: var(--text-strong);
+  font-variant-numeric: tabular-nums;
+}
+.mult {
+  padding: 3px 10px;
+  border-radius: 999px;
+  background: var(--bg-surface);
+  box-shadow: inset 0 0 0 1px var(--border-subtle);
+  color: var(--text-strong);
+  font-size: 13px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+.note {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.45;
+  color: var(--text-muted);
+}
+/* a check, a report or earning off: stays until it is answered */
+.hold {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 14px;
+  margin-top: 16px;
+  padding: 10px 14px;
+  border-radius: var(--radius-md);
+  background: var(--bg-raised);
+  box-shadow: inset 0 0 0 1px var(--border-subtle);
+  color: var(--text-warning);
+  font-size: 14px;
+  line-height: 1.4;
+}
+.hold > span {
+  flex: 1 1 220px;
+  min-width: 0;
+}
+.section {
+  margin-top: 32px;
+}
+.section .sectionTitle {
+  margin: 0 0 12px;
+  font-family: var(--font-display);
+  font-size: 18px;
+  line-height: 1.3;
+}
+.tile {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 64px;
+  aspect-ratio: 1;
+  border-radius: var(--radius-md);
+  background: var(--bg-surface);
+  box-shadow: inset 0 0 0 1px var(--border-subtle);
+}
+.tile[data-empty] {
+  background: none;
+  box-shadow: inset 0 0 0 1px var(--border);
+  opacity: 0.6;
+}
+
+/* Capsule: the draw and its button on one side, the odds on the other; stacked on a phone */
+.machine {
+  --pool: var(--gem);
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 20px 40px;
+  padding: 20px 24px;
+  border-radius: var(--radius-lg);
+  background: var(--bg-surface);
+  box-shadow: inset 0 0 0 1px var(--border-subtle);
+}
+.machine[data-rarity="common"] { --pool: var(--text-muted); }
+.machine[data-rarity="rare"] { --pool: var(--link); }
+.machine[data-rarity="epic"] { --pool: var(--text-brand); }
+.machine[data-rarity="huge"] { --pool: var(--warning); }
+.draw {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  flex: 0 1 240px;
+  min-width: 0;
+  margin-inline: auto;
+}
+/* the light the capsule sits in, which takes the colour of what came out */
+.stage {
+  display: grid;
+  place-items: center;
+  width: 180px;
+  max-width: 100%;
+  height: 168px;
+  border-radius: 50%;
+  background: radial-gradient(closest-side, color-mix(in srgb, var(--pool) 30%, transparent), color-mix(in srgb, var(--pool) 8%, transparent) 70%, transparent);
+  transition: background 360ms ease;
+}
+/* Everything on the stage shares one cell, so the capsule's halves and what
+   came out overlap while one leaves and the other arrives. */
+.stage > * { grid-area: 1 / 1; }
+.stage { position: relative; }
+.capsule {
+  display: grid;
+  width: 120px;
+  height: 120px;
+  padding: 0;
+  border-radius: 50%;
+  background: none;
+  transform-origin: 50% 88%;
+}
+.capsule:enabled { cursor: pointer; }
+.half { grid-area: 1 / 1; width: 120px; height: 120px; }
+/* cut along the capsule's lip, which the art tilts by 16 degrees */
+.half[data-half="top"] { clip-path: polygon(0 0, 100% 0, 100% 34.5%, 0 63.1%); }
+.half[data-half="bottom"] { clip-path: polygon(0 63.1%, 100% 34.5%, 100% 100%, 0 100%); }
+
+/* while the server draws: a small, patient rock */
+.stage[data-phase="opening"] .capsule { animation: wait 700ms ease-in-out infinite; }
+@keyframes wait {
+  0%, 100% { transform: rotate(0); }
+  25% { transform: rotate(-4deg); }
+  75% { transform: rotate(4deg); }
+}
+/* the reveal: three rocks, each wider than the last; a Huge holds its breath for a fourth */
+.stage[data-phase="reveal"] .capsule { animation: build 1500ms ease-in-out both; }
+.stage[data-phase="reveal"][data-reveal="huge"] .capsule { animation: buildLong 2300ms ease-in-out both; }
+@keyframes build {
+  0% { transform: none; }
+  8% { transform: rotate(-6deg); }
+  16% { transform: rotate(6deg); }
+  24%, 36% { transform: none; }
+  44% { transform: rotate(-10deg); }
+  52% { transform: rotate(10deg); }
+  60%, 70% { transform: none; }
+  78% { transform: rotate(-15deg) scale(1.04); }
+  86% { transform: rotate(15deg) scale(1.06); }
+  100% { transform: scale(1.08); }
+}
+@keyframes buildLong {
+  0% { transform: none; }
+  5% { transform: rotate(-6deg); }
+  10% { transform: rotate(6deg); }
+  15%, 23% { transform: none; }
+  28% { transform: rotate(-10deg); }
+  33% { transform: rotate(10deg); }
+  38%, 45% { transform: none; }
+  50% { transform: rotate(-15deg) scale(1.04); }
+  55% { transform: rotate(15deg) scale(1.06); }
+  60%, 74% { transform: scale(1.06); }
+  80% { transform: rotate(-20deg) scale(1.1); }
+  86% { transform: rotate(20deg) scale(1.12); }
+  100% { transform: scale(1.14); }
+}
+/* the tell: on the last rock the light takes the colour of what is inside */
+.flare {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  background: radial-gradient(closest-side, color-mix(in srgb, var(--flare, var(--gem)) 85%, transparent) 35%, color-mix(in srgb, var(--flare, var(--gem)) 30%, transparent) 70%, transparent);
+  opacity: 0;
+  pointer-events: none;
+}
+.stage[data-reveal="common"] { --flare: var(--text-muted); }
+.stage[data-reveal="rare"] { --flare: var(--link); }
+.stage[data-reveal="epic"] { --flare: var(--text-brand); }
+.stage[data-reveal="huge"] { --flare: var(--warning); }
+.stage[data-phase="reveal"] .flare { animation: flare 1500ms ease-in both; }
+.stage[data-phase="reveal"][data-reveal="huge"] .flare { animation: flareLong 2300ms ease-in both; }
+.stage[data-phase="pop"] .flare { opacity: 1; transform: scale(1.12); animation: flareOut 420ms ease-out both; }
+@keyframes flare {
+  0%, 62% { opacity: 0; transform: scale(0.8); }
+  100% { opacity: 1; transform: scale(1.12); }
+}
+@keyframes flareLong {
+  0%, 45% { opacity: 0; transform: scale(0.8); }
+  60%, 74% { opacity: 0.6; transform: scale(0.95); }
+  100% { opacity: 1; transform: scale(1.2); }
+}
+@keyframes flareOut {
+  from { opacity: 1; transform: scale(1.12); }
+  to { opacity: 0; transform: scale(1.4); }
+}
+/* the halves part as what was inside rises between them */
+.stage[data-phase="pop"] .capsule { transform: scale(1.08); }
+.stage[data-phase="pop"] .half[data-half="top"] { animation: splitTop 320ms ease-out both; }
+.stage[data-phase="pop"] .half[data-half="bottom"] { animation: splitBottom 320ms ease-out both; }
+@keyframes splitTop {
+  to { opacity: 0; transform: translate(-12px, -36px) rotate(-26deg); }
+}
+@keyframes splitBottom {
+  to { opacity: 0; transform: translate(8px, 26px) rotate(12deg); }
+}
+.result {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  max-width: 180px;
+  text-align: center;
+  animation: resultRise 300ms cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+@keyframes resultRise {
+  /* starts already partly there, so no frame shows neither the capsule nor what came out */
+  from { opacity: 0.55; transform: translateY(10px) scale(0.86); }
+  to { opacity: 1; transform: none; }
+}
+.resultBadge {
+  display: grid;
+  place-items: center;
+}
+.resultName {
+  max-width: 180px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 15px;
+  color: var(--text-strong);
+}
+.resultMeta {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0 8px;
+  font-size: 13px;
+  color: var(--text-muted);
+}
+.resultMeta .rarity {
+  font-size: 13px;
+}
+.buy {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  text-align: center;
+}
+/* the price rides in the button, after its words */
+.price {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-inline-start: 6px;
+  padding-inline-start: 10px;
+  border-inline-start: 1px solid color-mix(in srgb, currentColor 35%, transparent);
+  font-variant-numeric: tabular-nums;
+}
+.short {
+  font-size: 13px;
+  color: var(--text-muted);
+}
+.odds {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  flex: 1 1 220px;
+  margin: 0;
+}
+.odd {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--border-subtle);
+}
+.odd:last-child {
+  border-bottom: 0;
+}
+.odd dt,
+.odd dd {
+  margin: 0;
+}
+.odd dd {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--text-strong);
+  font-variant-numeric: tabular-nums;
+}
+/* a rarity is a dot and its word, never the colour alone */
+.rarity {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  color: var(--text);
+}
+.rarity > i {
+  flex: none;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: var(--rarity);
+}
+.rarity[data-rarity="common"] { --rarity: var(--text-muted); }
+.rarity[data-rarity="rare"] { --rarity: var(--link); }
+.rarity[data-rarity="epic"] { --rarity: var(--text-brand); }
+.rarity[data-rarity="huge"] { --rarity: var(--warning); }
+
+/* Collection: each held material its own tile, with how far it is from fusing under it */
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(72px, 1fr));
+  gap: 12px 10px;
+  margin: 0 0 10px;
+  padding: 0;
+  list-style: none;
+}
+.item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+}
+.item .tile {
+  width: 100%;
+}
+.qty {
+  position: absolute;
+  inset-block-end: 4px;
+  inset-inline-end: 4px;
+  min-width: 20px;
+  padding: 1px 5px;
+  border-radius: 999px;
+  background: var(--bg-base);
+  box-shadow: inset 0 0 0 1px var(--border);
+  color: var(--text-strong);
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 16px;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+.pips {
+  display: flex;
+  gap: 3px;
+  height: 30px;
+  align-items: center;
+}
+.pips > i {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--bg-active);
+}
+.pips > i[data-on] {
+  background: var(--gem);
+}
+.top {
+  display: flex;
+  align-items: center;
+  height: 30px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+
+/* Your Team: five places, what each adds under it */
+.team {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin: 0 0 10px;
+  padding: 0;
+  list-style: none;
+}
+.member {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+.power {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text-strong);
+  font-variant-numeric: tabular-nums;
+}
+.power[data-none] {
+  font-weight: 500;
+  color: var(--text-muted);
+}
+.loading {
+  display: grid;
+  place-items: center;
+  padding: 48px 0;
+}

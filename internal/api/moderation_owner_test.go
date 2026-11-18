@@ -1,9 +1,13 @@
 package api
 
 import (
+	"context"
 	"fmt"
 	"strings"
 	"testing"
+
+	"evilion.xyz/chat/internal/ids"
+	"evilion.xyz/chat/internal/store"
 )
 
 // What only the owner may do stays the owner's, however high another rank is.
@@ -20,10 +24,81 @@ func TestOwnerToolsRefuseEveryOtherRank(t *testing.T) {
 		{"GET", "/api/v1/moderation/gift-links"},
 		{"POST", "/api/v1/moderation/gift-links"},
 		{"DELETE", "/api/v1/moderation/gift-links/abc"},
+		{"GET", "/api/v1/moderation/users/" + bobID + "/gems"},
+		{"POST", "/api/v1/moderation/users/" + bobID + "/gems"},
+		{"GET", "/api/v1/moderation/users/" + bobID + "/collectables"},
+		{"POST", "/api/v1/moderation/users/" + bobID + "/collectables"},
 	} {
-		if res, _ := do(t, ts, c[0], c[1], devTok, map[string]any{"plan": "pro", "period": "year"}); res.StatusCode != 403 {
+		if res, _ := do(t, ts, c[0], c[1], devTok, map[string]any{"plan": "pro", "period": "year", "amount": 500}); res.StatusCode != 403 {
 			t.Errorf("%s %s as a developer: %d", c[0], c[1], res.StatusCode)
 		}
+	}
+}
+
+// The owner's Gems never take a wallet below nothing, and each change is in
+// the person's ledger and the log.
+func TestOwnerGemsNeverGoBelowNothing(t *testing.T) {
+	_, ts := newTestServer(t)
+	ownTok, _ := register(t, ts, "theowner")
+	bobTok, bobID := register(t, ts, "bobby")
+	path := "/api/v1/moderation/users/" + bobID + "/gems"
+	if res, body := do(t, ts, "POST", path, ownTok, map[string]any{"amount": -1}); errCode(body) != "gems_short" {
+		t.Fatalf("taking from an empty wallet: %d %v", res.StatusCode, body)
+	}
+	if res, body := do(t, ts, "POST", path, ownTok, map[string]any{"amount": 700, "reason": "event prize"}); res.StatusCode != 200 || body["gems"] != float64(700) {
+		t.Fatalf("giving: %d %v", res.StatusCode, body)
+	}
+	if _, body := do(t, ts, "POST", path, ownTok, map[string]any{"amount": -701}); errCode(body) != "gems_short" {
+		t.Fatalf("taking more than they have: %v", body)
+	}
+	if _, body := do(t, ts, "POST", path, ownTok, map[string]any{"amount": -200}); body["gems"] != float64(500) {
+		t.Fatalf("taking: %v", body)
+	}
+	if _, rec := do(t, ts, "GET", "/api/v1/gems/record", bobTok, nil); !strings.Contains(fmt.Sprint(rec), "owner_given") || !strings.Contains(fmt.Sprint(rec), "owner_taken") {
+		t.Fatalf("the ledger is missing a change: %v", rec)
+	}
+	if _, log := do(t, ts, "GET", "/api/v1/moderation/log?action=gems_give", ownTok, nil); !strings.Contains(fmt.Sprint(log), "event prize") {
+		t.Fatalf("the gift is not in the log: %v", log)
+	}
+}
+
+// The owner gives and takes copies of a collectable at one material only, never
+// takes more than someone holds, and never makes an ordinary badge one.
+func TestOwnerCollectablesStayWithinWhatIsHeld(t *testing.T) {
+	srv, ts := newTestServer(t)
+	ownTok, ownID := register(t, ts, "theowner")
+	_, bobID := register(t, ts, "bobby")
+	ctx := context.Background()
+	owner, _ := ids.Parse(ownID)
+	col := &store.BadgeDef{Name: "Comet", Icon: "star", Color: 0x336699, Color2: -1, IndexKind: store.BadgeExclusive, Rarity: "common", Art: "moon", CreatedBy: owner}
+	plain := &store.BadgeDef{Name: "Helper of the Month", Icon: "star", Color: 0x336699, Color2: -1, IndexKind: store.BadgeExclusive, CreatedBy: owner}
+	for _, d := range []*store.BadgeDef{col, plain} {
+		if err := srv.Store.CreateBadgeDef(ctx, d); err != nil {
+			t.Fatal(err)
+		}
+	}
+	path := "/api/v1/moderation/users/" + bobID + "/collectables"
+	silver := "event:" + col.ID.String() + "-2"
+	if _, body := do(t, ts, "POST", path, ownTok, map[string]any{"badge": "event:" + plain.ID.String() + "-1", "amount": 1}); errCode(body) != "not_collectable" {
+		t.Fatalf("giving an ordinary badge as a collectable: %v", body)
+	}
+	if _, body := do(t, ts, "POST", path, ownTok, map[string]any{"badge": silver, "amount": -1}); errCode(body) != "copies_short" {
+		t.Fatalf("taking what they never had: %v", body)
+	}
+	if res, body := do(t, ts, "POST", path, ownTok, map[string]any{"badge": silver, "amount": 3, "reason": "event prize"}); res.StatusCode != 200 || body["copies"] != float64(3) {
+		t.Fatalf("giving: %d %v", res.StatusCode, body)
+	}
+	if _, body := do(t, ts, "POST", path, ownTok, map[string]any{"badge": silver, "amount": -4}); errCode(body) != "copies_short" {
+		t.Fatalf("taking more than they hold: %v", body)
+	}
+	if _, body := do(t, ts, "POST", path, ownTok, map[string]any{"badge": silver, "amount": -2}); body["copies"] != float64(1) {
+		t.Fatalf("taking: %v", body)
+	}
+	if _, body := do(t, ts, "GET", path, ownTok, nil); fmt.Sprint(body["held"]) != "map["+silver+":1]" {
+		t.Fatalf("held: %v", body["held"])
+	}
+	if _, log := do(t, ts, "GET", "/api/v1/moderation/log?action=collectable_give", ownTok, nil); !strings.Contains(fmt.Sprint(log), "event prize") {
+		t.Fatalf("the gift is not in the log: %v", log)
 	}
 }
 

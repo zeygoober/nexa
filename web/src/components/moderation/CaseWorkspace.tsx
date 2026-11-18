@@ -53,6 +53,14 @@ function preview(c: StaffCase, people: People): React.ReactNode {
   return <><PersonName userId={last.author_id} user={people[last.author_id]}>{who}</PersonName>: {previewText(last.body, last.files?.length ?? 0)}</>;
 }
 
+
+/** What lifting a case's restriction is called: a ban, a mute, or Gem earning turned off. */
+function liftLabel(action: string): string {
+  if (action === "ban") return t("moderation.case.liftBan");
+  if (action === "gem_farming") return t("moderation.case.liftGemFarming");
+  return t("moderation.case.liftMute");
+}
+
 export function CaseList({ cases, people, selected, onPick, showTarget }: { cases: StaffCase[]; people: People; selected?: string; onPick: (id: string) => void; showTarget: boolean }) {
   const unread = useModeration((st) => st.unread.cases);
   return (
@@ -154,7 +162,7 @@ export function StaffCasePane({ caseId, onBack, onChanged, showMember = true }: 
 
   const lift = async () => {
     if (!data) return;
-    const what = data.case.action === "ban" ? t("moderation.case.liftBan") : t("moderation.case.liftMute");
+    const what = liftLabel(data.case.action);
     const reason = await promptText(what, { label: t("moderation.case.liftReason"), placeholder: t("moderation.case.liftPlaceholder"), maxLength: 1000, hint: t("moderation.case.liftHint") }, what);
     if (reason === null) return;
     setBusy(true);
@@ -225,8 +233,8 @@ export function StaffCasePane({ caseId, onBack, onChanged, showMember = true }: 
             </Button>
           ) : null}
           {c.in_effect && handles ? (
-            <Button size="sm" variant="positive" disabled={busy} onClick={() => void lift()} data-testid="case-lift" aria-label={c.action === "ban" ? t("moderation.case.liftBan") : t("moderation.case.liftMute")}>
-              <LockOpen size={15} aria-hidden="true" /> <span className={m.btnLabel}>{c.action === "ban" ? t("moderation.case.liftBan") : t("moderation.case.liftMute")}</span>
+            <Button size="sm" variant="positive" disabled={busy} onClick={() => void lift()} data-testid="case-lift" aria-label={liftLabel(c.action)}>
+              <LockOpen size={15} aria-hidden="true" /> <span className={m.btnLabel}>{liftLabel(c.action)}</span>
             </Button>
           ) : null}
           {!handles ? null : c.status === "open" ? (

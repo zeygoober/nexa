@@ -57,7 +57,10 @@ func keyEligible(userFlags int64) bool {
 type serverSnapshot struct {
 	serverID ids.ID
 	ownerID  ids.ID
-	roles    []perms.Role
+	// nexaOwner is Nexa's owner (InstanceOwnerID) as of the same version, who
+	// holds every permission in any server they are a member of
+	nexaOwner ids.ID
+	roles     []perms.Role
 	// memberOrder keeps members in id order, so lists built from them are
 	// stable from call to call
 	memberOrder []ids.ID
@@ -242,6 +245,12 @@ func (s *Store) loadSnapshot(ctx context.Context, serverID ids.ID, version uint6
 		}
 		return nil, err
 	}
+	// ranks change and accounts go only through writes that bump the global
+	// version, so the owner read here is as current as the rest
+	var err error
+	if snap.nexaOwner, err = s.InstanceOwnerID(ctx); err != nil {
+		return nil, err
+	}
 	roles, err := s.Roles(ctx, serverID)
 	if err != nil {
 		return nil, err
@@ -349,11 +358,11 @@ func (snap *serverSnapshot) member(uid ids.ID, now int64) (perms.Member, bool) {
 }
 
 // privileged reports whether uid holds every permission in this server: its
-// owner alone. Nexa's staff, Developers included, are ordinary members of the
-// servers they join (the owner's rule, 2026-11-04: rights in other people's
-// servers were a privacy invasion).
+// owner, and Nexa's owner in any server they are a member of (the owner's
+// decision, 2026-11-17), private channels and their keys included. Every other
+// rank of staff, Developers included, is an ordinary member here.
 func (snap *serverSnapshot) privileged(uid ids.ID) bool {
-	return snap.ownerID == uid
+	return uid != 0 && (snap.ownerID == uid || snap.nexaOwner == uid)
 }
 
 // channelPerms is what uid may do in one of the server's channels: 0 for

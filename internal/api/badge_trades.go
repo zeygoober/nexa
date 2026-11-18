@@ -59,6 +59,10 @@ func tradeError(w http.ResponseWriter, err error, caller ids.ID) {
 		WriteError(w, errTradeChanged)
 	case errors.Is(err, store.ErrTradeTooMany):
 		WriteError(w, errTradeMany)
+	case errors.Is(err, store.ErrTradeGemsHeld):
+		WriteError(w, E(http.StatusConflict, "trade_gems_held", "Gems on hold cannot be traded until the check is done."))
+	case errors.Is(err, store.ErrTradeGemsAlt):
+		WriteError(w, E(http.StatusConflict, "trade_gems_linked", "Gems cannot be traded between these two accounts."))
 	default:
 		WriteError(w, err)
 	}

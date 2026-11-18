@@ -7,6 +7,7 @@ import { useAuth } from "@/stores/auth";
 import { useChannels } from "@/stores/channels";
 import { keysGoneHooks, useKeys } from "@/stores/keys";
 import { useTrades } from "@/stores/trades";
+import { useGems } from "@/stores/gems";
 import { useMessages } from "@/stores/messages";
 import { isThread, useThreads } from "@/stores/threads";
 import { noteThreadMessage, useThreadLast } from "@/stores/threadLast";
@@ -817,6 +818,14 @@ export async function applyEvent(e: GatewayEvent): Promise<void> {
       useMessages.getState().setTrade(e.d.channel_id, e.d.message_id, e.d);
       useTrades.getState().set(e.d);
       return;
+    case "gems_update": {
+      // the hold banner reads gem_state from the account, the Gems page the wallet
+      useGems.getState().setWallet(e.d);
+      const me = useAuth.getState().me;
+      const state = e.d.state || undefined;
+      if (me && me.gem_state !== state) useAuth.getState().setMe({ ...me, gem_state: state });
+      return;
+    }
     case "poll_vote_add":
     case "poll_vote_remove":
       useMessages.getState().setPollVote(e.d.channel_id, e.d.message_id, e.d.answer_id, e.t === "poll_vote_add", e.d.user_id === meId, e.d.total_voters);

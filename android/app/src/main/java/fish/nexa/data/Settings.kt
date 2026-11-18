@@ -218,6 +218,8 @@ class SettingsStore(private val api: Api, private val scope: CoroutineScope) {
     val linkPreviews get() = bool("linkPreviews", true)
     /** Send performance reports (data/PerfReports): on unless turned off. */
     val perfReports get() = bool("perfReports", true)
+    /** The Gems capsule and fuse dial make sounds (media/GemSounds); the web's `gemSounds`. */
+    val gemSounds get() = bool("gemSounds", true)
     val imagePreviews get() = bool("imagePreviews", true)
     val developerMode get() = bool("developerMode", false)
     /** Tell others when this account is typing. */
@@ -280,7 +282,7 @@ class SettingsStore(private val api: Api, private val scope: CoroutineScope) {
             put("customThemes", JsonArray(emptyList()))
             put("systemThemes", buildJsonObject { put("dark", "dark"); put("light", "light") })
             put("customCss", buildJsonObject { put("snippet", ""); put("snippetOn", true); put("links", JsonArray(emptyList())) })
-            put("plugins", JsonArray(emptyList())); put("whatsNewSeen", JsonNull); put("searchIndex", true); put("searchRecent", JsonArray(emptyList())); put("perfReports", true)
+            put("plugins", JsonArray(emptyList())); put("whatsNewSeen", JsonNull); put("searchIndex", true); put("searchRecent", JsonArray(emptyList())); put("perfReports", true); put("gemSounds", true)
         }
 
         private val SHALLOW = setOf("notifications", "blocking", "systemThemes", "customCss", "voice")

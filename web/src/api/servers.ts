@@ -128,7 +128,8 @@ function cropQuery(crop?: Crop): string {
 
 export interface DiscordTemplatePreviewChannel {
   id: number;
-  type: "category" | "text" | "voice" | "announcement" | "forum" | "media";
+  /** link only in Nexa templates */
+  type: "category" | "text" | "voice" | "announcement" | "forum" | "media" | "link";
   name: string;
   topic?: string;
   parent_index: number;
@@ -151,6 +152,17 @@ export interface DiscordTemplatePreview {
   roles: DiscordTemplatePreviewRole[];
 }
 
+/** A server's own template link (Server Settings, Server Template). */
+export interface ServerTemplate {
+  code: string;
+  url: string;
+  name: string;
+  description: string;
+  usage_count: number;
+  created_at: number;
+  synced_at: number;
+}
+
 export const servers = {
   /**
    * The first categories and channels are records people can rename, not
@@ -171,6 +183,26 @@ export const servers = {
   },
   importDiscordTemplate(url: string, name?: string, captcha?: string | null): Promise<ServerView> {
     return api.request<ServerView>("POST", "/servers/import/discord", { url, ...(name ? { name } : {}) }, captchaOptions(captcha));
+  },
+  previewNexaTemplate(code: string): Promise<DiscordTemplatePreview> {
+    return api.request<DiscordTemplatePreview>("GET", `/servers/templates/nexa/${encodeURIComponent(code)}`);
+  },
+  importNexaTemplate(url: string, name?: string, captcha?: string | null): Promise<ServerView> {
+    return api.request<ServerView>("POST", "/servers/import/nexa", { url, ...(name ? { name } : {}) }, captchaOptions(captcha));
+  },
+  async template(id: Snowflake): Promise<ServerTemplate | null> {
+    return (await api.request<{ template: ServerTemplate | null }>("GET", `/servers/${id}/template`)).template;
+  },
+  /** Makes the server's template, or renames and describes the one it has. */
+  async saveTemplate(id: Snowflake, body: { name?: string; description?: string }): Promise<ServerTemplate> {
+    return (await api.request<{ template: ServerTemplate }>("PUT", `/servers/${id}/template`, body)).template;
+  },
+  /** Takes the server as it is now into its template, under the same link. */
+  async syncTemplate(id: Snowflake): Promise<ServerTemplate> {
+    return (await api.request<{ template: ServerTemplate }>("POST", `/servers/${id}/template/sync`)).template;
+  },
+  deleteTemplate(id: Snowflake): Promise<void> {
+    return api.request<void>("DELETE", `/servers/${id}/template`);
   },
   get(id: Snowflake): Promise<{ server: ServerView; users: PublicUser[] }> {
     return api.request("GET", `/servers/${id}`);

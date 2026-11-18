@@ -58,7 +58,7 @@ object Trades {
     fun set(t: Trade) = _byId.update { it + (t.id to t) }
     fun reset() { _byId.value = emptyMap() }
 
-    private fun lines(el: JsonElement?): List<Line> = (el as? JsonArray)?.mapNotNull { e ->
+    fun lines(el: JsonElement?): List<Line> = (el as? JsonArray)?.mapNotNull { e ->
         val o = e as? JsonObject ?: return@mapNotNull null
         val key = (o["key"] as? JsonPrimitive)?.contentOrNull ?: return@mapNotNull null
         Line(key, (o["qty"] as? JsonPrimitive)?.intOrNull ?: 0, o["badge"]?.let { Badges.parse(JsonArray(listOf(it)))?.firstOrNull() })

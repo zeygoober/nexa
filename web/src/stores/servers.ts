@@ -6,6 +6,7 @@ import { ALL, base, compute, has, highestPosition, P, threadPerms, toPermMember,
 import { useChannels } from "./channels";
 import { useThreads } from "./threads";
 import { viewingAs } from "./viewAs";
+import { isOwner as isNexaOwner } from "@/lib/owner";
 
 export interface ServerState {
   server: Server;
@@ -172,12 +173,20 @@ function recomputeMine(st: ServerState): bigint {
   return serverPerms(st, st.me.user_id);
 }
 
+/**
+ * Whether someone holds every permission in a server: its owner, and Nexa's
+ * owner in any server they are a member of (the server agrees, permcache's
+ * privileged). Every other rank of staff is an ordinary member.
+ */
+export function holdsEverything(st: ServerState, userId: string): boolean {
+  return st.server.owner_id === userId || isNexaOwner(userId);
+}
+
 /** Server-level permissions of a user from local state. */
 export function serverPerms(st: ServerState, userId: string): bigint {
   const preview = userId === st.me.user_id ? viewingAs(st.server.id) : null;
   if (preview) return base(st.server.id, toPermRoles(Object.values(st.roles)), { userId, roleIds: preview, timedOut: false }, false);
-  // only the server's owner holds everything: Nexa's staff are ordinary members here
-  if (st.server.owner_id === userId) return ALL;
+  if (holdsEverything(st, userId)) return ALL;
   // Base, as the server works out my_permissions: compute() with no channel
   // treats a missing View Channel as "can see nothing" and returned 0, so
   // staff whose view came from channel overwrites lost every server-wide
@@ -191,7 +200,7 @@ export function channelPerms(st: ServerState, channelId: string, userId: string)
   const byId = useChannels.getState().byId;
   const ch = byId[channelId];
   const preview = userId === st.me.user_id ? viewingAs(st.server.id) : null;
-  const isOwner = !preview && st.server.owner_id === userId;
+  const isOwner = !preview && holdsEverything(st, userId);
   const roles = toPermRoles(Object.values(st.roles));
   const member = preview ? { userId, roleIds: preview, timedOut: false } : toPermMember(st.members[userId], userId);
   if ((ch?.type === "thread" || ch?.type === "private_thread") && ch.parent_id) {
@@ -207,6 +216,8 @@ export function memberHighest(st: ServerState, userId: string): { highest: numbe
   const preview = userId === st.me.user_id ? viewingAs(st.server.id) : null;
   if (preview) return { highest: highestPosition(toPermRoles(Object.values(st.roles)), { userId, roleIds: preview, timedOut: false }), isOwner: false };
   const isOwner = st.server.owner_id === userId;
+  // Nexa's owner is above every role, as on the server, but still answerable to the server's owner
+  if (!isOwner && isNexaOwner(userId)) return { highest: 2 ** 30 - 1, isOwner: false };
   return { highest: highestPosition(toPermRoles(Object.values(st.roles)), toPermMember(st.members[userId], userId)), isOwner };
 }
 

@@ -94,7 +94,7 @@ export default function BadgeDescriptions({ me, onDone }: { me: PublicUser; onDo
         </div>
       </div>
       {parts.length > 1 ? (
-        <div className={s.parts} role="radiogroup" aria-label={t("badges.index.describeTitle")} data-glide="">
+        <div className={s.parts} data-no-swipe="" role="radiogroup" aria-label={t("badges.index.describeTitle")} data-glide="">
           {parts.map((p) => (
             <button key={p} type="button" role="radio" aria-checked={p === part} className={s.part} onClick={() => setChosen(p)} data-testid={`badge-describe-${p}`}>
               {t(`badges.index.${p}`)}

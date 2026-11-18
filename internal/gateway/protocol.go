@@ -135,10 +135,13 @@ const (
 	EvInviteDelete       = "invite_delete"
 	EvWebhooksUpdate     = "webhooks_update"
 	EvTradeUpdate        = "trade_update"
-	EvPollVoteAdd        = "poll_vote_add"
-	EvPollVoteRemove     = "poll_vote_remove"
-	EvSettingsUpdate     = "settings_update"
-	EvSessionExpired     = "session_expired"
+	// EvGemsUpdate tells a person their Gems changed in a way they did not
+	// just ask for: a check, a report and its outcome, a trade.
+	EvGemsUpdate     = "gems_update"
+	EvPollVoteAdd    = "poll_vote_add"
+	EvPollVoteRemove = "poll_vote_remove"
+	EvSettingsUpdate = "settings_update"
+	EvSessionExpired = "session_expired"
 	// EvGuestEnded tells a guest why their time in the call is over, just before the socket closes.
 	EvGuestEnded = "guest_ended"
 	// EvVoiceResumed answers a device resuming its call after a reconnect: kept, or start over.

@@ -48,6 +48,8 @@ fun actionLabel(action: String): String = if (action.startsWith(OWNER_SERVER)) o
     "delete" -> t("moderation.action.delete")
     "unmute" -> t("moderation.action.unmute")
     "unban" -> t("moderation.action.unban")
+    "gem_farming" -> t("moderation.action.gemFarming")
+    "gem_farming_lift" -> t("moderation.action.gemFarmingLift")
     "announcement" -> t("moderation.action.announcement")
     "announcement_delete" -> t("moderation.action.announcementDelete")
     "report_review" -> t("reports.review")
@@ -64,6 +66,10 @@ fun actionLabel(action: String): String = if (action.startsWith(OWNER_SERVER)) o
     "server_preview" -> t("moderation.log.serverPreview")
     "gift_link_create" -> t("moderation.log.giftCreate")
     "gift_link_revoke" -> t("moderation.log.giftRevoke")
+    "gems_give" -> t("moderation.log.gemsGive")
+    "gems_take" -> t("moderation.log.gemsTake")
+    "collectable_give" -> t("moderation.log.collectableGive")
+    "collectable_take" -> t("moderation.log.collectableTake")
     "game_list" -> t("moderation.games.logList")
     "game_reject" -> t("moderation.games.logReject")
     "game_forget" -> t("moderation.games.logForget")
@@ -78,7 +84,7 @@ fun actionLabel(action: String): String = if (action.startsWith(OWNER_SERVER)) o
 /** How serious an action is, which decides its colour everywhere (the log's own list is longer than a case's). */
 fun logSeverity(action: String): String = if (action == "server_manage" || action.startsWith(OWNER_SERVER)) "warn" else when (action) {
     "ban", "delete", "account_disable", "account_delete_profile" -> "danger"
-    "mute", "field_reset", "avatar_remove", "server_reset", "expression_takedown", "admin_revoke" -> "warn"
+    "mute", "gem_farming", "field_reset", "avatar_remove", "server_reset", "expression_takedown", "admin_revoke" -> "warn"
     else -> "info"
 }
 
@@ -89,6 +95,7 @@ fun logIcon(action: String): String = if (action == "server_manage" || action.st
     "expression_takedown" -> "Sticker"
     "app_discovery_hide" -> "EyeOff"
     "mute" -> "MessageSquareOff"
+    "gem_farming", "gem_farming_lift" -> "Gem"
     "ban" -> "Ban"
     "delete", "account_delete_profile" -> "UserX"
     "unmute", "unban", "expression_relist", "discovery_restore" -> "LockOpen"
@@ -102,6 +109,8 @@ fun logIcon(action: String): String = if (action == "server_manage" || action.st
     "owner_join" -> "LogIn"
     "server_preview" -> "Eye"
     "gift_link_create", "gift_link_revoke" -> "Gift"
+    "gems_give", "gems_take" -> "Gem"
+    "collectable_give", "collectable_take" -> "Shapes"
     else -> "KeyRound"
 }
 
@@ -110,7 +119,7 @@ val LOG_GROUPS: Map<String, List<String>> = mapOf(
     "punishments" to listOf("message_remove", "avatar_remove", "field_reset", "server_reset", "expression_takedown", "app_discovery_hide", "mute", "ban", "delete", "account_delete_profile"),
     "lifts" to listOf("unmute", "unban", "expression_relist", "discovery_restore"),
     "announcements" to listOf("announcement", "announcement_delete"),
-    "access" to listOf("rank_change", "admin_grant", "admin_revoke", "account_disable", "account_enable", "account_view", "owner_join", "server_preview", *OWNER_SERVER_ACTIONS.toTypedArray(), "gift_link_create", "gift_link_revoke"),
+    "access" to listOf("rank_change", "admin_grant", "admin_revoke", "account_disable", "account_enable", "account_view", "owner_join", "server_preview", *OWNER_SERVER_ACTIONS.toTypedArray(), "gift_link_create", "gift_link_revoke", "gems_give", "gems_take", "collectable_give", "collectable_take"),
     "badges" to listOf("badge_change", "badge_create", "badge_edit", "badge_delete", "badge_index_order", "badge_description"),
     "games" to listOf("game_list", "game_reject", "game_forget"),
 )
@@ -175,6 +184,13 @@ fun logDetail(e: ModLogEntry): String {
         "gift_link_create" -> d.str("plan")?.let { fish.nexa.ui.support.planName(it) } ?: ""
         "game_list", "game_reject" -> d.str("process")?.let { "$it: “${d.str("name") ?: ""}”" } ?: ""
         "game_forget" -> d.str("process") ?: ""
+        "collectable_give", "collectable_take" -> d.str("amount")?.toLongOrNull()?.let { a ->
+            val m = d.str("material")?.toIntOrNull() ?: 1
+            t("moderation.log.collectableAmount", "badge" to (d.str("name") ?: ""), "material" to t("gems.material.$m"), "amount" to kotlin.math.abs(a).toString(), "copies" to (d.str("copies") ?: "0"))
+        } ?: ""
+        "gems_give", "gems_take" -> d.str("amount")?.toLongOrNull()?.let { a ->
+            t("moderation.log.gemsAmount", "amount" to fish.nexa.ui.gems.gemNumber(kotlin.math.abs(a)), "gems" to fish.nexa.ui.gems.gemNumber(d.str("gems")?.toLongOrNull() ?: 0L))
+        } ?: ""
         "badge_edit" -> {
             val from = d.str("from")
             val to = d.str("name")

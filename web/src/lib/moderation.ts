@@ -3,7 +3,7 @@
  * the ban screen and the staff's panel all describe the same action the same
  * way — in the reader's language.
  */
-import { Award, Ban, Eraser, EyeOff, Gamepad2, ImageOff, KeyRound, Lock, LockOpen, Megaphone, MessageSquareOff, ServerCog, Settings2, ShieldMinus, ShieldPlus, Sticker, UserX, type LucideIcon } from "lucide-react";
+import { Award, Ban, Eraser, EyeOff, Gamepad2, Gem, ImageOff, KeyRound, Lock, LockOpen, Megaphone, MessageSquareOff, ServerCog, Settings2, Shapes, ShieldMinus, ShieldPlus, Sticker, UserX, type LucideIcon } from "lucide-react";
 import type { CaseDetails, CaseMessage, MemberCase, ModAction, ModLogEntry, PackField, People, Person, ResetField, ServerField } from "@/api/moderation";
 import type { BugKind, BugStatus } from "@/api/bugs";
 import { bugStatusLabel } from "@/lib/bugs";
@@ -37,6 +37,7 @@ export function severity(action: string): Severity {
     case "account_delete_profile":
       return "danger";
     case "mute":
+    case "gem_farming":
     case "field_reset":
     case "avatar_remove":
     case "server_reset":
@@ -61,6 +62,14 @@ export function actionIcon(action: string): LucideIcon {
       return Sticker;
     case "mute":
       return MessageSquareOff;
+    case "gem_farming":
+    case "gem_farming_lift":
+    case "gems_give":
+    case "gems_take":
+      return Gem;
+    case "collectable_give":
+    case "collectable_take":
+      return Shapes;
     case "ban":
       return Ban;
     case "delete":
@@ -133,6 +142,10 @@ export function actionLabel(action: string): string {
       return t("moderation.action.unmute");
     case "unban":
       return t("moderation.action.unban");
+    case "gem_farming":
+      return t("moderation.action.gemFarming");
+    case "gem_farming_lift":
+      return t("moderation.action.gemFarmingLift");
     case "announcement":
       return t("moderation.action.announcement");
     case "announcement_delete":
@@ -153,6 +166,14 @@ export function actionLabel(action: string): string {
       return t("moderation.log.giftCreate");
     case "gift_link_revoke":
       return t("moderation.log.giftRevoke");
+    case "gems_give":
+      return t("moderation.log.gemsGive");
+    case "gems_take":
+      return t("moderation.log.gemsTake");
+    case "collectable_give":
+      return t("moderation.log.collectableGive");
+    case "collectable_take":
+      return t("moderation.log.collectableTake");
     case "badge_change":
       return t("badges.log.change");
     case "badge_create":
@@ -294,6 +315,8 @@ export function noticeTitle(action: ModAction, d: CaseDetails): string {
       return t("nexa.notice.titlePack");
     case "mute":
       return t("nexa.notice.titleMute");
+    case "gem_farming":
+      return t("nexa.notice.titleGemFarming");
     case "ban":
       return t("nexa.notice.titleBan");
     default:
@@ -332,6 +355,8 @@ export function noticeExplainer(c: Pick<MemberCase, "action" | "details" | "expi
     }
     case "mute":
       return t("nexa.notice.explainMute");
+    case "gem_farming":
+      return t("nexa.notice.explainGemFarming", { count: c.details.held ?? 0 });
     case "ban":
       return c.expires_at === null ? t("nexa.notice.explainBanPermanent") : t("nexa.notice.explainBan");
     default:
@@ -341,7 +366,7 @@ export function noticeExplainer(c: Pick<MemberCase, "action" | "details" | "expi
 
 /** Where a case stands, as a short status for a chip. */
 export function caseStanding(c: Pick<MemberCase, "action" | "in_effect" | "ended" | "lifted_at" | "expires_at">, now = Date.now()): { label: string; tone: Severity | "done" } | null {
-  if (c.action !== "mute" && c.action !== "ban") return null;
+  if (c.action !== "mute" && c.action !== "ban" && c.action !== "gem_farming") return null;
   if (c.lifted_at) return { label: t("nexa.standing.lifted"), tone: "done" };
   if (c.in_effect && (c.expires_at === null || c.expires_at > now)) {
     if (c.expires_at === null) return { label: t("nexa.standing.permanent"), tone: "danger" };
@@ -453,6 +478,18 @@ export function logDetail(e: ModLogEntry): string {
       if (g.plan === "short_name") return t("support.giftLink.shortName");
       return g.plan ? t((g.days ?? 0) >= 365 ? "support.giftLink.yearOf" : "support.giftLink.monthOf", { plan: t(g.plan === "pro" ? "support.plan.pro" : "support.plan.supporter") }) : "";
     }
+    case "gems_give":
+    case "gems_take": {
+      const g = e.details as { amount?: number; gems?: number };
+      return typeof g.amount === "number" ? t("moderation.log.gemsAmount", { amount: Math.abs(g.amount).toLocaleString(), gems: (g.gems ?? 0).toLocaleString() }) : "";
+    }
+    case "collectable_give":
+    case "collectable_take": {
+      const g = e.details as { name?: string; material?: number; amount?: number; copies?: number };
+      return typeof g.amount === "number" && g.material
+        ? t("moderation.log.collectableAmount", { amount: Math.abs(g.amount), badge: g.name ?? "", material: t(`gems.material.${g.material}`), copies: g.copies ?? 0 })
+        : "";
+    }
     case "delete":
       return d.counts ? t("moderation.log.deleteCounts", { messages: d.counts.messages, servers: d.counts.owned_servers }) : "";
     case "announcement":
@@ -509,7 +546,7 @@ export const LOG_GROUPS: Record<string, string[]> = {
   punishments: ["message_remove", "avatar_remove", "field_reset", "server_reset", "expression_takedown", "app_discovery_hide", "mute", "ban", "delete", "account_delete_profile"],
   lifts: ["unmute", "unban", "expression_relist", "discovery_restore"],
   announcements: ["announcement", "announcement_delete"],
-  access: ["rank_change", "admin_grant", "admin_revoke", "account_disable", "account_enable", "account_view", "owner_join", "server_preview", ...OWNER_SERVER_ACTIONS, "gift_link_create", "gift_link_revoke"],
+  access: ["rank_change", "admin_grant", "admin_revoke", "account_disable", "account_enable", "account_view", "owner_join", "server_preview", ...OWNER_SERVER_ACTIONS, "gift_link_create", "gift_link_revoke", "gems_give", "gems_take", "collectable_give", "collectable_take"],
   badges: ["badge_change", "badge_create", "badge_edit", "badge_delete", "badge_index_order", "badge_description"],
   games: ["game_list", "game_reject", "game_forget"],
 };

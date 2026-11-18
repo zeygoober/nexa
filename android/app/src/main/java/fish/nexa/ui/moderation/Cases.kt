@@ -297,7 +297,7 @@ fun StaffCasePane(caseId: String, showMember: Boolean, onBack: () -> Unit, onCha
         }
     }
     fun lift(cs: StaffCase) {
-        val what = if (cs.action == "ban") t("moderation.case.liftBan") else t("moderation.case.liftMute")
+        val what = liftLabel(cs.action)
         promptText(what, t("moderation.case.liftReason"), placeholder = t("moderation.case.liftPlaceholder"), maxLength = 1000, hint = t("moderation.case.liftHint"), confirmLabel = what, allowEmpty = true) { reason ->
             busy = true
             Nexa.scope.launch {
@@ -340,7 +340,7 @@ fun StaffCasePane(caseId: String, showMember: Boolean, onBack: () -> Unit, onCha
         ) {
             // on the member's own page the way to them goes nowhere
             if (!gone && showMember) ModIconButton("UserRound", t("moderation.case.openPerson", "name" to targetName), { goPanel("users/${cs.userId}") })
-            if (cs.inEffect && handles) ModIconButton("LockOpen", if (cs.action == "ban") t("moderation.case.liftBan") else t("moderation.case.liftMute"), { lift(cs) }, enabled = !busy, positive = true)
+            if (cs.inEffect && handles) ModIconButton("LockOpen", liftLabel(cs.action), { lift(cs) }, enabled = !busy, positive = true)
             if (handles && cs.status == "open") ModIconButton("CircleCheck", t("moderation.case.close"), { setClosed(true) }, enabled = !busy)
             else if (handles) ModIconButton("RotateCcw", t("moderation.case.reopen"), { setClosed(false) }, enabled = !busy)
         }
@@ -376,4 +376,11 @@ fun StaffCasePane(caseId: String, showMember: Boolean, onBack: () -> Unit, onCha
             onSeen = { last -> Moderation.readThread("case", caseId, last) },
         )
     }
+}
+
+/** What lifting a case's restriction is called: a ban, a mute, or Gem earning turned off (web liftLabel). */
+fun liftLabel(action: String): String = when (action) {
+    "ban" -> t("moderation.case.liftBan")
+    "gem_farming" -> t("moderation.case.liftGemFarming")
+    else -> t("moderation.case.liftMute")
 }

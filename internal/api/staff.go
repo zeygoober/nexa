@@ -27,7 +27,9 @@ import (
 //   - Developer: the instance itself: its settings, stats and crash reports.
 //     A Developer has no rights in other people's servers or group chats.
 //   - Owner: the oldest Developer. Only the owner gives and takes ranks, sees
-//     the legal report, and disables or deletes staff.
+//     the legal report, and disables or deletes staff. The owner alone holds
+//     every permission in the servers they are in, private channels included
+//     (store/permcache.go), and still nothing in group chats.
 //
 // A rank is a public flag bit, so every app can draw it. Staff of any rank
 // cannot be moderated until the owner takes their rank away. The apps hold

@@ -22,7 +22,7 @@ export interface BadgeArrangement {
 }
 
 /** The parts of the Badge Index, in the order it shows them. */
-export type BadgeCategory = "obtainable" | "exclusive" | "special";
+export type BadgeCategory = "obtainable" | "collectible" | "exclusive" | "special";
 
 export interface BadgeIndex {
   collected: number;
@@ -91,6 +91,10 @@ export interface Badge {
   image?: string;
   /** Only in the person's own list: they hid it from their profile. */
   hidden?: boolean;
+  /** A capsule collectible's rarity; its level is then its material, 1 (bronze) to 5 (prism). */
+  rarity?: "common" | "rare" | "epic" | "huge";
+  /** A collectible's drawing (store.CollectibleArt), drawn at its level: col-<art>-<level>.svg. */
+  art?: string;
 }
 
 export type BadgeShape = "circle" | "rounded" | "shield" | "hexagon" | "star" | "diamond" | "seal" | "ribbon";
@@ -112,6 +116,10 @@ export interface BadgeDef {
   image_id?: Snowflake;
   /** Where the Badge Index puts it; "hidden" leaves it out. */
   index_kind: BadgeIndexKind;
+  /** Makes it a capsule collectible; "" for a badge staff give by hand. */
+  rarity?: "" | "common" | "rare" | "epic" | "huge";
+  /** A collectible's drawing; "" for every other badge. */
+  art?: string;
   created_by: Snowflake;
   created_at: number;
   holders: number;
@@ -281,6 +289,8 @@ export interface MeUser extends PublicUser {
   has_recovery: boolean;
   /** One-character usernames this account may still take, one per gift link claimed. */
   short_name_credits?: number;
+  /** Set while Gems are on hold or earning is off: "check", "report" or "off". */
+  gem_state?: "check" | "report" | "off";
   /** An authenticator app is required to sign in. */
   mfa_enabled?: boolean;
   backup_codes_left?: number;

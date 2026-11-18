@@ -16,12 +16,16 @@ fun describeError(err: Throwable?, fallback: String? = null): String {
             "rate_limited" -> return t("errors.youAreDoingThatTooQuickly")
             "owner_access_refused" -> return t("errors.ownerAccessRefused")
             "owner_active" -> return t("errors.ownerActive")
-            "private_topic" -> return t("errors.privateTopic")
-            "automod_alert" -> return t("errors.automodAlert")
             "too_many_uploads" -> return t("errors.tooManyUploads")
             "upload_quota" -> return t("errors.uploadQuota")
             "no_space" -> return t("errors.noSpace")
             "storage_budget" -> return t("errors.storageBudget")
+            "gems_short" -> return t("errors.gemsShort")
+            "gems_held" -> return t("errors.gemsHeld")
+            "gems_no_collectibles" -> return t("errors.gemsNoCollectibles")
+            "gems_fuse" -> return t("errors.gemsFuse")
+            "trade_gems_held" -> return t("errors.tradeGemsHeld")
+            "trade_gems_linked" -> return t("errors.tradeGemsLinked")
         }
         if (!err.code.startsWith("http_") && !err.message.isNullOrBlank()) return err.message!!
         return fallback ?: err.message ?: t("modals.confirm.somethingWentWrong")

@@ -188,6 +188,12 @@ export interface Settings {
    * own packs: their names, and the sealed recordings each plays (lib/soundPacks.ts).
    */
   sounds: SoundSettings;
+  /**
+   * The Gems capsule and fuse dial make sounds (lib/gemSounds.ts), at the
+   * sounds' volume. Its own switch, not a name in `sounds.off`: older apps
+   * drop names they do not know from that list.
+   */
+  gemSounds: boolean;
   drafts: Record<string, string>;
   voice: VoiceSettings;
   serverPositions: string[];
@@ -304,6 +310,7 @@ export const DEFAULT_SETTINGS: Settings = {
   skinTone: 0,
   notifications: { desktop: false, app: true, sounds: true, perChannel: {}, muted: [], preview: "full" },
   sounds: DEFAULT_SOUNDS,
+  gemSounds: true,
   drafts: {},
   voice: {
     inputDeviceId: null,
@@ -365,6 +372,7 @@ function mergeSettings(base: Settings, incoming: unknown): Settings {
     notifications: { ...base.notifications, ...(inc.notifications ?? {}) },
     voice: mergeVoice(base.voice, inc.voice),
     sounds: "sounds" in inc ? sanitizeSounds(inc.sounds) : base.sounds,
+    gemSounds: typeof inc.gemSounds === "boolean" ? inc.gemSounds : base.gemSounds,
 
     // read defensively, as every version of the app may have written them
     rail: "rail" in inc ? sanitizeRail(inc.rail) : base.rail,

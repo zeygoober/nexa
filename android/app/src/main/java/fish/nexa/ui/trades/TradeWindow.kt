@@ -7,6 +7,9 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.isImeVisible
+import androidx.compose.foundation.relocation.bringIntoViewRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.aspectRatio
@@ -32,6 +35,7 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import fish.nexa.Nexa
+import fish.nexa.data.Gems
 import fish.nexa.data.Trades
 import fish.nexa.ui.Icon
 import fish.nexa.ui.components.Avatar
@@ -42,6 +46,8 @@ import fish.nexa.ui.components.Spinner
 import fish.nexa.ui.components.Txt
 import fish.nexa.ui.components.pressable
 import fish.nexa.ui.describeError
+import fish.nexa.ui.gems.GemIcon
+import fish.nexa.ui.gems.compactNumber
 import fish.nexa.ui.layers.openSheet
 import fish.nexa.ui.profile.BadgePill
 import fish.nexa.ui.shell.Names
@@ -65,6 +71,7 @@ private class TradeControl(val userId: String?, val tradeId: String?) {
     var failed by mutableStateOf(false)
     val sel = mutableStateMapOf<String, Int>()
     var q by mutableStateOf("")
+    var gemsOpen by mutableStateOf(false)
     var busy by mutableStateOf(false)
     var dirty = false
     var job: Job? = null
@@ -233,7 +240,7 @@ private fun TradeBody(ctl: TradeControl, close: () -> Unit) {
     }
     val myReady = trade.readyOf(me)
     val theirReady = trade.readyOfOther(me)
-    val theirOffer = trade.offerOfOther(me)
+    val theirOffer = trade.offerOfOther(me).let { o -> o.filter { it.key == Gems.KEY } + o.filter { it.key != Gems.KEY } }
 
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
         // the other person's offer, filling slots as they pick
@@ -257,8 +264,11 @@ private fun TradeBody(ctl: TradeControl, close: () -> Unit) {
                             },
                             contentAlignment = Alignment.Center,
                         ) {
-                            if (l?.badge != null) BadgePill(l.badge, "0", 0L, "", size = 36.dp)
-                            if (l != null && l.qty > 1) Chip("×${l.qty}", c.textStrong, Modifier.align(Alignment.BottomEnd).padding(3.dp))
+                            if (l?.key == Gems.KEY) {
+                                GemIcon(34.dp, Modifier.semantics { contentDescription = t("gems.count", "count" to l.qty) })
+                                Chip(compactNumber(l.qty.toLong()), c.textStrong, Modifier.align(Alignment.BottomEnd).padding(3.dp))
+                            } else if (l?.badge != null) BadgePill(l.badge, "0", 0L, "", size = 36.dp)
+                            if (l != null && l.key != Gems.KEY && l.qty > 1) Chip("×${l.qty}", c.textStrong, Modifier.align(Alignment.BottomEnd).padding(3.dp))
                         }
                     }
                 }
@@ -279,12 +289,37 @@ private fun TradeBody(ctl: TradeControl, close: () -> Unit) {
                 Txt(t("trades.yourOffer"), style = Nx.type.heading.copy(fontSize = Nx.type.sp(14f)), color = c.textStrong, maxLines = 1, modifier = Modifier.weight(1f))
                 if (myReady) ReadyTag()
             }
+            val myGems = mine.firstOrNull { it.key == Gems.KEY }?.qty ?: 0
+            val gemsGiven = ctl.sel[Gems.KEY] ?: 0
             if (mine.isEmpty()) {
                 Txt(t("trades.noneToGive"), style = Nx.type.body.copy(fontSize = Nx.type.sp(14f)), color = c.textMuted, modifier = Modifier.padding(4.dp))
             } else {
                 val needle = ctl.q.trim().lowercase()
-                val shown = mine.filter { l -> needle.isEmpty() || (l.badge?.let { fish.nexa.data.Badges.look(it, "0", 0L, "")?.label } ?: l.key).lowercase().contains(needle) }
+                val shown = mine.filter { l -> l.key != Gems.KEY }.filter { l -> needle.isEmpty() || (l.badge?.let { fish.nexa.data.Badges.look(it, "0", 0L, "")?.label } ?: l.key).lowercase().contains(needle) }
                 FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    // Gems are a tile like any badge; the amount opens under the grid
+                    if (myGems > 0) {
+                        val say = "${t("gems.unit")}, ${t("trades.have", "count" to myGems)}"
+                        Box(Modifier.size(64.dp).padding(2.dp)) {
+                            Box(
+                                Modifier.fillMaxWidth().aspectRatio(1f)
+                                    .background(if (gemsGiven > 0 || ctl.gemsOpen) c.bgSelected else c.bgSurface, Radii.Sm)
+                                    .ring(Radii.Sm, if (gemsGiven > 0 || ctl.gemsOpen) c.brand else c.borderSubtle, if (gemsGiven > 0 || ctl.gemsOpen) 2.dp else 1.dp)
+                                    .pressable(remember { MutableInteractionSource() }) { ctl.gemsOpen = !ctl.gemsOpen }
+                                    .semantics { contentDescription = say },
+                                contentAlignment = Alignment.Center,
+                            ) {
+                                GemIcon(34.dp)
+                                Chip(compactNumber((if (gemsGiven > 0) gemsGiven else myGems).toLong()), if (gemsGiven > 0) c.textBrand else c.textStrong, Modifier.align(Alignment.BottomEnd).padding(3.dp))
+                            }
+                            if (gemsGiven > 0) Box(
+                                Modifier.align(Alignment.TopEnd).size(22.dp).background(c.bgBase, CircleShape).ring(CircleShape, c.borderStrong)
+                                    .pressable(remember { MutableInteractionSource() }) { ctl.change(Gems.KEY, 0) }
+                                    .semantics { contentDescription = t("trades.takeGemsBack") },
+                                contentAlignment = Alignment.Center,
+                            ) { Icon("Minus", c.textSubtle, size = 12.dp) }
+                        }
+                    }
                     for (l in shown) {
                         val n = ctl.sel[l.key] ?: 0
                         val name = l.badge?.let { fish.nexa.data.Badges.look(it, "0", 0L, "")?.label } ?: l.key
@@ -313,6 +348,7 @@ private fun TradeBody(ctl: TradeControl, close: () -> Unit) {
                         }
                     }
                 }
+                if (ctl.gemsOpen && myGems > 0) GemAmount(ctl, myGems, gemsGiven)
                 NxTextField(
                     value = ctl.q,
                     onValueChange = { ctl.q = it },
@@ -322,6 +358,55 @@ private fun TradeBody(ctl: TradeControl, close: () -> Unit) {
             }
         }
         Txt(t("trades.hint"), style = Nx.type.bodySmall.copy(fontSize = Nx.type.sp(13f)), color = c.textMuted)
+    }
+}
+
+/** How many Gems to give, in the search's pill shape under the grid (web .gemPill). */
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun GemAmount(ctl: TradeControl, held: Int, given: Int) {
+    val c = Nx.colors
+    var text by remember { mutableStateOf(if (given > 0) given.toString() else "") }
+    // the server's copy or All may change it from outside the field
+    LaunchedEffect(given) { if ((text.toIntOrNull() ?: 0) != given) text = if (given > 0) given.toString() else "" }
+    val pill = RoundedCornerShape(999.dp)
+    // it opens under the grid, where the footer or the keyboard would cover it: shown and typed into at once, as on the web
+    val bring = remember { androidx.compose.foundation.relocation.BringIntoViewRequester() }
+    val focus = remember { androidx.compose.ui.focus.FocusRequester() }
+    val keyboard = androidx.compose.foundation.layout.WindowInsets.isImeVisible
+    LaunchedEffect(Unit) { runCatching { focus.requestFocus() } }
+    LaunchedEffect(keyboard) { kotlinx.coroutines.delay(60); bring.bringIntoView() }
+    Row(
+        Modifier.bringIntoViewRequester(bring).fillMaxWidth().height(40.dp).background(c.bgSurface, pill).ring(pill, c.brand, 2.dp).padding(start = 12.dp, end = 4.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        GemIcon(20.dp)
+        androidx.compose.foundation.text.BasicTextField(
+            value = text,
+            onValueChange = { v ->
+                val digits = v.filter(Char::isDigit).take(12)
+                val n = digits.toLongOrNull()?.coerceAtMost(held.toLong())?.toInt() ?: 0
+                text = if (digits.isEmpty()) "" else n.toString()
+                ctl.change(Gems.KEY, n)
+            },
+            singleLine = true,
+            textStyle = Nx.type.body.copy(fontSize = Nx.type.sp(16f), fontWeight = FontWeight(700), color = c.textStrong, fontFeatureSettings = "tnum"),
+            cursorBrush = androidx.compose.ui.graphics.SolidColor(c.textStrong),
+            keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(keyboardType = androidx.compose.ui.text.input.KeyboardType.Number, imeAction = androidx.compose.ui.text.input.ImeAction.Done),
+            keyboardActions = androidx.compose.foundation.text.KeyboardActions(onDone = { ctl.gemsOpen = false }),
+            modifier = Modifier.weight(1f).focusRequester(focus).semantics { contentDescription = t("trades.gemsToGive") },
+        )
+        Txt(t("trades.gemsOf", "count" to held), style = Nx.type.bodySmall.copy(fontSize = Nx.type.sp(13f), fontFeatureSettings = "tnum"), color = c.textMuted, maxLines = 1)
+        Box(
+            Modifier.height(30.dp).background(c.bgActive, pill).pressable(remember { MutableInteractionSource() }) { ctl.change(Gems.KEY, held) }.padding(horizontal = 12.dp),
+            contentAlignment = Alignment.Center,
+        ) { Txt(t("trades.gemsAll"), style = Nx.type.bodySmall.copy(fontSize = Nx.type.sp(13f), fontWeight = FontWeight(600)), color = c.textStrong, maxLines = 1) }
+        Box(
+            Modifier.size(32.dp).background(c.brand, CircleShape).pressable(remember { MutableInteractionSource() }) { ctl.gemsOpen = false }
+                .semantics { contentDescription = t("trades.gemsDone") },
+            contentAlignment = Alignment.Center,
+        ) { Icon("Check", c.onBrand, size = 16.dp) }
     }
 }
 

@@ -17,6 +17,8 @@ vi.mock("@/api/messages", () => ({
 }));
 vi.mock("@/lib/decrypt", () => ({ decryptForStore: async (m: object) => ({ ...m, payload: { t: "hi" } }) }));
 vi.mock("@/api/users", () => ({ users: { me: async () => ({ id: "me", username: "me" }), mySharedGames: async () => ({ games: [] }), badgeProgress: async () => ({ last_day: 0, streak: 0, best_streak: 0, call_seconds: 0 }) } }));
+vi.mock("@/api/connections", () => ({ connections: { lastfm: async () => ({ username: "" }) } }));
+vi.mock("@/api/gems", () => ({ gems: { record: async () => ({ wallet: {}, ledger: [], watch: [] }) } }));
 vi.mock("@/api/relationships", () => ({ relationships: { list: async () => [] } }));
 vi.mock("@/api/channels", () => ({
   channels: {

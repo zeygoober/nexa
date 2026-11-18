@@ -177,6 +177,8 @@ object Reports {
             "ban_evasion" to ("UserX" to ReasonTone.ROUTINE),
             "illegal" to ("Gavel" to ReasonTone.SERIOUS),
             "other" to ("CircleHelp" to ReasonTone.ROUTINE),
+            // filed by Nexa itself (api/gems.go), never offered in the form
+            "gem_farming" to ("Gem" to ReasonTone.SERIOUS),
         )
 
     fun icon(reason: String) = looks[reason]?.first ?: "CircleHelp"

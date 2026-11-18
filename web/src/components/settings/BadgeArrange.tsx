@@ -203,7 +203,7 @@ export default function BadgeArrange({ me, onDone }: { me: PublicUser; onDone: (
         </div>
       </div>
       {parts.length > 1 ? (
-        <div className={s.parts} role="radiogroup" aria-label={t("badges.index.arrangeTitle")} data-glide="">
+        <div className={s.parts} data-no-swipe="" role="radiogroup" aria-label={t("badges.index.arrangeTitle")} data-glide="">
           {parts.map((p) => (
             <button key={p} type="button" role="radio" aria-checked={p === part} className={s.part} disabled={!!held} onClick={() => setChosen(p)} data-testid={`badge-arrange-${p}`}>
               {t(`badges.index.${p}`)}

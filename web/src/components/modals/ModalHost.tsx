@@ -113,7 +113,7 @@ function ModalEntry({ modal }: { modal: ModalState }) {
       {modal?.kind === "customStatus" ? <CustomStatusModal onClose={close} /> : null}
       {modal?.kind === "pasteUpdate" ? <PasteUpdateDialog onClose={close} /> : null}
       {modal?.kind === "shortcuts" ? <ShortcutsHelp onClose={close} /> : null}
-      {modal?.kind === "createServer" ? <CreateServerModal onClose={close} /> : null}
+      {modal?.kind === "createServer" ? <CreateServerModal onClose={close} template={modal.props?.["template"] as string | undefined} /> : null}
       {modal?.kind === "invite" ? <InviteModal onClose={close} serverId={String(modal.props?.["serverId"])} channelId={modal.props?.["channelId"] as string | undefined} /> : null}
       {modal?.kind === "groupInvite" ? <GroupInviteModal onClose={close} channelId={String(modal.props?.["channelId"])} /> : null}
       {modal?.kind === "editGroup" ? <EditGroupModal onClose={close} channelId={String(modal.props?.["channelId"])} /> : null}

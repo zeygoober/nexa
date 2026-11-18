@@ -14,7 +14,7 @@ import (
 
 // What only the owner does from the panel (the owner's decision, 2026-11-08):
 // reading an account's addresses and sessions, joining a server without an
-// invite, previewing a server's layout, and making gift links without paying. Each is written to mod_log, and
+// invite, previewing a server's layout, making gift links without paying, and giving or taking Gems (2026-11-16). Each is written to mod_log, and
 // the Privacy Policy, the Terms and ENCRYPTION.md say that they exist.
 
 func (s *Server) modOwnerRoutes(mux *http.ServeMux) {
@@ -24,6 +24,10 @@ func (s *Server) modOwnerRoutes(mux *http.ServeMux) {
 	mux.Handle("GET /api/v1/moderation/gift-links", s.staff(rankOwner, s.handleModGiftLinks))
 	mux.Handle("POST /api/v1/moderation/gift-links", s.staff(rankOwner, s.handleModGiftLinkCreate))
 	mux.Handle("DELETE /api/v1/moderation/gift-links/{code}", s.staff(rankOwner, s.handleModGiftLinkRevoke))
+	mux.Handle("GET /api/v1/moderation/users/{id}/gems", s.staff(rankOwner, s.handleModGems))
+	mux.Handle("POST /api/v1/moderation/users/{id}/gems", s.userLimited(s.limManage, s.holdsRank(rankOwner, s.handleModGemsChange)))
+	mux.Handle("GET /api/v1/moderation/users/{id}/collectables", s.staff(rankOwner, s.handleModCollectables))
+	mux.Handle("POST /api/v1/moderation/users/{id}/collectables", s.userLimited(s.limManage, s.holdsRank(rankOwner, s.handleModCollectableChange)))
 }
 
 // handleModAccount answers an account's addresses, sessions and plan. The view
@@ -312,4 +316,156 @@ func (s *Server) handleModGiftLinkRevoke(w http.ResponseWriter, r *http.Request)
 		s.Log.Warn("mod log", "err", err)
 	}
 	w.WriteHeader(http.StatusNoContent)
+}
+
+// gemsPerson finds the account the owner's Gems tools act on: a person, not
+// an app, Nexa's own account or a deleted one, none of which hold Gems.
+func (s *Server) gemsPerson(w http.ResponseWriter, r *http.Request) *store.User {
+	id, err := ids.Parse(r.PathValue("id"))
+	if err != nil {
+		WriteError(w, ErrNotFound)
+		return nil
+	}
+	u, err := s.Store.UserByID(r.Context(), id)
+	if err != nil || u.Flags&(store.NotPeople|store.FlagBot|store.FlagDeleted) != 0 {
+		WriteError(w, ErrNotFound)
+		return nil
+	}
+	return u
+}
+
+// ownerGemsView is what the owner sees of a wallet: what can be spent, what
+// is held, and whether a check or case has it.
+func ownerGemsView(wallet *store.GemWallet) map[string]any {
+	return map[string]any{"gems": wallet.Gems, "held": wallet.Held, "state": wallet.State}
+}
+
+// handleModGems answers someone's Gems for the owner's Give or Take dialog.
+func (s *Server) handleModGems(w http.ResponseWriter, r *http.Request) {
+	u := s.gemsPerson(w, r)
+	if u == nil {
+		return
+	}
+	wallet, err := s.Store.GemWallet(r.Context(), u.ID)
+	if err != nil {
+		WriteError(w, err)
+		return
+	}
+	WriteJSON(w, http.StatusOK, ownerGemsView(wallet))
+}
+
+// handleModGemsChange gives someone Gems (a positive amount) or takes them (a
+// negative one) for the owner. Taking more than they can spend is refused, so
+// a wallet never goes below nothing; held Gems are left to the check. The
+// ledger and the log are written with it, and the person's apps are told.
+func (s *Server) handleModGemsChange(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	me := auth.UserFrom(ctx)
+	u := s.gemsPerson(w, r)
+	if u == nil {
+		return
+	}
+	var req struct {
+		Amount int64  `json:"amount"`
+		Reason string `json:"reason"`
+	}
+	if err := ReadJSON(w, r, &req, 4<<10); err != nil {
+		WriteError(w, err)
+		return
+	}
+	if req.Amount == 0 || req.Amount > store.MaxTradeGems || req.Amount < -store.MaxTradeGems {
+		WriteError(w, E(http.StatusBadRequest, "invalid_amount", "Give or take between 1 and 1,000,000 Gems."))
+		return
+	}
+	reason := strings.TrimSpace(req.Reason)
+	if len([]rune(reason)) > 300 {
+		WriteError(w, E(http.StatusBadRequest, "reason_too_long", "Keep the reason under 300 characters."))
+		return
+	}
+	action := store.LogGemsGive
+	if req.Amount < 0 {
+		action = store.LogGemsTake
+	}
+	wallet, err := s.Store.OwnerGems(ctx, u.ID, req.Amount, &store.ModLogEntry{Action: action, ModeratorID: me.ID, ModeratorUsername: me.Username, TargetID: &u.ID, TargetUsername: u.Username, Reason: reason})
+	if errors.Is(err, store.ErrGemsShort) {
+		WriteError(w, E(http.StatusConflict, "gems_short", "They do not have that many Gems to take."))
+		return
+	}
+	if err != nil {
+		WriteError(w, err)
+		return
+	}
+	s.emitGems(ctx, u.ID)
+	WriteJSON(w, http.StatusOK, ownerGemsView(wallet))
+}
+
+// handleModCollectables answers every collectable at every material and how
+// many copies of each someone holds, for the owner's Give or Take dialog.
+func (s *Server) handleModCollectables(w http.ResponseWriter, r *http.Request) {
+	u := s.gemsPerson(w, r)
+	if u == nil {
+		return
+	}
+	sets, err := s.Store.CollectibleSets(r.Context())
+	if err != nil {
+		WriteError(w, err)
+		return
+	}
+	held, err := s.Store.CollectibleCopies(r.Context(), u.ID)
+	if err != nil {
+		WriteError(w, err)
+		return
+	}
+	WriteJSON(w, http.StatusOK, map[string]any{"collectables": sets, "held": held})
+}
+
+// handleModCollectableChange gives someone copies of one collectable at one
+// material (a positive amount) or takes them (a negative one) for the owner:
+// {"badge": "event:<id>-<material>", "amount", "reason"}. Taking more than they
+// hold is refused. The log is written with it; it answers the copies after.
+func (s *Server) handleModCollectableChange(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	me := auth.UserFrom(ctx)
+	u := s.gemsPerson(w, r)
+	if u == nil {
+		return
+	}
+	var req struct {
+		Badge  string `json:"badge"`
+		Amount int    `json:"amount"`
+		Reason string `json:"reason"`
+	}
+	if err := ReadJSON(w, r, &req, 4<<10); err != nil {
+		WriteError(w, err)
+		return
+	}
+	if req.Amount == 0 || req.Amount > store.MaxOwnerCopies || req.Amount < -store.MaxOwnerCopies {
+		WriteError(w, E(http.StatusBadRequest, "invalid_amount", "Give or take between 1 and 100 copies."))
+		return
+	}
+	reason := strings.TrimSpace(req.Reason)
+	if len([]rune(reason)) > 300 {
+		WriteError(w, E(http.StatusBadRequest, "reason_too_long", "Keep the reason under 300 characters."))
+		return
+	}
+	action := store.LogCollectableGive
+	if req.Amount < 0 {
+		action = store.LogCollectableTake
+	}
+	copies, err := s.Store.OwnerCollectible(ctx, u.ID, req.Badge, req.Amount, &store.ModLogEntry{Action: action, ModeratorID: me.ID, ModeratorUsername: me.Username, TargetID: &u.ID, TargetUsername: u.Username, Reason: reason})
+	if errors.Is(err, store.ErrNotCollectible) {
+		WriteError(w, E(http.StatusBadRequest, "not_collectable", "That is not a collectable."))
+		return
+	}
+	if errors.Is(err, store.ErrGemsShort) {
+		WriteError(w, E(http.StatusConflict, "copies_short", "They do not hold that many copies to take."))
+		return
+	}
+	if err != nil {
+		WriteError(w, err)
+		return
+	}
+	// a copy can change their team, and so what each message earns
+	s.gemTeams.forget(u.ID)
+	WriteJSON(w, http.StatusOK, map[string]any{"badge": req.Badge, "copies": copies})
 }

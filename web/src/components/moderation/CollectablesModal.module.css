@@ -1,0 +1,128 @@
+/* The owner's Give or Take Collectables (CollectablesModal.tsx); the figure, switch and fields are GemsModal's */
+
+/* every collectable, the chosen one ringed; scrolls inside itself past about four rows */
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  max-height: 196px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 4px;
+  border-radius: var(--radius-md);
+  background: var(--bg-input);
+}
+.row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 44px;
+  padding: 6px 10px;
+  border-radius: var(--radius-sm);
+  text-align: start;
+  color: var(--text);
+}
+.row:hover {
+  background: var(--bg-surface);
+}
+.row[aria-checked="true"] {
+  background: var(--bg-raised);
+  box-shadow: inset 0 0 0 2px var(--brand);
+}
+.name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 14.5px;
+  font-weight: 600;
+  color: var(--text-strong);
+}
+/* a rarity is a dot and its word, never the colour alone (as on the Gems page) */
+.rarity {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  color: var(--text-muted);
+}
+.rarity > i {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--rarity);
+}
+.rarity[data-rarity="common"] { --rarity: var(--text-muted); }
+.rarity[data-rarity="rare"] { --rarity: var(--link); }
+.rarity[data-rarity="epic"] { --rarity: var(--text-brand); }
+.rarity[data-rarity="huge"] { --rarity: var(--warning); }
+.count {
+  flex: none;
+  min-width: 52px;
+  text-align: end;
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-muted);
+}
+
+/* the five materials, each with the copies held */
+.materials {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 8px;
+}
+.material {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  padding: 0;
+  border-radius: var(--radius-md);
+}
+.tile {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 100%;
+  aspect-ratio: 1;
+  max-width: 68px;
+  border-radius: var(--radius-md);
+  background: var(--bg-surface);
+  box-shadow: inset 0 0 0 1px var(--border-subtle);
+}
+.material:hover .tile {
+  box-shadow: inset 0 0 0 1px var(--border);
+}
+.material[aria-checked="true"] .tile {
+  box-shadow: inset 0 0 0 2px var(--brand);
+}
+.qty {
+  position: absolute;
+  inset-block-end: 3px;
+  inset-inline-end: 3px;
+  min-width: 20px;
+  padding: 1px 5px;
+  border-radius: 999px;
+  background: var(--bg-base);
+  box-shadow: inset 0 0 0 1px var(--border);
+  color: var(--text-strong);
+  font-size: 11px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  text-align: center;
+}
+.word {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+.material[aria-checked="true"] .word {
+  color: var(--text-strong);
+  font-weight: 600;
+}

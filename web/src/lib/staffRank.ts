@@ -14,7 +14,9 @@
  *   other people's servers or group chats.
  * - Owner: the oldest Developer, the only one who gives and takes ranks, sees
  *   an account's addresses and sessions, joins servers from the panel (visibly
- *   and logged) and makes gift links without paying.
+ *   and logged) and makes gift links without paying. Holds every permission in
+ *   the servers they are in, private channels included, and still nothing in
+ *   group chats (`holdsEverything` in stores/servers.ts).
  *
  * A rank is a public flag bit, so it is read from anyone's flags. What each
  * rank may do is `can(rank, capability)`, from STAFF_CAN.

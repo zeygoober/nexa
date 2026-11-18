@@ -113,6 +113,9 @@ object Sounds {
     /** Whether a sound is switched off in the settings. */
     fun isOff(id: String): Boolean = id in config().off
 
+    /** The sounds volume, 0 to 100, which the Gems sounds (GemSounds) follow too. */
+    fun volume(): Int = config().volume
+
     // --- playing -----------------------------------------------------------------
 
     /** Plays a sound by id ("message", "mention", ...), unless it is switched off. */

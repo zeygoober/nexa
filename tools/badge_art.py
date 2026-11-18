@@ -164,6 +164,24 @@ GLYPHS = {
     "rocket": (45, [("A", "M25 47H39L32 64Z", "#ffb23f"), ("F", "M18 36L6 50L19 48Z"), ("F", "M46 36L58 50L45 48Z"), ("F", "M32 2C46 13 48 32 44 47H20C16 32 18 13 32 2Z"), ("C", dot(32, 24, 7))]),
     "coffee": (0, [("L", "M46 28H50A7.5 7.5 0 0 1 50 43H45", 5.5), ("L", "M22 5C18 9 26 12 22 17", 4.6), ("L", "M35 5C31 9 39 12 35 17", 4.6), ("F", "M11 23H47V40C47 50 40 56 31 56H27C18 56 11 50 11 40Z"), ("CL", "M18 33V42", 3.4)]),
     "cake": (0, [("A", "M32 3C37 9 37 12 32 15C27 12 27 9 32 3Z", "#ffb23f"), ("L", "M32 18V27", 6), ("F", rrect(16, 28, 48, 40, 4)), ("F", rrect(9, 38, 55, 58, 5)), ("CL", "M10 46C15 52 19 52 24 46S32 40 37 46 49 52 54 46", 4)]),
+    # the collectibles capsules give (gems), drawn in each of the five TIERS; staff pick one for a collectible
+    "moon": (0, [("F", "M44 11.2A24 24 0 1 0 52.8 44A18 18 0 0 1 44 11.2Z"), ("C", dot(19, 30, 3.4)), ("C", dot(26, 44, 2.6))]),
+    "bolt": (0, [("F", "M37 4L12 36H29L25 60L52 26H35Z")]),
+    "flame": (0, [("F", "M32 4C36 16 50 22 50 38C50 50 42 58 32 58C22 58 14 50 14 38C14 30 19 24 22 19C23 27 26 30 29 31C27 20 28 11 32 4Z"),
+                  ("A", "M32 34C35 40 40 43 40 48C40 53 36 56 32 56C28 56 24 53 24 48C24 43 29 40 32 34Z", "#fff1c9")]),
+    "leaf": (0, [("L", "M19 54L11 61", 5), ("F", "M54 7C31 7 12 18 12 38C12 46 15 51 19 54C40 54 54 40 54 7Z"), ("CL", "M20 52C26 41 34 30 45 18", 3.4)]),
+    "mushroom": (0, [("F", rrect(23, 34, 41, 58, 7)), ("F", "M6 33C6 18 18 8 32 8S58 18 58 33C58 36 56 38 53 38H11C8 38 6 36 6 33Z"),
+                     ("C", dot(21, 24, 4.6)), ("C", dot(39, 18, 3.6)), ("C", dot(45, 29, 3))]),
+    "fish": (0, [("F", "M43 32L58 19V45Z"), ("F", "M6 32C14 17 34 13 47 32C34 51 14 47 6 32Z"), ("C", dot(17, 29, 3.4)), ("CL", "M27 23C30.5 28.5 30.5 35.5 27 41", 3.4)]),
+    "cat": (0, [("F", "M11 10L22.5 21C25.5 20 28.5 19.5 32 19.5S38.5 20 41.5 21L53 10C55 20 55 27 53.5 32C55.5 36 56.5 39 56.5 42C56.5 52 45.5 58 32 58S7.5 52 7.5 42C7.5 39 8.5 36 10.5 32C9 27 9 20 11 10Z"),
+                ("C", dot(23, 38, 3.8)), ("C", dot(41, 38, 3.8)), ("CL", "M28.5 46.5L32 49L35.5 46.5", 3)]),
+    "ghost": (0, [("F", "M11 30C11 16.5 20.5 6 32 6S53 16.5 53 30V57L46 52L39 57L32 52L25 57L18 52L11 57Z"), ("C", dot(24.5, 29, 4.2)), ("C", dot(39.5, 29, 4.2)), ("C", rrect(28, 38, 36, 45, 4))]),
+    "paw": (0, [("F", "M32 31C42 31 50 41 50 49C50 55 45 58 40 57C37 56.5 35 55 32 55S27 56.5 24 57C19 58 14 55 14 49C14 41 22 31 32 31Z"),
+                ("F", dot(12.5, 27, 6.2)), ("F", dot(24.5, 15, 6.8)), ("F", dot(39.5, 15, 6.8)), ("F", dot(51.5, 27, 6.2))]),
+    "cherry": (0, [("L", "M20 36C21 24 27 13 37 7", 4.5), ("L", "M45 38C43 27 40 16 37 7", 4.5), ("F", "M37 7C43 3.5 52 4.5 56 11C50 14.5 42 13.5 37 7Z"),
+                   ("F", dot(19, 46, 11.5)), ("F", dot(45, 47, 11.5))]),
+    "dice": (-10, [("F", rrect(10, 10, 54, 54, 10)), ("C", dot(21.5, 21.5, 4.4)), ("C", dot(42.5, 21.5, 4.4)), ("C", dot(32, 32, 4.4)), ("C", dot(21.5, 42.5, 4.4)), ("C", dot(42.5, 42.5, 4.4))]),
+    "key": (0, [("L", "M28 30L55 57", 8), ("L", "M44.5 46.5L38 53", 6.5), ("L", "M51.5 53.5L46 59", 6), ("F", dot(19, 21, 14)), ("C", dot(19, 21, 5.6))]),
 }
 
 DIGITS = {
@@ -208,6 +226,18 @@ FIT = {
     "rocket": (1.038, 3.83, -7.23),
     "coffee": (1.055, -4.65, -0.85),
     "cake": (0.993, 0.22, 0.71),
+    "moon": (1.086, -1.06, -3.68),
+    "bolt": (1.008, -0.27, -1.27),
+    "flame": (1.046, -1.46, -1.35),
+    "leaf": (1.030, -1.10, -4.48),
+    "mushroom": (0.992, 0.25, -1.80),
+    "fish": (1.081, -2.59, -3.53),
+    "cat": (1.041, -1.31, -4.40),
+    "ghost": (1.086, -2.74, -3.27),
+    "paw": (1.008, -0.27, -1.96),
+    "cherry": (0.989, 0.34, -0.41),
+    "dice": (1.049, -1.55, -2.55),
+    "key": (0.961, 2.09, -1.38),
 }
 DEPTH = 2.6
 
@@ -353,11 +383,53 @@ def star_gem():
     return gem(STAR, STAR_TABLE, [], ("#8a4d00", "#ffe066", "#f29a0c", "#fff8cf", "#ffd23f", "#fff", "#b86b00"), streak=streak)
 
 
+# the Gem, Nexa's currency: a cut crystal standing on its point, in a blue no badge wears
+CRYSTAL = "M32 3L53 16.5V45.5L32 59L11 45.5V16.5Z"
+CRYSTAL_TABLE = "M32 13.5L42.5 20.5V41.5L32 48.5L21.5 41.5V20.5Z"
+
+
+def currency_gem():
+    facets = [
+        ("l", "M32 3L11 16.5L21.5 20.5L32 13.5Z"), ("l", "M11 16.5V45.5L21.5 41.5V20.5Z"),
+        ("d", "M53 16.5V45.5L42.5 41.5V20.5Z"), ("d", "M53 45.5L32 59V48.5L42.5 41.5Z"), ("d", "M11 45.5L32 59V48.5L21.5 41.5Z"),
+    ]
+    streak = '<path d="M26.5 23V31" stroke="#fff" stroke-opacity=".9" stroke-width="3.2" stroke-linecap="round"/>'
+    return gem(CRYSTAL, CRYSTAL_TABLE, facets, ("#0b3570", "#7fe3ff", "#1878dc", "#ecfcff", "#82d9ff", "#fff", "#0d3f99"), streak=streak)
+
+
+def capsule():
+    """The capsule Gems buy: a pill leaning on its side a little, its top the Gem's blue with the Gem pressed into it, its bottom pearl, and a thin lip where the halves close."""
+    pill = rrect(14, 3, 50, 59, 18)
+    lip = rrect(12.5, 29, 51.5, 33.5, 2.25)
+    mark = "M32 11.5L38.5 15.6V24.4L32 28.5L25.5 24.4V15.6Z"
+    defs = (
+        grad("t", ("#9beaff", "#2184e6"), (0, 3), (0, 31)) + grad("w", ("#ffffff", "#b3c0d4"), (0, 31), (0, 59)) + GLOSS
+        + f'<mask id="m" maskUnits="userSpaceOnUse" x="-16" y="-16" width="96" height="96"><path d="{pill}" fill="#fff"/></mask>'
+    )
+    body = (
+        f'<g transform="rotate(-16 32 31)">'
+        f'<path transform="translate(0 {DEPTH})" d="{pill}" fill="#1c2b52"/>'
+        f'<g mask="url(#m)"><path d="M-16 -16H80V31H-16Z" fill="url(#t)"/><path d="M-16 31H80V80H-16Z" fill="url(#w)"/>'
+        f'<ellipse cx="{CX}" cy="2" rx="40" ry="24" fill="url(#s)"/></g>'
+        f'<path transform="translate(0 1.4)" d="{lip}" fill="#3a4c74"/><path d="{lip}" fill="#dce5f1"/>'
+        f'<path d="{mark}" fill="#0f5fb8" opacity=".5" transform="translate(0 1.3)"/>'
+        f'<path d="{mark}" fill="#effbff" stroke="#effbff" stroke-width="1.2" stroke-linejoin="round"/>'
+        '<path d="M32 15.2L35.4 17.4V22.6L32 24.8L28.6 22.6V17.4Z" fill="#7fd3ff"/>'
+        '<path d="M19.5 25V18C19.5 14 21 11 24 9" fill="none" stroke="#fff" stroke-opacity=".85" stroke-width="3.2" stroke-linecap="round"/>'
+        '</g>'
+    )
+    return svg(defs, body)
+
+
 def locked_gem(outline):
     return svg("", f'<path d="{outline}" fill="#000" stroke="#000" stroke-width="3" stroke-linejoin="round"/>')
 
 
 # ---- the set: name, how to draw it, how to black it out, whether the Badge Index has it
+
+
+# the art staff can pick for a collectible; keep equal to store.CollectibleArt
+COLLECTIBLE_ART = ["moon", "bolt", "flame", "leaf", "mushroom", "fish", "cat", "ghost", "paw", "cherry", "dice", "key"]
 
 
 def icon(glyph, material):
@@ -401,6 +473,12 @@ def all_badges():
     yield "curious", icon("glass", "jade"), False
     yield "nosy", icon("eye", "violet"), False
     yield "lucky", icon("clover", "clover"), False
+    # Gems: the currency, the capsule, and every collectible's art at each material (store.CollectibleArt)
+    yield "gem", (currency_gem, None), False
+    yield "capsule", (capsule, None), False
+    for glyph in COLLECTIBLE_ART:
+        for i, tier in enumerate(TIERS, 1):
+            yield f"col-{glyph}-{i}", icon(glyph, tier), False
 
 
 def main():
@@ -416,6 +494,10 @@ def main():
     # every locked Special badge in the Index, which says nothing of what it is; there is no unlocked one
     (OUT / "secret-locked.svg").write_text(locked_glyph("secret"))
     names.add("secret-locked.svg")
+    # a collectible not held, at any material: its drawing blacked out (store.layBadgeIndex sends art "col-<name>")
+    for glyph in COLLECTIBLE_ART:
+        (OUT / f"col-{glyph}-locked.svg").write_text(locked_glyph(glyph))
+        names.add(f"col-{glyph}-locked.svg")
     for old in OUT.glob("*.svg"):
         if old.name not in names:
             old.unlink()

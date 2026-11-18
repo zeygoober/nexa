@@ -352,6 +352,9 @@ func maintenance(ctx context.Context, log *slog.Logger, st *store.Store, m *medi
 		} else if n > 0 {
 			log.Info("address sweep", "removed", n)
 		}
+		if err := st.SweepGemWatch(ctx, time.Now()); err != nil {
+			log.Warn("gem watch sweep", "err", err)
+		}
 		// transfers nobody came back to finish, and the bytes they left behind
 		if stale, err := st.StaleUploads(ctx, time.Now().Add(-24*time.Hour).UnixMilli()); err == nil && len(stale) > 0 {
 			for _, up := range stale {

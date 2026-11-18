@@ -33,6 +33,11 @@
 .keyNote[data-warn="true"] svg { color: var(--warning); }
 .actionCard { width: 100%; border: 0; font: inherit; text-align: start; display: flex; align-items: center; gap: 12px; padding: 12px 14px; border-radius: var(--radius-md); background: color-mix(in oklab, var(--bg-base) 60%, var(--bg-floating)); box-shadow: inset 0 0 0 1px var(--border-subtle); cursor: pointer; color: var(--text); transition: box-shadow var(--transition), background var(--transition); }
 .actionCard:hover { box-shadow: inset 0 0 0 1px var(--border-strong); }
+/* Where the template comes from: a segmented switch, the pill sliding (tabGlide). */
+.sources { display: inline-flex; align-self: flex-start; padding: 2px; border-radius: var(--radius-sm); background: var(--bg-input); }
+.source { min-height: 32px; padding: 0 16px; border-radius: 8px; font-size: 13.5px; font-weight: 600; color: var(--text-muted); }
+.source:hover { color: var(--text-strong); }
+.source[aria-checked="true"] { background: var(--bg-raised); color: var(--text-strong); box-shadow: var(--shadow-low); }
 .templateCard { display: flex; flex-direction: column; gap: 10px; padding: 12px 14px; border-radius: var(--radius-md); background: color-mix(in oklab, var(--bg-base) 60%, var(--bg-floating)); box-shadow: inset 0 0 0 1px var(--border-subtle); }
 .templateTitle { margin: 0; font-size: 15px; font-weight: 600; color: var(--text-strong); }
 .templateMeta { margin: 2px 0 0; font-size: 12px; color: var(--text-muted); }

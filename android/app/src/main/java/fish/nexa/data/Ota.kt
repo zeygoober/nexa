@@ -3,6 +3,7 @@ package fish.nexa.data
 import android.content.Context
 import android.content.res.AssetFileDescriptor
 import android.media.MediaPlayer
+import android.media.SoundPool
 import android.util.Log
 import fish.nexa.BuildConfig
 import fish.nexa.Nexa
@@ -90,6 +91,13 @@ object Ota {
     fun open(path: String): InputStream = file(path)?.inputStream() ?: app.assets.open(path)
 
     /** For WebView and Coil: a URL for the asset. */
+    /** The file names in [dir], from the pack and the APK together (a pack may add pictures the APK lacks). */
+    fun list(dir: String): List<String> {
+        val packed = active?.let { File(it, dir).list()?.toList() }.orEmpty()
+        val bundled = runCatching { app.assets.list(dir)?.toList() }.getOrNull().orEmpty()
+        return (packed + bundled).distinct().sorted()
+    }
+
     fun uri(path: String): String = file(path)?.let { "file://" + it.absolutePath } ?: "file:///android_asset/$path"
 
     /** Points a MediaPlayer at an asset. */
@@ -97,6 +105,13 @@ object Ota {
         val f = file(path)
         if (f != null) mp.setDataSource(f.absolutePath)
         else app.assets.openFd(path).use { fd: AssetFileDescriptor -> mp.setDataSource(fd.fileDescriptor, fd.startOffset, fd.length) }
+    }
+
+    /** Loads an asset into a SoundPool; returns its sound id. */
+    fun load(pool: SoundPool, path: String): Int {
+        val f = file(path)
+        return if (f != null) pool.load(f.absolutePath, 1)
+        else app.assets.openFd(path).use { fd: AssetFileDescriptor -> pool.load(fd, 1) }
     }
 
     fun start() {

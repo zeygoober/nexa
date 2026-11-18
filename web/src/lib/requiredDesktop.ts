@@ -12,7 +12,7 @@ import { desktopBridge } from "./desktopBridge";
 import { compareVersions } from "./macReplacement";
 import { currentPlatform, pickDownload, type DesktopTarget } from "./platform";
 
-export const MANUAL_SIGNATURE_VERSION = "1.2.8";
+export const MANUAL_SIGNATURE_VERSION = "1.2.12";
 export const REQUIRED_DESKTOP = MANUAL_SIGNATURE_VERSION;
 
 export interface RequiredUpdate {

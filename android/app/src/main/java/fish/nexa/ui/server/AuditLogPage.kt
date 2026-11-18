@@ -66,6 +66,7 @@ private val ACTIONS = listOf(
     "invite_delete_all", "vanity_url_update", "invites_pause", "invites_resume", "member_prune", "member_timeout", "member_timeout_remove", "member_quarantine_lift",
     "message_delete", "message_bulk_delete", "message_pin", "message_unpin", "message_publish", "thread_create", "thread_update", "thread_delete",
     "follow_create", "follow_delete", "automod_rule_create", "automod_rule_update", "automod_rule_delete", "automod_action",
+    "template_create", "template_update", "template_sync", "template_delete",
 )
 
 /** What each audited action says, looked up when drawn so it follows the language. */

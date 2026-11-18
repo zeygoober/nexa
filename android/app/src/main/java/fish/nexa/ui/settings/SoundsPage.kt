@@ -47,6 +47,8 @@ import androidx.compose.ui.unit.dp
 import fish.nexa.Nexa
 import fish.nexa.crypto.Bytes
 import fish.nexa.crypto.FileCrypto
+import fish.nexa.media.GemSounds
+import fish.nexa.media.rememberGemSounds
 import fish.nexa.ui.Icon
 import fish.nexa.ui.ReadableError
 import fish.nexa.ui.components.ButtonKind
@@ -60,6 +62,7 @@ import fish.nexa.ui.components.Spinner
 import fish.nexa.ui.components.Txt
 import fish.nexa.ui.components.pressable
 import fish.nexa.ui.describeError
+import fish.nexa.ui.gems.GemIcon
 import fish.nexa.ui.t
 import fish.nexa.ui.theme.Nx
 import fish.nexa.ui.theme.Radii
@@ -377,6 +380,7 @@ fun SoundsPage() {
     var working by remember { mutableStateOf<String?>(null) }
     var uploadFor by remember { mutableStateOf<String?>(null) }
     LaunchedEffect(Unit) { tidySoundFiles(s) }
+    rememberGemSounds()
 
     val pick = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri: Uri? ->
         val id = uploadFor ?: return@rememberLauncherForActivityResult
@@ -486,6 +490,18 @@ fun SoundsPage() {
         )
     }
     if (custom != null) Hint(t("settings.sounds.limits", "short" to "6.0", "long" to "20.0"), Modifier.padding(top = 10.dp))
+
+    // the Gems sounds: the same in every pack, so a switch of their own and nothing to upload
+    SectionHeading(t("settings.sounds.gemsHeading"), Modifier.settingAnchor("gemSounds"))
+    Hint(t("settings.sounds.gemsIntro"), Modifier.padding(bottom = 6.dp))
+    SoundRow(
+        "gems", t("settings.sounds.whenGems"), on = doc.bool("gemSounds", true),
+        onToggle = { setSetting("gemSounds", it) },
+        custom = false, hasFile = false, working = null, uploadDisabled = false, onUpload = {}, onReset = {}, packId = s.pack,
+        name = t("settings.sounds.soundGems"),
+        icon = { GemIcon(18.dp) },
+        onPlay = { GemSounds.preview() },
+    )
 }
 
 /** `.packTile`: a pack to choose, with a button to hear it. */
@@ -564,9 +580,11 @@ private fun SoundRow(
     onUpload: () -> Unit,
     onReset: () -> Unit,
     packId: String,
+    name: String = soundName(id),
+    icon: (@Composable () -> Unit)? = null,
+    onPlay: () -> Unit = { SoundPreview.preview(id, packId) },
 ) {
     val c = Nx.colors
-    val name = soundName(id)
     Column(Modifier.fillMaxWidth()) {
         Row(Modifier.fillMaxWidth().heightIn(min = 60.dp).padding(vertical = 8.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
             Box(
@@ -575,12 +593,12 @@ private fun SoundRow(
                     .ring(CircleShape, c.borderSubtle)
                     .clip(CircleShape)
                     .sunken(CircleShape, c)
-                    .pressable(remember { MutableInteractionSource() }) { SoundPreview.preview(id, packId) }
+                    .pressable(remember { MutableInteractionSource() }) { onPlay() }
                     .semantics { contentDescription = t("settings.sounds.playSound", "name" to name) },
                 contentAlignment = Alignment.Center,
             ) { Icon("Play", c.text, size = 15.dp) }
             Row(Modifier.weight(1f).alpha(if (on) 1f else 0.5f), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                Icon(SOUND_ICONS.getValue(id), c.icon, size = 18.dp)
+                if (icon != null) icon() else Icon(SOUND_ICONS.getValue(id), c.icon, size = 18.dp)
                 Column {
                     Txt(name, style = Nx.type.body.copy(fontSize = Nx.type.sp(15f), fontWeight = FontWeight(550)), color = c.text)
                     Txt(sub, style = Nx.type.hint.copy(fontSize = Nx.type.sp(12.5f)), color = c.textMuted)

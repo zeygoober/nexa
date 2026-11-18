@@ -38,6 +38,19 @@ const art = (name: string) => ART[`../assets/badges/${name}.svg`];
 /** A badge picture by its file name, for the Badge Index. */
 export const badgeArt = art;
 
+/** The Gem, Nexa's currency, and the capsule Gems buy (tools/badge_art.py). */
+export const GEM_ART = art("gem")!;
+export const CAPSULE_ART = art("capsule")!;
+
+/** The drawings staff can pick for a collectible (store.CollectibleArt), read from the files: each is col-<name>-<material>.svg. */
+export const COLLECTIBLE_ART: readonly string[] = Object.keys(ART)
+  .map((k) => /\/col-(.+)-1\.svg$/.exec(k)?.[1])
+  .filter((n): n is string => !!n)
+  .sort();
+
+/** A collectible's drawing at a material, 1 (bronze) to 5 (prism). */
+export const collectibleArt = (name: string, material: number) => art(`col-${name}-${Math.min(5, Math.max(1, material))}`);
+
 /** How a badge looks: its picture (or, for an event badge, its icon and colour), its name and what it means. */
 export interface BadgeLook {
   art?: string;
@@ -95,11 +108,16 @@ function joinPlace(n: number): string {
   return `${n}${end}`;
 }
 
+/** A badge's description ends without a full stop (the owner's rule), whoever wrote it. */
+export function bareTip(tip: string): string {
+  return tip.replace(/(?<![.。])[.。]\s*$/u, "").trimEnd();
+}
+
 export function badgeLook(b: Badge, user: Who): BadgeLook | null {
   const look = builtInLook(b, user);
   // the owner's own words for a built-in badge, in every language (store/badge_tips.go)
-  if (look && b.description && b.id !== "staff" && !isEventBadge(b.id)) return { ...look, tip: b.description };
-  return look;
+  const own = look && b.description && b.id !== "staff" && !isEventBadge(b.id) ? { ...look, tip: b.description } : look;
+  return own && { ...own, tip: bareTip(own.tip) };
 }
 
 function builtInLook(b: Badge, user: Who): BadgeLook | null {
@@ -168,7 +186,11 @@ function builtInLook(b: Badge, user: Who): BadgeLook | null {
     case "lucky":
       return { art: art(b.id), label: t(`badges.secret.${b.id}`), tip: t(`badges.secret.${b.id}Tip`) };
     default:
-      // a badge staff made says what they wrote for it
+      // a collectible is drawn at its material; a badge staff made says what they wrote for it
+      if (isEventBadge(b.id) && b.name && b.rarity && b.art) {
+        const drawn = collectibleArt(b.art, b.level ?? 1);
+        if (drawn) return { art: drawn, label: b.name, tip: b.description ?? "" };
+      }
       if (isEventBadge(b.id) && b.name) return { iconName: b.icon, color: b.color, color2: b.color2, image: b.image, label: b.name, tip: b.description ?? "" };
       return null;
   }
@@ -204,8 +226,9 @@ export const hexColour = (c: number) => `#${(c & 0xffffff).toString(16).padStart
 export const OVERRIDABLE: Record<string, number> = { og: 1, years: 50, bug_hunter: 5, ideas: 5, app_developer: 3, gift_giver: 3, friendly: 3, host: 3, booster: 1, regular: 4, open_mic: 3 };
 
 /** An event badge staff made, as a badge someone holds (for drawing it in the panel). */
-export function defBadge(d: Pick<BadgeDef, "id" | "name" | "description" | "icon" | "color" | "color2" | "glyph" | "shape" | "image_id">): Badge {
+export function defBadge(d: Pick<BadgeDef, "id" | "name" | "description" | "icon" | "color" | "color2" | "glyph" | "shape" | "image_id" | "rarity" | "art">): Badge {
   const b: Badge = { id: EVENT_PREFIX + d.id, name: d.name, description: d.description, icon: d.icon, color: d.color };
+  if (d.rarity && d.art) Object.assign(b, { rarity: d.rarity, art: d.art, level: 1 });
   if (d.color2 >= 0) b.color2 = d.color2;
   if (d.glyph === "dark") b.glyph = "dark";
   if (d.shape && d.shape !== "circle") b.shape = d.shape;

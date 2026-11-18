@@ -113,6 +113,35 @@ object Invites {
         return parseDiscordTemplate(s) is ParsedTemplate.Ok
     }
 
+    private val NEXA_TEMPLATE_CODE_RE = Regex("^[A-Za-z0-9]{8,32}$")
+
+    /** Whether a host is this Nexa's: the one the app talks to, or nexa.pm. */
+    private fun ownHost(host: String): Boolean {
+        val h = host.lowercase()
+        val mine = runCatching { java.net.URI(Nexa.api.baseUrl).host?.lowercase() }.getOrNull()
+        return h == mine || h == "nexa.pm" || h.endsWith(".nexa.pm")
+    }
+
+    /** lib/nexaTemplate.ts: a Nexa server template link (https://nexa.pm/template/<code>) or a bare code. */
+    fun parseNexaTemplate(input: String): ParsedTemplate {
+        val s = input.trim()
+        if (s.isEmpty()) return ParsedTemplate.Err("empty")
+        if (!s.contains('/') && !s.contains('.')) {
+            return if (NEXA_TEMPLATE_CODE_RE.matches(s)) ParsedTemplate.Ok(s) else ParsedTemplate.Err("invalid")
+        }
+        val uri = try { java.net.URI(if (s.contains("://")) s else "https://$s") } catch (_: Exception) { return ParsedTemplate.Err("invalid") }
+        val host = uri.host ?: return ParsedTemplate.Err("invalid")
+        val parts = (uri.rawPath ?: "").split('/').filter { it.isNotEmpty() }
+        if (!ownHost(host) || parts.size != 2 || parts[0] != "template" || !NEXA_TEMPLATE_CODE_RE.matches(parts[1])) return ParsedTemplate.Err("invalid")
+        return ParsedTemplate.Ok(parts[1])
+    }
+
+    /** Whether input is a Nexa template link (rather than a bare code). */
+    fun isNexaTemplateUrl(input: String): Boolean {
+        val s = input.trim()
+        return (s.contains('/') || s.contains('.')) && parseNexaTemplate(s) is ParsedTemplate.Ok
+    }
+
     data class TemplateChannelPreview(
         val id: Int,
         val type: String,
@@ -135,8 +164,9 @@ object Invites {
         val roles: List<TemplateRolePreview>,
     )
 
-    suspend fun previewDiscordTemplate(code: String): TemplatePreview {
-        val res = Nexa.api.get("/servers/templates/discord/$code") as JsonObject
+    /** source is "discord" or "nexa"; both previews have the same shape. */
+    suspend fun previewTemplate(source: String, code: String): TemplatePreview {
+        val res = Nexa.api.get("/servers/templates/$source/$code") as JsonObject
         fun JsonObject.s(k: String) = (this[k] as? JsonPrimitive)?.takeIf { it.isString }?.content ?: ""
         fun JsonObject.n(k: String) = (this[k] as? JsonPrimitive)?.content?.toIntOrNull() ?: 0
         fun JsonObject.b(k: String) = (this[k] as? JsonPrimitive)?.content == "true"

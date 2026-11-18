@@ -34,6 +34,9 @@ var tieredBadges = []tieredBadge{
 // TradeKey is how a held badge is named in trades and holdings: the Badge Index's
 // own key, a tiered badge's level included.
 func TradeKey(id string, level int) string {
+	if strings.HasPrefix(id, EventBadgePrefix) && level > 0 {
+		return id + "-" + strconv.Itoa(level)
+	}
 	for _, t := range tieredBadges {
 		if t.id == id {
 			return t.art + "-" + strconv.Itoa(level)
@@ -50,10 +53,19 @@ func ParseTradeKey(key string) (id string, level int, ok bool) {
 		return key, 0, true
 	case strings.HasPrefix(key, EventBadgePrefix):
 		n := key[len(EventBadgePrefix):]
+		// a collectible names its material: event:<id>-<1 to 5>
+		material := 0
+		if at := strings.IndexByte(n, '-'); at > 0 {
+			m, rest := n[at+1:], n[:at]
+			if len(m) != 1 || m[0] < '1' || m[0] > '0'+GemMaterials {
+				return "", 0, false
+			}
+			material, n = int(m[0]-'0'), rest
+		}
 		if _, err := strconv.ParseInt(n, 10, 64); err != nil || len(n) == 0 || len(n) > 19 || n[0] == '0' || n[0] == '-' || n[0] == '+' {
 			return "", 0, false
 		}
-		return key, 0, true
+		return EventBadgePrefix + n, material, true
 	}
 	for _, t := range tieredBadges {
 		if rest, found := strings.CutPrefix(key, t.art+"-"); found {

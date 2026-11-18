@@ -3,6 +3,13 @@ package db
 // undoCommunities takes away what migration 0032 adds, for the tests that
 // take the schema back to an older version and run the migrations again.
 const undoCommunities = `
+DROP TABLE server_templates;
+DROP TABLE gem_watch;
+DROP INDEX gem_ledger_user;
+DROP TABLE gem_ledger;
+DROP TABLE gem_wallets;
+ALTER TABLE badge_defs DROP COLUMN art;
+ALTER TABLE badge_defs DROP COLUMN rarity;
 DROP INDEX badge_trades_message;
 DROP INDEX badge_trades_to;
 DROP INDEX badge_trades_from;

@@ -523,8 +523,11 @@ func (s *Server) handleModLift(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	action := store.LogUnmute
-	if c.Action == store.ActionBan {
+	switch c.Action {
+	case store.ActionBan:
 		action = store.LogUnban
+	case store.ActionGemFarming:
+		action = store.LogGemFarmingLift
 	}
 	log := &store.ModLogEntry{Action: action, ModeratorID: me.ID, ModeratorUsername: me.Username, TargetID: &c.UserID, TargetUsername: c.TargetUsername, Reason: reason}
 	if target, err := s.Store.UserByID(ctx, c.UserID); err == nil {
@@ -541,6 +544,9 @@ func (s *Server) handleModLift(w http.ResponseWriter, r *http.Request) {
 	}
 	s.emitCase(ctx, updated, line)
 	s.emitLog(ctx, log)
+	if c.Action == store.ActionGemFarming {
+		s.emitGems(ctx, c.UserID)
+	}
 	WriteJSON(w, http.StatusOK, map[string]any{"case": toStaffCase(updated, s.caseStateFor(ctx, c.UserID), line)})
 }
 

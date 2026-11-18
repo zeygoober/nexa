@@ -11,7 +11,7 @@ import type { ReportReceipt } from "./reports";
 import { api, type UploadOptions } from "./client";
 import type { GiftLink, Invite, Overwrite, Role } from "./types";
 import type { BugCounts, BugMessage, MemberBug } from "./bugs";
-import type { Activity, BadgeArrangement, BadgeDef, BadgeHolder, BadgeIndexKind, BadgeShape, Emoji, PublicUser, ServerTag, Snowflake, StickerPack } from "./types";
+import type { Activity, Badge, BadgeArrangement, BadgeDef, BadgeHolder, BadgeIndexKind, BadgeShape, Emoji, PublicUser, ServerTag, Snowflake, StickerPack } from "./types";
 
 /** What staff set on an event badge they make or change. */
 export interface BadgeDefBody {
@@ -26,6 +26,8 @@ export interface BadgeDefBody {
   /** "0" for no picture. */
   image_id: Snowflake;
   index_kind: BadgeIndexKind;
+  /** Makes it a capsule collectible when created; a collectible can only change to another rarity. */
+  rarity?: "" | "common" | "rare" | "epic" | "huge";
 }
 
 /** A person's badges as staff set them (internal/api/badge_handlers.go writeUserBadges). */
@@ -37,7 +39,7 @@ export interface UserBadges {
   earned?: Record<string, number>;
 }
 
-export type ModAction = "message_remove" | "avatar_remove" | "field_reset" | "mute" | "ban" | "delete" | "server_reset" | "expression_takedown" | "server_manage";
+export type ModAction = "message_remove" | "avatar_remove" | "field_reset" | "mute" | "ban" | "delete" | "server_reset" | "expression_takedown" | "server_manage" | "gem_farming";
 export type ResetField = "username" | "display_name" | "about_me" | "pronouns" | "status" | "nicknames" | "server_profiles" | "typing_style" | "name_style" | "widgets" | "server_tag";
 /** What a server_reset can take back of what a server shows everyone. */
 export type ServerField = "icon" | "banner" | "name" | "description" | "tag" | "discovery";
@@ -100,6 +102,9 @@ export interface PurgeCounts {
 
 /** Exactly what a case did; which fields are there depends on the action. */
 export interface CaseDetails {
+  /** gem_farming: the Gems the hold took, and when earning comes back. */
+  held?: number;
+  off_until?: number;
   /** A server_manage notice: who it is for, and which of the owner's actions it tells of. */
   notice?: "owner" | "removed" | "banned" | "heir";
   what?: string;
@@ -614,6 +619,21 @@ export interface ModServerPreview {
   people: People;
 }
 
+/** Someone's Gems as the owner's Give or Take dialog shows them. */
+export interface ModGems {
+  gems: number;
+  held: number;
+  state: "" | "check" | "report" | "off";
+}
+
+/** A collectable at each material, bronze first, for the owner's Give or Take dialog. */
+export interface ModCollectable {
+  id: Snowflake;
+  name: string;
+  rarity: "common" | "rare" | "epic" | "huge";
+  materials: Badge[];
+}
+
 export interface ModAccount {
   created_at: number;
   plan: string;
@@ -684,6 +704,22 @@ export const moderation = {
     return uploadCaseFile("/moderation/cases/attachments", file, name, opts);
   },
   /** The accounts seen at the same addresses as this one, the most shared first. */
+  /** The owner's: what someone can spend, what is held, and whether a check has it. */
+  gems(id: Snowflake): Promise<ModGems> {
+    return api.request("GET", `/moderation/users/${id}/gems`);
+  },
+  /** The owner's: gives Gems (a positive amount) or takes them (a negative one). */
+  changeGems(id: Snowflake, amount: number, reason: string): Promise<ModGems> {
+    return api.request("POST", `/moderation/users/${id}/gems`, { amount, reason });
+  },
+  /** The owner's: every collectable, and the copies someone holds by key ("event:<id>-<material>"). */
+  collectables(id: Snowflake): Promise<{ collectables: ModCollectable[]; held: Record<string, number> }> {
+    return api.request("GET", `/moderation/users/${id}/collectables`);
+  },
+  /** The owner's: gives copies of one collectable at one material (a positive amount) or takes them (a negative one). */
+  changeCollectable(id: Snowflake, badge: string, amount: number, reason: string): Promise<{ badge: string; copies: number }> {
+    return api.request("POST", `/moderation/users/${id}/collectables`, { badge, amount, reason });
+  },
   /** The owner's: reading this writes a line in the log. */
   account(id: Snowflake): Promise<ModAccount> {
     return api.request("GET", `/moderation/users/${id}/account`);

@@ -513,8 +513,9 @@ private fun ReportWorkspace(id: String, onDecided: (String) -> Unit) {
                         Txt(t("reports.reportedPart", "part" to if (v.part == "custom") v.customPart.ifEmpty { t("reports.part.custom") } else t("reports.part.${v.part}")), style = Nx.type.body.copy(fontSize = Nx.type.sp(14.5f), fontWeight = FontWeight(600)), color = c.textStrong)
                     if (v.excerpt.isNotEmpty()) Txt(v.excerpt, Modifier.fillMaxWidth().background(c.bgInput, Radii.Sm).padding(12.dp), style = Nx.type.body.copy(fontSize = Nx.type.sp(15f)), color = c.text)
                     d.files.forEach { ReportFile(it) }
+                    if (isGemFarming(d)) GemFarmingSummary(d)
                 }
-                Txt(t("reports.unverified"), style = Nx.type.hint.copy(fontSize = Nx.type.sp(13f)), color = c.textMuted)
+                if (!isGemFarming(d)) Txt(t("reports.unverified"), style = Nx.type.hint.copy(fontSize = Nx.type.sp(13f)), color = c.textMuted)
             }
         }
         item {
@@ -534,7 +535,7 @@ private fun ReportWorkspace(id: String, onDecided: (String) -> Unit) {
                             if (v.subjectId != "0") NxButton(t("reports.openAccount"), { openReportTarget("users/${v.subjectId}", v.id) }, kind = ButtonKind.GHOST, icon = "UserRound", size = ButtonSize.TOUCH, block = true)
                         }
                     }
-                    Deciding.ACT -> ActionPanel(d, openSame, onCancel = { deciding = Deciding.NONE }, onDone = { onDecided(v.id) }, onChanged = { reload++ })
+                    Deciding.ACT -> if (isGemFarming(d)) GemFarmingPanel(d, onCancel = { deciding = Deciding.NONE }, onDone = { onDecided(v.id) }) else ActionPanel(d, openSame, onCancel = { deciding = Deciding.NONE }, onDone = { onDecided(v.id) }, onChanged = { reload++ })
                     Deciding.DISMISS -> DismissPanel(d, openSame, onCancel = { deciding = Deciding.NONE }, onDone = { onDecided(v.id) })
                 }
             } else {

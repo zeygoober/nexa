@@ -347,12 +347,15 @@ private fun TradeSide(title: String, lines: List<fish.nexa.data.Trades.Line>) {
     androidx.compose.foundation.layout.Column(verticalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(6.dp)) {
         Txt(title, style = Nx.type.heading.copy(fontSize = Nx.type.sp(14f)), color = c.textStrong)
         if (lines.isEmpty()) Txt(t("trades.nothing"), style = Nx.type.body.copy(fontSize = Nx.type.sp(14f)), color = c.textMuted)
-        for (l in lines) {
+        val gems = fish.nexa.data.Gems.KEY
+        for (l in lines.filter { it.key == gems } + lines.filter { it.key != gems }) {
             Row(verticalAlignment = androidx.compose.ui.Alignment.CenterVertically, horizontalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(8.dp)) {
-                if (l.badge != null) fish.nexa.ui.profile.BadgePill(l.badge, "0", 0L, "", still = true, size = 28.dp)
+                if (l.key == gems) Box(Modifier.size(28.dp), contentAlignment = androidx.compose.ui.Alignment.Center) { fish.nexa.ui.gems.GemIcon(24.dp) }
+                else if (l.badge != null) fish.nexa.ui.profile.BadgePill(l.badge, "0", 0L, "", still = true, size = 28.dp)
                 else Box(Modifier.size(28.dp).background(c.bgActive, androidx.compose.foundation.shape.CircleShape))
-                Txt(l.badge?.let { fish.nexa.data.Badges.look(it, "0", 0L, "")?.label } ?: l.key, style = Nx.type.body.copy(fontSize = Nx.type.sp(14f), fontWeight = FontWeight(600)), maxLines = 1, modifier = Modifier.weight(1f, fill = false))
-                if (l.qty > 1) Txt("×${l.qty}", style = Nx.type.body.copy(fontSize = Nx.type.sp(14f), fontWeight = FontWeight(700), fontFeatureSettings = "tnum"), color = c.textBrand)
+                val name = if (l.key == gems) t("gems.count", "count" to l.qty) else l.badge?.let { fish.nexa.data.Badges.look(it, "0", 0L, "")?.label } ?: l.key
+                Txt(name, style = Nx.type.body.copy(fontSize = Nx.type.sp(14f), fontWeight = FontWeight(600)), maxLines = 1, modifier = Modifier.weight(1f, fill = false))
+                if (l.key != gems && l.qty > 1) Txt("×${l.qty}", style = Nx.type.body.copy(fontSize = Nx.type.sp(14f), fontWeight = FontWeight(700), fontFeatureSettings = "tnum"), color = c.textBrand)
             }
         }
     }

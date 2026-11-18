@@ -163,7 +163,12 @@ func toMemberCase(c *store.ModCase, st caseState) memberCase {
 	v := memberCase{ID: c.ID, Number: c.Number, Action: c.Action, Reason: c.Reason, Details: c.Details, ModeratorID: c.ModeratorID,
 		CreatedAt: c.CreatedAt, ExpiresAt: c.ExpiresAt, LiftedAt: c.LiftedAt, LiftedBy: c.LiftedBy, LiftReason: c.LiftReason,
 		Status: c.Status, InEffect: st.active[c.ID], Unread: st.unread[c.ID], Acknowledged: c.NoticeAckAt != nil, LastActivityAt: c.LastActivityAt}
-	v.Ended = c.Restricts() != "" && !v.InEffect && c.LiftedAt == nil
+	if c.Action == store.ActionGemFarming {
+		// earning is off until the case's end, unless it was lifted
+		v.InEffect = c.LiftedAt == nil && c.ExpiresAt != nil && *c.ExpiresAt > time.Now().UnixMilli()
+		v.Ended = c.LiftedAt == nil && !v.InEffect
+	}
+	v.Ended = v.Ended || (c.Restricts() != "" && !v.InEffect && c.LiftedAt == nil)
 	return v
 }
 

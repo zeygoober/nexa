@@ -16,7 +16,7 @@ import st from "./Settings.module.css";
 import s from "./BadgeIndexPage.module.css";
 
 /** The parts of the index, always in this order (BadgeArrange too). */
-export const BADGE_SECTIONS: BadgeCategory[] = ["obtainable", "exclusive", "special"];
+export const BADGE_SECTIONS: BadgeCategory[] = ["obtainable", "collectible", "exclusive", "special"];
 
 /** A badge not collected: its shape, blacked out, and nothing that says what it is or how to get it. */
 function Locked({ entry, onFound }: { entry: BadgeIndex["entries"][number]; onFound: () => void }) {

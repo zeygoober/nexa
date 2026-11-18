@@ -66,6 +66,13 @@ const (
 	LogServerPreview  = "server_preview"
 	LogGiftLinkCreate = "gift_link_create"
 	LogGiftLinkRevoke = "gift_link_revoke"
+	// Gems the owner gave or took: the amount and what the person then had
+	LogGemsGive = "gems_give"
+	LogGemsTake = "gems_take"
+	// Collectable copies the owner gave or took: which, at what material, how
+	// many, and how many the person then had
+	LogCollectableGive = "collectable_give"
+	LogCollectableTake = "collectable_take"
 )
 
 // The restrictions a case can put in force.
@@ -902,21 +909,31 @@ func (s *Store) ModLift(ctx context.Context, caseID, by ids.ID, reason string, l
 		if err != nil {
 			return err
 		}
-		kind := cur.Restricts()
-		if kind == "" {
-			return ErrNotRestricted
-		}
-		if err := tx.Serialise(ctx, "mod-restrict", int64(cur.UserID)); err != nil {
-			return err
-		}
 		now := nowMs()
-		res, err := tx.ExecContext(ctx, `DELETE FROM mod_restrictions WHERE user_id = ? AND kind = ? AND case_id = ? AND (expires_at IS NULL OR expires_at > ?)`,
-			int64(cur.UserID), kind, int64(caseID), now)
-		if err != nil {
-			return err
-		}
-		if n, _ := res.RowsAffected(); n == 0 {
-			return ErrNotRestricted
+		if cur.Action == ActionGemFarming {
+			// an appeal upheld: earning back on, and what was taken returned
+			if cur.LiftedAt != nil {
+				return ErrNotRestricted
+			}
+			if err := liftGemFarmingTx(ctx, tx, cur, now); err != nil {
+				return err
+			}
+		} else {
+			kind := cur.Restricts()
+			if kind == "" {
+				return ErrNotRestricted
+			}
+			if err := tx.Serialise(ctx, "mod-restrict", int64(cur.UserID)); err != nil {
+				return err
+			}
+			res, err := tx.ExecContext(ctx, `DELETE FROM mod_restrictions WHERE user_id = ? AND kind = ? AND case_id = ? AND (expires_at IS NULL OR expires_at > ?)`,
+				int64(cur.UserID), kind, int64(caseID), now)
+			if err != nil {
+				return err
+			}
+			if n, _ := res.RowsAffected(); n == 0 {
+				return ErrNotRestricted
+			}
 		}
 		if _, err := tx.ExecContext(ctx, `UPDATE mod_cases SET lifted_at = ?, lifted_by = ?, lift_reason = ?, last_activity_at = ? WHERE id = ?`,
 			now, int64(by), reason, now, int64(caseID)); err != nil {

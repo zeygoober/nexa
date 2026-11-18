@@ -171,56 +171,30 @@ func allow(p perms.Perm) map[string]any {
 	return map[string]any{"type": "role", "allow": permStr(p), "deny": "0"}
 }
 
-// Every way to reach a channel's messages through a server's settings is
-// refused, and refusing changes nothing and tells the server nothing.
-func TestOwnerManageRefusesIndirectAccess(t *testing.T) {
+// Nexa's owner holds every permission in a server they are in, so what used
+// to be refused as a way into a private channel now goes through, and each
+// change is in both logs (the owner's decision, 2026-11-17).
+func TestOwnerManageOpensWhatItIsAsked(t *testing.T) {
 	f := manageSetup(t)
-	view := perms.ViewChannel
-	cases := map[string]map[string]any{
-		"private channel made public":                 {"action": "overwrite_set", "channel_id": f.secret, "target_id": f.sid, "data": allow(view)},
-		"the deny on a channel removed":               {"action": "overwrite_remove", "channel_id": f.secret, "target_id": f.sid},
-		"own role let into a channel":                 {"action": "overwrite_set", "channel_id": f.secret, "target_id": f.plainRole, "data": allow(view)},
-		"own role given manage roles":                 {"action": "overwrite_set", "channel_id": f.general, "target_id": f.plainRole, "data": allow(perms.ManageRoles)},
-		"staff let in by overwrite":                   {"action": "overwrite_set", "channel_id": f.secret, "target_id": f.stafferID, "data": map[string]any{"type": "member", "allow": permStr(view), "deny": "0"}},
-		"app let in by overwrite":                     {"action": "overwrite_set", "channel_id": f.secret, "target_id": f.botID, "data": map[string]any{"type": "member", "allow": permStr(view), "deny": "0"}},
-		"linked account let in":                       {"action": "overwrite_set", "channel_id": f.secret, "target_id": f.altID, "data": map[string]any{"type": "member", "allow": permStr(view), "deny": "0"}},
-		"category opens a synced channel":             {"action": "overwrite_set", "channel_id": f.closedCat, "target_id": f.sid, "data": allow(view)},
-		"administrator on @everyone":                  {"action": "role_edit", "role_id": f.sid, "data": map[string]any{"permissions": permStr(perms.Administrator)}},
-		"administrator on a held role":                {"action": "role_edit", "role_id": f.plainRole, "data": map[string]any{"permissions": permStr(perms.Administrator)}},
-		"manage server on a held role":                {"action": "role_edit", "role_id": f.plainRole, "data": map[string]any{"permissions": permStr(perms.ManageServer)}},
-		"deleting the role that denies":               {"action": "role_delete", "role_id": f.deniedRole},
-		"taking off the role that denies":             {"action": "member_role_remove", "user_id": f.nexaID, "role_id": f.deniedRole},
-		"role opening a channel for self":             {"action": "member_role_add", "user_id": f.nexaID, "role_id": f.secretRole},
-		"administrator role for self":                 {"action": "member_role_add", "user_id": f.nexaID, "role_id": f.adminRole},
-		"role opening a channel for staff":            {"action": "member_role_add", "user_id": f.stafferID, "role_id": f.secretRole},
-		"role opening a channel for an app":           {"action": "member_role_add", "user_id": f.botID, "role_id": f.secretRole},
-		"role opening a channel for a linked account": {"action": "member_role_add", "user_id": f.altID, "role_id": f.secretRole},
-		"moved into an open category":                 {"action": "channel_move", "channel_id": f.secret, "data": map[string]any{"parent_id": f.openCat}},
-		"synced to an open category":                  {"action": "overwrite_sync", "channel_id": f.closedInOpen},
+	if res, _ := do(t, f.ts, "GET", "/api/v1/channels/"+f.secret+"/messages", f.nexa, nil); res.StatusCode != 200 {
+		t.Errorf("Nexa's owner cannot read the private channel: %d", res.StatusCode)
 	}
-	for name, body := range cases {
-		code, out := f.manage(t, f.nexa, body)
-		if code != 403 || errCode(out) != "owner_access_refused" {
-			t.Errorf("%s: %d %v", name, code, out)
+	steps := []map[string]any{
+		{"action": "overwrite_set", "channel_id": f.secret, "target_id": f.plainRole, "data": allow(perms.ViewChannel)},
+		{"action": "member_role_add", "user_id": f.nexaID, "role_id": f.adminRole},
+		{"action": "role_edit", "role_id": f.plainRole, "data": map[string]any{"permissions": permStr(perms.ManageServer)}},
+		{"action": "channel_move", "channel_id": f.secret, "data": map[string]any{"parent_id": f.openCat}},
+	}
+	for _, body := range steps {
+		if code, out := f.manage(t, f.nexa, body); code != 200 {
+			t.Errorf("%v: %d %v", body["action"], code, out)
 		}
 	}
-	if n := f.auditCount(t); n != 0 {
-		t.Errorf("a refused change reached the server's log: %d", n)
+	if n := f.auditCount(t); n != len(steps) {
+		t.Errorf("audit entries: %d, want %d", n, len(steps))
 	}
-	if f.logged(t, store.LogOwnerServerRefused) == nil {
-		t.Error("a refused change left no line in the moderation log")
-	}
-	// the secret channel is still closed to the owner of Nexa and everyone else
-	if res, _ := do(t, f.ts, "GET", "/api/v1/channels/"+f.secret+"/messages", f.nexa, nil); res.StatusCode == 200 {
-		t.Error("the owner of Nexa can read the private channel")
-	}
-
-	// what opens nothing to anyone guarded still goes through
-	if code, out := f.manage(t, f.nexa, map[string]any{"action": "overwrite_set", "channel_id": f.secret, "target_id": f.adminRole, "data": allow(perms.SendMessages)}); code != 200 {
-		t.Errorf("a harmless overwrite: %d %v", code, out)
-	}
-	if code, out := f.manage(t, f.nexa, map[string]any{"action": "member_role_add", "user_id": f.aliceID, "role_id": f.secretRole}); code != 200 {
-		t.Errorf("giving someone else a role: %d %v", code, out)
+	if n := f.loggedCount(t, store.LogOwnerServerBegin); n != len(steps) {
+		t.Errorf("attempt lines: %d, want %d", n, len(steps))
 	}
 }
 
@@ -261,13 +235,14 @@ func TestOwnerManageLimits(t *testing.T) {
 	if got.Name != "Kept" || got.OwnerID.String() != f.srvOwnerID {
 		t.Errorf("server after edit: %q owner %v", got.Name, got.OwnerID)
 	}
-	// a private channel's topic is neither shown nor replaced
-	if code, out := f.manage(t, f.nexa, map[string]any{"action": "channel_edit", "channel_id": f.secret, "data": map[string]any{"topic": "x"}}); code != 403 || errCode(out) != "private_topic" {
+	// a private channel's topic can be replaced like any other
+	if code, out := f.manage(t, f.nexa, map[string]any{"action": "channel_edit", "channel_id": f.secret, "data": map[string]any{"topic": "x"}}); code != 200 {
 		t.Errorf("private topic: %d %v", code, out)
 	}
 }
 
-// A ban is told to everyone it concerns, in both logs, and keeps the messages.
+// A ban is in both logs, and nobody gets a case or a notice about it: the
+// server's audit log is the record (the owner's decision, 2026-11-17).
 func TestOwnerManageIsVisible(t *testing.T) {
 	f := manageSetup(t)
 	ctx := context.Background()
@@ -285,10 +260,9 @@ func TestOwnerManageIsVisible(t *testing.T) {
 	if e := f.logged(t, store.LogOwnerServerPrefix+"member_ban"); e == nil || e.Reason != "broke the rules" || !strings.Contains(string(e.Details), `"status":"done"`) {
 		t.Fatalf("moderation log: %+v", e)
 	}
-	for who, kind := range map[string]string{f.srvOwnerID: "owner", f.aliceID: "banned"} {
-		cases, _ := f.srv.Store.ModCasesForUser(ctx, modID(who))
-		if len(cases) != 1 || cases[0].Action != store.ActionServerManage || cases[0].Reason != "broke the rules" || !strings.Contains(string(cases[0].Details), `"notice":"`+kind+`"`) {
-			t.Errorf("%s's notice: %+v", kind, cases)
+	for _, who := range []string{f.srvOwnerID, f.aliceID} {
+		if cases, _ := f.srv.Store.ModCasesForUser(ctx, modID(who)); len(cases) != 0 {
+			t.Errorf("%s was sent a case: %+v", who, cases)
 		}
 	}
 	// a change that fails leaves the server's log and everyone's notices alone
@@ -298,9 +272,6 @@ func TestOwnerManageIsVisible(t *testing.T) {
 	}
 	if f.auditCount(t) != before {
 		t.Error("a failed change stayed in the server's log")
-	}
-	if cases, _ := f.srv.Store.ModCasesForUser(ctx, modID(f.srvOwnerID)); len(cases) != 1 {
-		t.Errorf("a failed change left a notice: %d", len(cases))
 	}
 	if e := f.logged(t, store.LogOwnerServerPrefix+"server_edit"); e == nil || !strings.Contains(string(e.Details), `"status":"failed"`) {
 		t.Errorf("a failed change in the moderation log: %+v", e)
@@ -344,8 +315,8 @@ func TestOwnerManageHoldsOrdinaryEditsOff(t *testing.T) {
 	}
 }
 
-// An action arriving during an ordinary edit waits for it, and is judged by
-// what that edit left: here the same overwrite is now one that opens the channel.
+// An action arriving during an ordinary edit waits for it, and runs on what
+// that edit left.
 func TestOwnerManageWaitsForOrdinaryEdits(t *testing.T) {
 	f := manageSetup(t)
 	ctx := context.Background()
@@ -361,7 +332,7 @@ func TestOwnerManageWaitsForOrdinaryEdits(t *testing.T) {
 	}
 	done := make(chan answer, 1)
 	go func() {
-		code, out := f.manage(t, f.nexa, map[string]any{"action": "overwrite_set", "channel_id": f.secret, "target_id": later, "data": allow(perms.ViewChannel)})
+		code, out := f.manage(t, f.nexa, map[string]any{"action": "role_delete", "role_id": later})
 		done <- answer{code, out}
 	}()
 	select {
@@ -369,33 +340,20 @@ func TestOwnerManageWaitsForOrdinaryEdits(t *testing.T) {
 		t.Fatalf("the action did not wait for the edit: %d %v", a.code, a.out)
 	case <-time.After(raceWait):
 	}
-	if err := f.srv.Store.AddMemberRole(held, modID(f.sid), modID(f.nexaID), modID(later)); err != nil {
+	if err := f.srv.Store.AddMemberRole(held, modID(f.sid), modID(f.aliceID), modID(later)); err != nil {
 		t.Fatal(err)
 	}
 	release()
-	a := <-done
-	if a.code != 403 || errCode(a.out) != "owner_access_refused" {
+	if a := <-done; a.code != 200 {
 		t.Fatalf("after the edit: %d %v", a.code, a.out)
 	}
-	if n := f.auditCount(t); n != 0 {
-		t.Errorf("the server's log has a refused change: %d", n)
-	}
-	if f.logged(t, store.LogOwnerServerRefused) == nil {
-		t.Error("the refusal is not in the moderation log")
-	}
-	ch, err := f.srv.Store.ChannelByID(ctx, modID(f.secret))
-	if err != nil {
-		t.Fatal(err)
-	}
-	for _, o := range ch.Overwrites {
-		if o.TargetID == modID(later) {
-			t.Error("the refused overwrite was written")
-		}
+	if f.holdsRole(t, f.aliceID, later) {
+		t.Error("the role the edit gave outlived its deletion")
 	}
 }
 
-// The server hears of a change only once it has committed, and of a failed one
-// never; the moderation log keeps every attempt.
+// The server's log has a change only once it has committed, and a failed one
+// never; nobody gets a notice; the moderation log keeps every attempt.
 func TestOwnerManageRecordsOnlyWhatHappened(t *testing.T) {
 	f := manageSetup(t)
 	ctx := context.Background()
@@ -435,17 +393,17 @@ func TestOwnerManageRecordsOnlyWhatHappened(t *testing.T) {
 	if n := f.auditCount(t); n != 1 {
 		t.Errorf("audit entries after a change: %d", n)
 	}
-	if n := notices(); n != 1 {
+	if n := notices(); n != 0 {
 		t.Errorf("notices after a change: %d", n)
 	}
-	if e := f.logged(t, store.LogOwnerServerPrefix+"server_edit"); e == nil || e.CaseID == nil || !strings.Contains(string(e.Details), `"status":"done"`) {
+	if e := f.logged(t, store.LogOwnerServerPrefix+"server_edit"); e == nil || !strings.Contains(string(e.Details), `"status":"done"`) {
 		t.Errorf("outcome line: %+v", e)
 	}
 
 	if code, _ := f.manage(t, f.nexa, map[string]any{"action": "server_edit", "data": map[string]any{"default_notifications": 9}}); code != 400 {
 		t.Fatalf("bad value: %d", code)
 	}
-	if f.auditCount(t) != 1 || notices() != 1 {
+	if f.auditCount(t) != 1 || notices() != 0 {
 		t.Errorf("a failed change was told to the server: audit %d, notices %d", f.auditCount(t), notices())
 	}
 	if n := f.loggedCount(t, store.LogOwnerServerBegin); n != 2 {
@@ -487,41 +445,29 @@ func TestOwnerManageTransfer(t *testing.T) {
 	}
 }
 
-// AutoMod's alert copies what it catches into a channel the server's key opens.
-func TestOwnerManageAutomodCannotCopyMessages(t *testing.T) {
+// AutoMod rules that alert can be made and changed like any other.
+func TestOwnerManageAutomod(t *testing.T) {
 	f := manageSetup(t)
 	alert := []map[string]any{{"type": "alert", "channel_id": f.general}}
-	block := []map[string]any{{"type": "block"}}
 	words := map[string]any{"words": []string{"nope"}}
-	if code, out := f.manage(t, f.nexa, map[string]any{"action": "automod_create", "data": map[string]any{"name": "r", "kind": "words", "config": words, "actions": alert}}); code != 403 || errCode(out) != "automod_alert" {
-		t.Errorf("new alert rule: %d %v", code, out)
+	code, out := f.manage(t, f.nexa, map[string]any{"action": "automod_create", "data": map[string]any{"name": "r", "kind": "words", "config": words, "actions": alert}})
+	if code != 200 {
+		t.Fatalf("new alert rule: %d %v", code, out)
 	}
-	if code, out := f.manage(t, f.nexa, map[string]any{"action": "automod_create", "data": map[string]any{"name": "r", "kind": "words", "config": words, "actions": block}}); code != 200 {
-		t.Fatalf("new blocking rule: %d %v", code, out)
+	list, err := f.srv.Store.AutomodRules(context.Background(), modID(f.sid))
+	if err != nil || len(list) != 1 {
+		t.Fatalf("rules: %v %v", list, err)
 	}
-	res, made := do(t, f.ts, "POST", "/api/v1/servers/"+f.sid+"/automod/rules", f.srvOwner, map[string]any{"name": "theirs", "kind": "words", "config": words, "actions": alert, "enabled": false})
-	if res.StatusCode != 201 {
-		t.Fatalf("server's own rule: %d %v", res.StatusCode, made)
-	}
-	rid := made["id"].(string)
-	for name, data := range map[string]map[string]any{
-		"turned on":  {"enabled": true},
-		"edited":     {"name": "renamed"},
-		"on and off": {"enabled": false, "name": "renamed"},
-	} {
-		if code, out := f.manage(t, f.nexa, map[string]any{"action": "automod_edit", "rule_id": rid, "data": data}); code != 403 || errCode(out) != "automod_alert" {
-			t.Errorf("alert rule %s: %d %v", name, code, out)
-		}
-	}
-	if code, out := f.manage(t, f.nexa, map[string]any{"action": "automod_edit", "rule_id": rid, "data": map[string]any{"enabled": false}}); code != 200 {
-		t.Errorf("turning off: %d %v", code, out)
+	rid := list[0].ID.String()
+	if code, out := f.manage(t, f.nexa, map[string]any{"action": "automod_edit", "rule_id": rid, "data": map[string]any{"enabled": true}}); code != 200 {
+		t.Errorf("turning on: %d %v", code, out)
 	}
 	if code, out := f.manage(t, f.nexa, map[string]any{"action": "automod_delete", "rule_id": rid}); code != 200 {
 		t.Errorf("deleting: %d %v", code, out)
 	}
 }
 
-// Opening the page is logged first and shows no private topic.
+// Opening the page is logged first, and shows private channels' topics too.
 func TestOwnerManageView(t *testing.T) {
 	f := manageSetup(t)
 	if res, out := do(t, f.ts, "PATCH", "/api/v1/channels/"+f.secret, f.srvOwner, map[string]any{"topic": "the hidden topic"}); res.StatusCode != 200 {
@@ -531,8 +477,8 @@ func TestOwnerManageView(t *testing.T) {
 	if res.StatusCode != 200 {
 		t.Fatalf("view: %d %v", res.StatusCode, out)
 	}
-	if strings.Contains(mustString(out), "the hidden topic") {
-		t.Error("a private channel's topic was shown")
+	if channelNamed(out, "secret")["topic"] != "the hidden topic" {
+		t.Errorf("a private channel's topic: %v", channelNamed(out, "secret")["topic"])
 	}
 	if channelNamed(out, "secret")["private"] != true {
 		t.Error("secret not marked private")

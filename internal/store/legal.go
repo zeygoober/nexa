@@ -93,6 +93,10 @@ type AccountRecord struct {
 	SharedGames   []SharedGame  // game_submissions, user_id = them
 	BadgeProgress BadgeProgress // badge_progress, user_id = them
 
+	Gems      *GemWallet       // gem_wallets, user_id = them
+	GemLedger []GemLedgerEntry // gem_ledger, user_id = them, newest first
+	GemWatch  []GemWatchDay    // gem_watch, user_id = them, newest first
+
 	Discord *LegalDiscord // discord_links, user_id = them
 
 	Lastfm *LastfmLink
@@ -1031,6 +1035,15 @@ func (s *Store) legalBugReports(ctx context.Context, rec *AccountRecord, uid int
 		return err
 	}
 	rec.BadgeProgress = progress
+	if rec.Gems, err = s.GemWallet(ctx, ids.ID(uid)); err != nil {
+		return err
+	}
+	if rec.GemLedger, err = s.GemLedger(ctx, ids.ID(uid), LegalListCap); err != nil {
+		return err
+	}
+	if rec.GemWatch, err = s.GemWatch(ctx, ids.ID(uid)); err != nil {
+		return err
+	}
 	rows, err := s.db.R.QueryContext(ctx, `SELECT id, number, subject, status, attachment_count, created_at FROM bug_reports WHERE user_id = ? ORDER BY id DESC LIMIT ?`, uid, LegalListCap)
 	if err != nil {
 		return err

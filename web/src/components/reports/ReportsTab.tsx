@@ -27,6 +27,7 @@ import { useModeration, useModEvents } from "@/stores/moderation";
 import { useUI } from "@/stores/ui";
 import { t } from "@/i18n";
 import { ActionPanel, DismissPanel } from "./ReportDecision";
+import { GemFarmingPanel, GemFarmingSummary, isGemFarming } from "./GemFarming";
 import s from "./Reports.module.css";
 
 const BASE = "/channels/@admin/reports";
@@ -563,12 +564,13 @@ function ReportWorkspace({ id, onBack, onOpen, onDecided }: { id: string; onBack
         ) : (
           <div className={s.targetBox}>
             {v.target_kind !== "other" && <ReportTargetCard kind={v.target_kind} snapshot={v.snapshot} saved />}
+            {isGemFarming(detail) ? <GemFarmingSummary detail={detail} /> : null}
             {v.part && v.part !== "whole" ? <p className={s.partLine}>{t("reports.reportedPart", { part: v.part === "custom" ? v.custom_part || t("reports.part.custom") : t(`reports.part.${v.part}`) })}</p> : null}
             {v.excerpt ? <pre className={s.preview}>{v.excerpt}</pre> : null}
             <EvidenceFiles files={detail.files} onError={setError} />
           </div>
         )}
-        <p className={s.unverified}>{t("reports.unverified")}</p>
+        {isGemFarming(detail) ? null : <p className={s.unverified}>{t("reports.unverified")}</p>}
       </section>
 
       {!closed ? (
@@ -591,6 +593,8 @@ function ReportWorkspace({ id, onBack, onOpen, onDecided }: { id: string; onBack
                 </Button>
               ) : null}
             </div>
+          ) : deciding === "act" && isGemFarming(detail) ? (
+            <GemFarmingPanel detail={detail} onCancel={() => setDeciding("none")} onDone={() => onDecided(v.id)} />
           ) : deciding === "act" ? (
             <ActionPanel detail={detail} others={openSame} onCancel={() => setDeciding("none")} onDone={() => onDecided(v.id)} onChanged={() => void load()} />
           ) : (

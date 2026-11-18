@@ -1041,6 +1041,10 @@ func (h *Hub) buildReady(ctx context.Context, u *store.User, session *store.Sess
 		"status_expires_at": u.StatusExpiresAt, "public_key": u.PublicKey, "created_at": u.CreatedAt, "flags": u.Flags, "presence_pref": u.PresencePref,
 		"dm_privacy": u.DMPrivacy, "has_recovery": u.RecoveryAuthHash != "", "short_name_credits": u.ShortNameCredits, "accent_color_2": u.AccentColor2, "group_link_only": u.GroupLinkOnly,
 		"typing_style": pub.TypingStyle, "name_style": pub.NameStyle, "server_tag": pub.ServerTag}
+	// a farming check is the account's own to see, and stays asked until answered
+	if w, err := h.st.GemWallet(ctx, u.ID); err == nil && w.State != "" {
+		p.User.(map[string]any)["gem_state"] = w.State
+	}
 	var err error
 	if p.Channels, err = h.st.DMChannelsForUser(ctx, u.ID); err != nil {
 		return nil, err

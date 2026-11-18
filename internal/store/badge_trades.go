@@ -93,16 +93,20 @@ func (s *Store) CleanTradeLines(ctx context.Context, lines []TradeLine) ([]Trade
 	sum := map[string]int{}
 	var order []string
 	var events []ids.ID
+	material := map[ids.ID][]int{}
 	for _, l := range lines {
-		if _, _, ok := ParseTradeKey(l.Key); !ok || l.Qty < 1 || l.Qty > MaxTradeQty {
+		if l.Key == GemsKey {
+			if l.Qty < 1 || l.Qty > MaxTradeGems {
+				return nil, ErrTradeLines
+			}
+		} else if _, _, ok := ParseTradeKey(l.Key); !ok || l.Qty < 1 || l.Qty > MaxTradeQty {
 			return nil, ErrTradeLines
 		}
 		if _, seen := sum[l.Key]; !seen {
 			order = append(order, l.Key)
-			if rest, ok := strings.CutPrefix(l.Key, EventBadgePrefix); ok {
-				if v, err := parseID(rest); err == nil {
-					events = append(events, v)
-				}
+			if v, m, ok := eventKey(l.Key); ok {
+				events = append(events, v)
+				material[v] = append(material[v], m)
 			}
 		}
 		sum[l.Key] += l.Qty
@@ -116,19 +120,40 @@ func (s *Store) CleanTradeLines(ctx context.Context, lines []TradeLine) ([]Trade
 			return nil, err
 		}
 		for _, id := range events {
-			if defs[id] == nil {
+			d := defs[id]
+			if d == nil {
 				return nil, ErrTradeLines
+			}
+			// a collectible always names its material, and nothing else names one
+			for _, m := range material[id] {
+				if (d.Rarity != "") != (m > 0) {
+					return nil, ErrTradeLines
+				}
 			}
 		}
 	}
 	out := make([]TradeLine, 0, len(order))
 	for _, k := range order {
-		if sum[k] > MaxTradeQty {
+		if (k == GemsKey && sum[k] > MaxTradeGems) || (k != GemsKey && sum[k] > MaxTradeQty) {
 			return nil, ErrTradeLines
 		}
 		out = append(out, TradeLine{Key: k, Qty: sum[k]})
 	}
 	return out, nil
+}
+
+// eventKey reads a staff-made badge's key: its id, and a collectible's material.
+func eventKey(key string) (ids.ID, int, bool) {
+	id, m, ok := ParseTradeKey(key)
+	if !ok {
+		return 0, 0, false
+	}
+	rest, isEvent := strings.CutPrefix(id, EventBadgePrefix)
+	if !isEvent {
+		return 0, 0, false
+	}
+	v, err := parseID(rest)
+	return v, m, err == nil
 }
 
 func parseID(s string) (ids.ID, error) {
@@ -154,7 +179,8 @@ func (s *Store) Holdings(ctx context.Context, u *User) (map[string]int, error) {
 // HoldsAll is whether an account holds every line asked of it.
 func holdsAll(qty map[string]int, lines []TradeLine) bool {
 	for _, l := range lines {
-		if qty[l.Key] < l.Qty {
+		// Gems are checked on their own (canTradeGems)
+		if l.Key != GemsKey && qty[l.Key] < l.Qty {
 			return false
 		}
 	}
@@ -299,10 +325,8 @@ func (s *Store) lookTrades(ctx context.Context, trades []*Trade) error {
 				continue
 			}
 			need[l.Key] = true
-			if rest, ok := strings.CutPrefix(l.Key, EventBadgePrefix); ok {
-				if v, err := parseID(rest); err == nil {
-					events = append(events, v)
-				}
+			if v, _, ok := eventKey(l.Key); ok {
+				events = append(events, v)
 			}
 		}
 	}
@@ -320,13 +344,14 @@ func (s *Store) lookTrades(ctx context.Context, trades []*Trade) error {
 				continue
 			}
 			b := Badge{ID: id, Level: level}
-			if rest, isEvent := strings.CutPrefix(l.Key, EventBadgePrefix); isEvent {
-				v, _ := parseID(rest)
+			if v, m, isEvent := eventKey(l.Key); isEvent {
 				d := defs[v]
 				if d == nil {
 					continue
 				}
-				b = d.badge()
+				if b = d.badge(); m > 0 {
+					b = collectibleBadge(d, m)
+				}
 			}
 			lines[i].Badge = &b
 		}
@@ -439,6 +464,11 @@ func (s *Store) SetOffer(ctx context.Context, id, by ids.ID, lines []TradeLine) 
 	if !holdsAll(qty, lines) {
 		return nil, &ErrTradeShort{Who: by}
 	}
+	if n := gemsIn(lines); n > 0 {
+		if err := s.canTradeGems(ctx, t, by, n); err != nil {
+			return nil, err
+		}
+	}
 	col, _ := t.side(by)
 	current := t.FromOffer
 	if col == "to" {
@@ -498,6 +528,16 @@ func (s *Store) SetReady(ctx context.Context, id, by ids.ID, ready bool, version
 			}
 			earned[uid] = naturalKeys(levels, granted)
 		}
+		for _, side := range []struct {
+			who   ids.ID
+			lines []TradeLine
+		}{{t.FromID, t.FromOffer}, {t.ToID, t.ToOffer}} {
+			if n := gemsIn(side.lines); n > 0 {
+				if err := s.canTradeGems(ctx, t, side.who, n); err != nil {
+					return nil, err
+				}
+			}
+		}
 	}
 	happened := false
 	err = s.Tx(ctx, func(tx *db.Tx) error {
@@ -544,6 +584,16 @@ func (s *Store) SetReady(ctx context.Context, id, by ids.ID, ready bool, version
 			return moves[i].line.Key < moves[j].line.Key
 		})
 		for _, m := range moves {
+			if m.line.Key == GemsKey {
+				ok, err := takeGems(ctx, tx, m.from, int64(m.line.Qty), "trade", t.ID.String())
+				if err != nil {
+					return err
+				}
+				if !ok {
+					return &ErrTradeShort{Who: m.from}
+				}
+				continue
+			}
 			ok, err := take(ctx, tx, m.from, earned[m.from][m.line.Key], m.line.Key, m.line.Qty)
 			if err != nil {
 				return err
@@ -553,6 +603,12 @@ func (s *Store) SetReady(ctx context.Context, id, by ids.ID, ready bool, version
 			}
 		}
 		for _, m := range moves {
+			if m.line.Key == GemsKey {
+				if err := giveGems(ctx, tx, m.to, int64(m.line.Qty), "trade", t.ID.String()); err != nil {
+					return err
+				}
+				continue
+			}
 			if err := give(ctx, tx, m.to, m.line.Key, m.line.Qty); err != nil {
 				return err
 			}
@@ -605,6 +661,11 @@ func (s *Store) MyTradable(ctx context.Context, u *User) ([]TradeLine, error) {
 	}
 	sort.Strings(keys)
 	t := &Trade{}
+	if w, err := s.GemWallet(ctx, u.ID); err != nil {
+		return nil, err
+	} else if w.Gems > 0 && w.State == "" {
+		t.FromOffer = append(t.FromOffer, TradeLine{Key: GemsKey, Qty: int(min(w.Gems, MaxTradeGems))})
+	}
 	for _, k := range keys {
 		t.FromOffer = append(t.FromOffer, TradeLine{Key: k, Qty: qty[k]})
 	}

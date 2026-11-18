@@ -1,0 +1,76 @@
+/* The owner's Give or Take Gems (GemsModal.tsx) */
+.loading {
+  display: grid;
+  place-items: center;
+  padding: 24px 0;
+}
+.body {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+/* the one figure that matters, and what it becomes, in the same place */
+.balance {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 14px 16px;
+  border-radius: var(--radius-md);
+  background: var(--bg-input);
+}
+.figures {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  flex-wrap: wrap;
+}
+.figure {
+  font-family: var(--font-display);
+  font-size: 28px;
+  font-weight: 690;
+  line-height: 1.1;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-strong);
+  transition: color 160ms ease;
+}
+.figure[data-was] {
+  color: var(--text-muted);
+}
+.figure[data-tone="give"] {
+  color: var(--status-online);
+}
+.figure[data-tone="take"] {
+  color: var(--text-danger);
+}
+.arrow {
+  color: var(--text-muted);
+  flex: none;
+}
+.caption {
+  font-size: 13px;
+  color: var(--text-muted);
+}
+.modes {
+  display: inline-flex;
+  align-self: flex-start;
+  padding: 2px;
+  border-radius: var(--radius-sm);
+  background: var(--bg-input);
+}
+.mode {
+  min-height: 32px;
+  padding: 0 16px;
+  border-radius: 8px;
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+.mode:hover {
+  color: var(--text-strong);
+}
+.mode[aria-checked="true"] {
+  background: var(--bg-raised);
+  color: var(--text-strong);
+  box-shadow: var(--shadow-low);
+}

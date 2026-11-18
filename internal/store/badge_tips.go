@@ -122,8 +122,13 @@ func (s *Store) SetBadgeTip(ctx context.Context, key, text string) error {
 	if utf8.RuneCountInString(text) > MaxBadgeTip {
 		return ErrBadgeTipLong
 	}
-	if n, ok := strings.CutPrefix(key, EventBadgePrefix); ok {
-		id, err := ids.Parse(n)
+	if strings.HasPrefix(key, EventBadgePrefix) {
+		// a collectible's key names its material too; every material shares the one description
+		full, _, ok := ParseTradeKey(key)
+		if !ok {
+			return ErrBadgeTipKey
+		}
+		id, err := ids.Parse(strings.TrimPrefix(full, EventBadgePrefix))
 		if err != nil {
 			return ErrBadgeTipKey
 		}

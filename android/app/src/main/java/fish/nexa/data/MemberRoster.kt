@@ -19,11 +19,13 @@ object MemberRoster {
         unknown: String,
         locale: Locale,
         now: Long = System.currentTimeMillis(),
+        // Nexa's owner, who sees every channel of a server they are in
+        nexaOwner: String? = null,
     ): List<Pair<Member, String>> {
         val order = Collator.getInstance(locale).apply { strength = Collator.SECONDARY }
         return st.members.values.asSequence().filter { m ->
             val flags = if (m.userId == meId) meFlags else users[m.userId]?.flags ?: 0L
-            val owner = st.server.ownerId == m.userId
+            val owner = st.server.ownerId == m.userId || m.userId == nexaOwner
             !filterChannel || P.has(Perms.compute(st.server.id, st.permissionRoles, Perms.member(m, m.userId, now), owner, overwrites), P.VIEW_CHANNEL)
         }.map { m ->
             val user = users[m.userId]

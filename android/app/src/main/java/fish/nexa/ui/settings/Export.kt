@@ -153,6 +153,7 @@ object DataExport {
             zip.json("settings.json", publicSettings(Nexa.settings.doc.value))
             withContext(Dispatchers.Main) { status(t("export.readingFriends")) }
             zip.json("relationships.json", paced("/users/@me/relationships"))
+            zip.json("gems.json", paced("/gems/record"))
             val servers = Nexa.servers.byId.value.values.toList()
             zip.json("servers.json", buildJsonArray {
                 for (st in servers) {

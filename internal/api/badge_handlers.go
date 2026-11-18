@@ -187,6 +187,13 @@ type badgeDefBody struct {
 	// IndexKind is where it sits in the Badge Index; missing keeps what it was
 	// (an app from before there was a choice), and a new badge is exclusive.
 	IndexKind string `json:"index_kind"`
+	// Rarity makes a new badge a collectible that capsules give (common, rare,
+	// epic or huge); a collectible stays one and a badge made without one never
+	// becomes one. Missing keeps what it was.
+	Rarity string `json:"rarity"`
+	// Art is a collectible's drawing (store.CollectibleArt); a new collectible
+	// needs one, and missing keeps what it was.
+	Art string `json:"art"`
 }
 
 // badgeSide is the largest an event badge's picture is kept.
@@ -244,7 +251,13 @@ func (s *Server) readBadgeDef(w http.ResponseWriter, r *http.Request) (*store.Ba
 	if b.IndexKind != "" && !store.BadgeIndexKinds[b.IndexKind] {
 		return bad("bad_index_kind", "That is not a place in the Badge Index.")
 	}
-	return &store.BadgeDef{Name: name, Description: desc, Icon: b.Icon, Color: b.Color, Color2: color2, Glyph: glyph, Shape: shape, ImageID: b.ImageID, IndexKind: b.IndexKind}, true
+	if b.Rarity != "" && !store.IsGemRarity(b.Rarity) {
+		return bad("bad_rarity", "That is not a rarity.")
+	}
+	if b.Art != "" && !store.CollectibleArt[b.Art] {
+		return bad("bad_art", "Pick a drawing for the collectable.")
+	}
+	return &store.BadgeDef{Name: name, Description: desc, Icon: b.Icon, Color: b.Color, Color2: color2, Glyph: glyph, Shape: shape, ImageID: b.ImageID, IndexKind: b.IndexKind, Rarity: b.Rarity, Art: b.Art}, true
 }
 
 // handleModBadgeImage takes a picture for an event badge, cuts it square and
@@ -303,6 +316,12 @@ func (s *Server) handleModBadgeCreate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	d.CreatedBy = me.ID
+	if d.Rarity == "" {
+		d.Art = ""
+	} else if d.Art == "" {
+		WriteError(w, E(http.StatusBadRequest, "bad_art", "Pick a drawing for the collectable."))
+		return
+	}
 	if d.IndexKind == "" {
 		d.IndexKind = store.BadgeExclusive
 	}

@@ -2,8 +2,8 @@ package fish.nexa.ui.dialogs
 
 /** Every dialog the shell, the lists and the chat open (ModalHost's kinds), by name. */
 object Dialogs {
-    /** Make a server, or join one with an invite. */
-    fun createServer() = open("createServer") { layer, close -> CreateServerSheet(layer, close) }
+    /** Make a server, or join one with an invite; with a template link, on Import a Template with it in. */
+    fun createServer(template: String? = null) = open("createServer") { layer, close -> CreateServerSheet(layer, close, template) }
 
     /** A link to a server (landing in one of its channels), carrying its key unless told not to. */
     fun invite(serverId: String, channelId: String?) = open("invite") { layer, close -> InviteSheet(layer, serverId, channelId, close) }

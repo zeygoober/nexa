@@ -12,7 +12,8 @@ import fish.nexa.ui.t
  * does the rest of the panel; a developer runs the instance's settings, stats
  * and crash reports, with no rights in other people's servers or group chats;
  * the owner is the oldest developer and the only one who gives and takes
- * ranks. A rank is a public flag bit. What a rank may do is [StaffRanks.can].
+ * ranks, and holds every permission in the servers they are in, private
+ * channels included ([holdsEverything]). A rank is a public flag bit. What a rank may do is [StaffRanks.can].
  */
 enum class StaffRank(val key: String, val icon: String) {
     HELPER("helper", "LifeBuoy"),

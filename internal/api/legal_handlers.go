@@ -312,6 +312,7 @@ func (s *Server) renderLegalReport(rec *store.AccountRecord, by *store.User) str
 	legalBugReports(d, rec)
 	legalSharedGames(d, rec)
 	legalBadgeProgress(d, rec)
+	legalGems(d, rec)
 	legalUnavailable(d)
 	legalNotCollected(d)
 	s.legalProvenance(d, rec, by)
@@ -956,6 +957,32 @@ func legalBadgeProgress(d *legalDoc, rec *store.AccountRecord) {
 	d.note("One record for the account, kept only to award badges: the last UTC day it was")
 	d.note("open, the run of days up to it, and a running total of call time. Neither says")
 	d.note("who a call was with or when it took place.")
+}
+
+func legalGems(d *legalDoc, rec *store.AccountRecord) {
+	d.head("GEMS", "gem_wallets, gem_ledger, gem_watch")
+	w := rec.Gems
+	if w == nil || (w.Gems == 0 && w.Held == 0 && w.Earned == 0 && len(rec.GemLedger) == 0 && len(rec.GemWatch) == 0) {
+		d.empty("No Gems are recorded for this account.")
+		return
+	}
+	d.item(fmt.Sprintf("Balance: %d Gems, %d on hold, %d earned in all", w.Gems, w.Held, w.Earned))
+	if w.State != "" {
+		d.item("Farming check: " + w.State + " since " + legalTime(w.StateAt))
+	}
+	if w.OffUntil > 0 {
+		d.item("Earning off until " + legalTime(w.OffUntil))
+	}
+	for _, e := range rec.GemLedger {
+		d.item(fmt.Sprintf("%s: %+d Gems (%s %s)", legalTime(e.CreatedAt), e.Delta, e.Kind, e.Ref))
+	}
+	d.capped(len(rec.GemLedger))
+	for _, v := range rec.GemWatch {
+		d.item(fmt.Sprintf("Day %s: %d earns, %d quick, %d alone, %d hours, %d message sizes, score %d", time.Unix(v.Day*86400, 0).UTC().Format("2006-01-02"), v.Earns, v.Quick, v.Alone, v.Hours, v.Sizes, v.Score))
+	}
+	d.note("A wallet of Gems earned by sending messages, and a ledger of what was spent,")
+	d.note("traded, held or taken. The daily timing summary, kept two weeks, counts")
+	d.note("earns, not messages, and holds no text or conversation.")
 }
 
 func legalBugReports(d *legalDoc, rec *store.AccountRecord) {

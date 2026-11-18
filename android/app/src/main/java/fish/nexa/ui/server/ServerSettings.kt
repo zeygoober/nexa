@@ -41,6 +41,7 @@ object ServerSettings {
             Triple(NavPage("integrations", t("integrations.title"), "Webhook"), webhooks || s.canI(st, P.MANAGE_SERVER), 0),
             Triple(NavPage("encryption", t("server.encryption.encryption"), "Lock"), true, 0),
             Triple(NavPage("discovery", t("discovery.title"), "Compass"), s.canI(st, P.MANAGE_SERVER), 0),
+            Triple(NavPage("template", t("server.template.title"), "PanelsTopLeft"), s.canI(st, P.MANAGE_SERVER), 0),
             Triple(NavPage("members", t("server.serverSettings.members"), "Users"), true, 1),
             Triple(NavPage("invites", t("server.invites.invites"), "Link"), s.canI(st, P.MANAGE_SERVER), 1),
             Triple(NavPage("bans", t("server.serverSettings.bans"), "Gavel"), s.canI(st, P.BAN_MEMBERS), 1),
@@ -88,6 +89,7 @@ private fun ServerSettingsLayer(layer: Layer, serverId: String, initial: String?
             "tag" -> ServerTagPage(serverId)
             "members" -> MembersPage(serverId)
             "discovery" -> DiscoverySettingsPage(serverId)
+            "template" -> ServerTemplatePage(serverId)
             "safety" -> SafetyPage(serverId) { page = it }
             "automod" -> fish.nexa.ui.automod.AutomodPage(serverId)
             "delete" -> DeleteServerPage(serverId) {

@@ -150,6 +150,16 @@ data class ModAccountSubscription(
     @SerialName("cancel_at_end") val cancelAtEnd: Boolean = false,
 )
 
+/** Someone's Gems as the owner's Give or Take sheet shows them. */
+@Serializable
+data class ModGems(val gems: Long = 0, val held: Long = 0, val state: String = "")
+
+/** A collectable at each material, bronze first, for the owner's Give or Take sheet. */
+data class ModCollectable(val id: String, val name: String, val rarity: String, val materials: List<Badges.Badge>)
+
+/** Every collectable, and the copies someone holds by key ("event:<id>-<material>"). */
+data class ModCollectables(val sets: List<ModCollectable>, val held: Map<String, Int>)
+
 /** What only the owner can read about an account; asking for it writes a line in the log. */
 @Serializable
 data class ModAccount(
@@ -809,6 +819,33 @@ object Moderation {
         })
 
     /** Lets a server the staff hid from Discover show up there again. */
+    /** The owner's: what someone can spend, what is held, and whether a check has it. */
+    suspend fun gems(id: String): ModGems = wireJson.decodeFromJsonElement(ModGems.serializer(), Nexa.api.get("/moderation/users/$id/gems"))
+
+    /** The owner's: gives Gems (a positive amount) or takes them (a negative one). */
+    suspend fun changeGems(id: String, amount: Long, reason: String): ModGems = wireJson.decodeFromJsonElement(
+        ModGems.serializer(),
+        Nexa.api.request("POST", "/moderation/users/$id/gems", buildJsonObject { put("amount", amount); put("reason", reason) }),
+    )
+
+    /** The owner's: every collectable, and the copies someone holds of each material. */
+    suspend fun collectables(id: String): ModCollectables {
+        val o = Nexa.api.get("/moderation/users/$id/collectables") as? JsonObject ?: JsonObject(emptyMap())
+        val sets = (o["collectables"] as? JsonArray)?.mapNotNull { e ->
+            val c = e as? JsonObject ?: return@mapNotNull null
+            val cid = (c["id"] as? JsonPrimitive)?.contentOrNull ?: return@mapNotNull null
+            ModCollectable(cid, (c["name"] as? JsonPrimitive)?.contentOrNull.orEmpty(), (c["rarity"] as? JsonPrimitive)?.contentOrNull.orEmpty(), Badges.parse(c["materials"]).orEmpty())
+        }.orEmpty()
+        val held = (o["held"] as? JsonObject)?.mapNotNull { (k, v) -> (v as? JsonPrimitive)?.contentOrNull?.toIntOrNull()?.let { k to it } }?.toMap().orEmpty()
+        return ModCollectables(sets, held)
+    }
+
+    /** The owner's: gives copies of one collectable at one material (a positive amount) or takes them (a negative one); answers the copies after. */
+    suspend fun changeCollectable(id: String, badge: String, amount: Int, reason: String): Int {
+        val o = Nexa.api.request("POST", "/moderation/users/$id/collectables", buildJsonObject { put("badge", badge); put("amount", amount); put("reason", reason) }) as? JsonObject
+        return (o?.get("copies") as? JsonPrimitive)?.contentOrNull?.toIntOrNull() ?: 0
+    }
+
     /** Writes a line in the log, so it is asked for only when the sheet opens. */
     suspend fun account(id: String): ModAccount = wireJson.decodeFromJsonElement(ModAccount.serializer(), Nexa.api.get("/moderation/users/$id/account"))
 

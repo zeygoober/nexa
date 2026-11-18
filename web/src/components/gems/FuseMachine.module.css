@@ -1,0 +1,82 @@
+/* The fuse machine (FuseMachine.tsx): a dial whose arc is the chance, the
+   collectible in its middle, and the copies put in as slots below. The arc is
+   the Gems colour; what happened is said by the marker and the middle, not by
+   the page around it. */
+.machine {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  padding: 4px 0 2px;
+  --arc: var(--gem);
+}
+
+.dial {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 196px;
+  height: 196px;
+  padding: 0;
+  border-radius: 50%;
+  background: radial-gradient(closest-side, color-mix(in srgb, var(--arc) 18%, transparent), transparent 92%);
+  transition: background 360ms var(--ease-out);
+  cursor: default;
+}
+.dial:enabled { cursor: pointer; }
+.machine[data-phase="won"] { --arc: var(--positive); }
+.machine[data-phase="lost"] .dial { background: radial-gradient(closest-side, color-mix(in srgb, var(--text-muted) 10%, transparent), transparent 92%); }
+
+.ring { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
+.track { fill: none; stroke: var(--bg-active); stroke-width: 12; }
+.arc {
+  fill: none;
+  stroke: var(--arc);
+  stroke-width: 12;
+  stroke-linecap: round;
+  transition: stroke-dasharray 220ms var(--ease-out), stroke 360ms var(--ease-out);
+}
+.machine[data-phase="lost"] .arc { stroke: var(--border-strong); }
+
+/* at rest where the roll ended; the roll itself is FuseMachine.tsx's angleAt, played through element.animate */
+.marker { transform-box: view-box; transform-origin: center; transform: rotate(var(--end, 0deg)); }
+.machine[data-phase="idle"] .marker, .machine[data-phase="waiting"] .marker { transform: none; }
+.markerBack { fill: var(--bg-floating); }
+.markerDot { fill: var(--text-strong); }
+.machine[data-phase="lost"] .markerDot { fill: var(--text-danger); }
+.machine[data-phase="won"] .markerDot { fill: var(--positive); }
+
+.centre { position: relative; display: grid; place-items: center; transition: filter 360ms var(--ease-out), opacity 360ms var(--ease-out), transform 360ms var(--ease-out); }
+.centre[data-lost] { filter: grayscale(1); opacity: 0.45; transform: scale(0.9); }
+.machine[data-phase="won"] .centre { animation: arrive 420ms var(--ease-spring) both; }
+@keyframes arrive {
+  /* the new material is there from its first frame and settles into place */
+  from { opacity: 0.6; transform: scale(0.7); }
+  to { opacity: 1; transform: none; }
+}
+
+.chance { display: flex; flex-direction: column; align-items: center; gap: 2px; margin: 0; text-align: center; }
+.chance strong { font-family: var(--font-display); font-size: 30px; line-height: 34px; font-weight: 800; color: var(--text-strong); font-variant-numeric: tabular-nums; }
+.chance span { font-size: 13px; line-height: 18px; color: var(--text-muted); }
+.chance strong[data-lost] { color: var(--text-muted); text-decoration: line-through; text-decoration-thickness: 3px; }
+
+.copies { display: flex; gap: 8px; }
+.copy {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  box-shadow: inset 0 0 0 1.5px var(--border);
+}
+.copy[data-on] { background: var(--bg-surface); box-shadow: inset 0 0 0 2px var(--arc); }
+.copy:disabled { cursor: not-allowed; }
+.copy:disabled:not([data-on]) { opacity: 0.4; }
+.copy:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 2px; }
+
+.words { margin: 0; max-width: 320px; font-size: 14px; line-height: 20px; text-align: center; color: var(--text); }
+.words[data-tone="risk"] { color: var(--text-warning); }
+.words[data-tone="lost"] { color: var(--text-muted); }
+.held { margin: -8px 0 0; font-size: 13px; line-height: 18px; color: var(--text-muted); }

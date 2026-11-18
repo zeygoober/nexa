@@ -1,4 +1,5 @@
 import { connections } from "@/api/connections";
+import { gems as gemsApi } from "@/api/gems";
 /**
  * Data export: your profile, relationships, channels and every message you
  * hold keys for, decrypted on this device and zipped without any library.
@@ -232,6 +233,7 @@ export async function exportMyData(onProgress: (text: string) => void): Promise<
   entries.push({ name: "shared-games.json", data: json((await usersApi.mySharedGames()).games) });
   entries.push({ name: "badge-progress.json", data: json(await usersApi.badgeProgress()) });
   entries.push({ name: "lastfm.json", data: json(await connections.lastfm()) });
+  entries.push({ name: "gems.json", data: json(await gemsApi.record()) });
   const dms: Channel[] = await channelsApi.listDMs();
   const serverChannels = Object.values(useChannels.getState().byId).filter((c) => c.server_id && c.type === "text");
   entries.push({ name: "servers.json", data: json(Object.values(useServers.getState().byId).map((s) => ({ ...s.server, roles: Object.values(s.roles), me: s.me }))) });

@@ -126,7 +126,9 @@ type TemplateChannel struct {
 	Glyph              string
 	DefaultAutoArchive int
 	Forum              *ForumSettings
-	Overwrites         []TemplateOverwrite
+	// URL is where a link channel leads (Nexa templates only).
+	URL        string
+	Overwrites []TemplateOverwrite
 }
 
 // TemplateOverwrite is one role overwrite on a TemplateChannel.
@@ -214,6 +216,9 @@ func (s *Store) CreateServerFromTemplate(ctx context.Context, owner ids.ID, spec
 				DefaultAutoArchive: tc.DefaultAutoArchive,
 				Forum:              forum,
 				CreatedAt:          now,
+			}
+			if tc.Type == ChannelLink {
+				ch.URL = tc.URL
 			}
 			if err := s.insertChannel(ctx, tx, ch); err != nil {
 				return err
@@ -435,6 +440,10 @@ func (s *Store) DeleteServer(ctx context.Context, id ids.ID) error {
 			if _, err := tx.ExecContext(ctx, q, int64(id), int64(id)); err != nil {
 				return err
 			}
+		}
+		// its template link stops working with it
+		if _, err := tx.ExecContext(ctx, `DELETE FROM server_templates WHERE server_id = ?`, int64(id)); err != nil {
+			return err
 		}
 		res, err := tx.ExecContext(ctx, `DELETE FROM servers WHERE id = ?`, int64(id))
 		if err != nil {

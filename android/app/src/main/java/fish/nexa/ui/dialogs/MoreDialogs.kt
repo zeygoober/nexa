@@ -90,21 +90,35 @@ private fun templateChannelIcon(type: String): String = when (type) {
     "announcement" -> "Megaphone"
     "forum" -> "MessagesSquare"
     "media" -> "Images"
+    "link" -> "Link2"
     else -> "Hash"
 }
 
+/** Which kind of template link this is, when it is a link of either kind (a bare code says nothing). */
+private fun templateSourceOf(raw: String): String? = when {
+    Invites.isNexaTemplateUrl(raw) -> "nexa"
+    Invites.isDiscordTemplateUrl(raw) -> "discord"
+    else -> null
+}
+
+private fun parseTemplateFor(source: String, raw: String) =
+    if (source == "nexa") Invites.parseNexaTemplate(raw) else Invites.parseDiscordTemplate(raw)
+
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-internal fun CreateServerSheet(layer: Layer, close: () -> Unit) {
+internal fun CreateServerSheet(layer: Layer, close: () -> Unit, template: String? = null) {
     val c = Nx.colors
     val me = Nexa.users.me.value
-    var mode by remember { mutableStateOf("create") }
+    // a /template/ link opened starts on Import a Template, with its link in
+    var mode by remember { mutableStateOf(if (template != null) "template" else "create") }
+    var source by remember { mutableStateOf(template?.let { templateSourceOf(it) ?: "nexa" } ?: "discord") }
+    val nexaExample = "${ProfileLinks.origin()}/template/aB3dE5fG7hJ9"
     var name by remember { mutableStateOf(me?.let { t("modals.createServer.namedServer", "name" to it.displayName.ifBlank { it.username }) } ?: t("modals.createServer.myServer")) }
     var code by remember { mutableStateOf("") }
     var icon by remember { mutableStateOf<Uri?>(null) }
     var busy by remember { mutableStateOf(false) }
 
-    var templateUrl by remember { mutableStateOf("") }
+    var templateUrl by remember { mutableStateOf(template ?: "") }
     var templateName by remember { mutableStateOf("") }
     var templateNameEdited by remember { mutableStateOf(false) }
     var preview by remember { mutableStateOf<Invites.TemplatePreview?>(null) }
@@ -112,7 +126,7 @@ internal fun CreateServerSheet(layer: Layer, close: () -> Unit) {
     var templateErr by remember { mutableStateOf<String?>(null) }
     val scope = rememberCoroutineScope()
 
-    LaunchedEffect(mode, templateUrl) {
+    LaunchedEffect(mode, templateUrl, source) {
         if (mode != "template") return@LaunchedEffect
         val raw = templateUrl.trim()
         if (raw.isEmpty()) {
@@ -121,7 +135,13 @@ internal fun CreateServerSheet(layer: Layer, close: () -> Unit) {
             templateErr = null
             return@LaunchedEffect
         }
-        when (val parsed = Invites.parseDiscordTemplate(raw)) {
+        // a link of the other kind switches the source and keeps what was pasted
+        val kind = templateSourceOf(raw)
+        if (kind != null && kind != source) {
+            source = kind
+            return@LaunchedEffect
+        }
+        when (val parsed = parseTemplateFor(source, raw)) {
             is Invites.ParsedTemplate.Err -> {
                 preview = null
                 previewLoading = false
@@ -132,7 +152,7 @@ internal fun CreateServerSheet(layer: Layer, close: () -> Unit) {
                 previewLoading = true
                 delay(250)
                 try {
-                    val res = Invites.previewDiscordTemplate(parsed.code)
+                    val res = Invites.previewTemplate(source, parsed.code)
                     preview = res
                     if (!templateNameEdited || templateName.isBlank()) templateName = res.serverName
                 } catch (e: kotlinx.coroutines.CancellationException) {
@@ -203,9 +223,13 @@ internal fun CreateServerSheet(layer: Layer, close: () -> Unit) {
     fun importTemplate() {
         val raw = templateUrl.trim()
         if (raw.isEmpty() || busy) return
-        val parsed = Invites.parseDiscordTemplate(raw)
+        val parsed = parseTemplateFor(source, raw)
         if (parsed is Invites.ParsedTemplate.Err) {
-            templateErr = if (parsed.reason == "invite") t("modals.createServer.inviteNotTemplate") else t("modals.createServer.invalidTemplateLink")
+            templateErr = when {
+                parsed.reason == "invite" -> t("modals.createServer.inviteNotTemplate")
+                source == "nexa" -> t("modals.createServer.invalidNexaTemplateLink", "example" to nexaExample)
+                else -> t("modals.createServer.invalidTemplateLink")
+            }
             return
         }
         busy = true
@@ -214,7 +238,7 @@ internal fun CreateServerSheet(layer: Layer, close: () -> Unit) {
             try {
                 val custom = templateName.trim()
                 val res = Nexa.auth.guarded("create_server") { captcha ->
-                    Nexa.api.request("POST", "/servers/import/discord", buildJsonObject {
+                    Nexa.api.request("POST", "/servers/import/$source", buildJsonObject {
                         put("url", raw)
                         if (custom.isNotEmpty()) put("name", custom)
                     }, captcha = captcha)
@@ -231,7 +255,9 @@ internal fun CreateServerSheet(layer: Layer, close: () -> Unit) {
 
     fun joinIt() {
         val trimmed = code.trim()
-        if (Invites.isDiscordTemplateUrl(trimmed)) {
+        val kind = templateSourceOf(trimmed)
+        if (kind != null) {
+            source = kind
             templateUrl = trimmed
             mode = "template"
             return
@@ -264,18 +290,30 @@ internal fun CreateServerSheet(layer: Layer, close: () -> Unit) {
     if (mode == "template") {
         val prev = preview
         val effectiveName = templateName.trim().ifEmpty { prev?.serverName?.ifEmpty { null } ?: name.ifBlank { "S" } }
-        Sheet(layer, title = t("modals.createServer.importTemplate"), maxWidth = 460.dp, footer = {
+        Sheet(layer, title = t("modals.createServer.importATemplate"), maxWidth = 460.dp, footer = {
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.End)) {
                 NxButton(t("modals.createServer.back"), { mode = "create" }, kind = ButtonKind.GHOST)
                 NxButton(t("modals.createServer.create"), ::importTemplate, enabled = templateUrl.isNotBlank(), loading = busy)
             }
         }) {
-            DialogHint(t("modals.createServer.importTemplateHint"))
+            DialogHint(t(if (source == "nexa") "modals.createServer.importNexaTemplateHint" else "modals.createServer.importTemplateHint"))
+            fish.nexa.ui.support.Segmented(
+                listOf("discord" to "Discord", "nexa" to "Nexa"),
+                source,
+                { k ->
+                    // choosing a source by hand wins over a link of the other kind, which would switch it straight back
+                    val kind = templateSourceOf(templateUrl)
+                    if (kind != null && kind != k) templateUrl = ""
+                    source = k
+                },
+                label = t("modals.createServer.templateFrom"),
+                fill = false,
+            )
             NxTextField(
                 templateUrl, { templateUrl = it },
                 label = t("modals.createServer.templateLink"),
                 required = true,
-                placeholder = t("modals.createServer.templatePlaceholder"),
+                placeholder = if (source == "nexa") nexaExample else t("modals.createServer.templatePlaceholder"),
                 keyboardType = KeyboardType.Uri,
                 imeAction = ImeAction.Go,
                 onIme = ::importTemplate,
@@ -286,7 +324,11 @@ internal fun CreateServerSheet(layer: Layer, close: () -> Unit) {
             if (previewLoading && prev == null) {
                 Txt(t("modals.createServer.readingTemplate"), style = Nx.type.hint, color = c.textMuted)
             } else if (prev == null && templateErr == null) {
-                Txt(t("modals.createServer.templatesLookLike"), style = Nx.type.hint, color = c.textMuted)
+                Txt(
+                    if (source == "nexa") t("modals.createServer.nexaTemplatesLookLike", "example" to nexaExample) else t("modals.createServer.templatesLookLike"),
+                    style = Nx.type.hint,
+                    color = c.textMuted,
+                )
             }
             if (prev != null) {
                 val cats = prev.channels.filter { it.type == "category" }
@@ -417,8 +459,8 @@ internal fun CreateServerSheet(layer: Layer, close: () -> Unit) {
         ) {
             Icon("PanelsTopLeft", c.textMuted, size = 20.dp)
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                Txt(t("modals.createServer.importTemplate"), style = Nx.type.body.copy(fontWeight = FontWeight(500)), color = c.text)
-                Txt(t("modals.createServer.importTemplateDesc"), style = Nx.type.hint.copy(fontSize = Nx.type.sp(13f), lineHeight = Nx.type.sp(17.5f)), color = c.textMuted)
+                Txt(t("modals.createServer.importATemplate"), style = Nx.type.body.copy(fontWeight = FontWeight(500)), color = c.text)
+                Txt(t("modals.createServer.importATemplateDesc"), style = Nx.type.hint.copy(fontSize = Nx.type.sp(13f), lineHeight = Nx.type.sp(17.5f)), color = c.textMuted)
             }
             Icon("ChevronRight", c.textMuted, size = 18.dp)
         }

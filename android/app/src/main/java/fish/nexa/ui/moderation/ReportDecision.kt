@@ -2,6 +2,7 @@ package fish.nexa.ui.moderation
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -350,6 +351,93 @@ fun DismissPanel(d: SafetyReportDetail, others: Int, onCancel: () -> Unit, onDon
                     }
                 }
             }, enabled = note.length >= 3, loading = busy)
+        }
+    }
+}
+
+/** A Gem Farming report (web reports/GemFarming.tsx): Nexa files it from the timing of messages alone. */
+fun isGemFarming(d: SafetyReportDetail) = d.report.reason == "gem_farming"
+private fun farming(d: SafetyReportDetail) = d.report.snapshot["gem_farming"] as? JsonObject ?: JsonObject(emptyMap())
+private fun JsonObject.num(k: String) = (this[k] as? JsonPrimitive)?.longOrNull ?: 0L
+
+/** What a Gem Farming report shows staff: the held Gems, linked accounts and each watched day's timing (counts only, never what was said). */
+@Composable
+fun GemFarmingSummary(d: SafetyReportDetail) {
+    val c = Nx.colors
+    val f = farming(d)
+    val days = (f["days"] as? JsonArray)?.mapNotNull { it as? JsonObject }?.sortedByDescending { it.num("day") }.orEmpty()
+    val small = Nx.type.bodySmall.copy(fontSize = Nx.type.sp(13f))
+    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        Txt(t("gems.report.about", "held" to f.num("held"), "earned" to f.num("earned"), "alts" to f.num("alts")), style = small, color = c.textMuted)
+        if (days.isNotEmpty()) {
+            val cols = listOf("earns", "quick", "alone", "hours", "sizes", "score")
+            val cell = Modifier.width(72.dp)
+            Column(
+                Modifier.fillMaxWidth().background(c.bgInput, Radii.Sm).horizontalScroll(androidx.compose.foundation.rememberScrollState()).padding(horizontal = 10.dp, vertical = 8.dp),
+                verticalArrangement = Arrangement.spacedBy(6.dp),
+            ) {
+                Row {
+                    Txt(t("gems.report.day"), cell.width(96.dp), style = small.copy(fontWeight = FontWeight(700)), color = c.textMuted, maxLines = 1)
+                    cols.forEach { k -> Txt(t("gems.report.$k"), cell, style = small.copy(fontWeight = FontWeight(700)), color = c.textMuted, maxLines = 2) }
+                }
+                days.forEach { day ->
+                    Row {
+                        Txt(fish.nexa.ui.Time.shortDate(day.num("day") * 86_400_000L), Modifier.width(96.dp), style = small.copy(fontWeight = FontWeight(600)), color = c.textStrong, maxLines = 1)
+                        cols.forEach { k -> Txt(day.num(k).toString(), cell, style = small.copy(fontFeatureSettings = "tnum"), color = c.text, maxLines = 1) }
+                    }
+                }
+            }
+        }
+        Txt(t("gems.report.source"), style = small, color = c.textMuted)
+    }
+}
+
+/** Take Action on a Gem Farming report: the held Gems go, earning stops for 30 days, and the member gets a case to appeal. */
+@Composable
+fun GemFarmingPanel(d: SafetyReportDetail, onCancel: () -> Unit, onDone: () -> Unit) {
+    val c = Nx.colors
+    val v = d.report
+    val name = d.subject?.displayName?.ifEmpty { d.subject.username } ?: ""
+    var reason by remember(v.id) { mutableStateOf(t("reports.reason.gem_farming")) }
+    var busy by remember(v.id) { mutableStateOf(false) }
+    var error by remember(v.id) { mutableStateOf("") }
+    val scope = rememberCoroutineScope()
+    val ok = reason.trim().length >= 3
+    DecideBox(danger = true) {
+        Txt(t("reports.act.takeAction"), Modifier.semantics { heading() }, style = Nx.type.heading.copy(fontSize = Nx.type.sp(17f)), color = c.textStrong)
+        NxTextField(reason, { if (it.length <= 1000) reason = it }, label = t("gems.report.reason"), singleLine = false, minLines = 2, enabled = !busy, capitalize = true, autoCorrect = true)
+        Column(Modifier.fillMaxWidth().background(c.bgInput, Radii.Sm).padding(horizontal = 12.dp, vertical = 10.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            listOf(
+                t("gems.report.willTake", "count" to farming(d).num("held")),
+                t("gems.report.willStop", "name" to name),
+                t("gems.report.willCase", "name" to name),
+            ).forEach { w ->
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Txt("•", style = Nx.type.body.copy(fontSize = Nx.type.sp(14f)), color = c.textMuted)
+                    Txt(w, style = Nx.type.body.copy(fontSize = Nx.type.sp(14f)), color = c.text)
+                }
+            }
+        }
+        if (error.isNotEmpty()) Txt(error, style = Nx.type.body.copy(fontSize = Nx.type.sp(15f)), color = c.textDanger)
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp, Alignment.End)) {
+            NxButton(t("reports.decision.cancel"), onCancel, kind = ButtonKind.GHOST, enabled = !busy)
+            NxButton(t("gems.report.confirm"), {
+                if (busy || !ok) return@NxButton
+                busy = true
+                error = ""
+                scope.launch {
+                    try {
+                        Reports.review(v, "actioned", reason.trim(), if (v.assignedTo == "0") Nexa.users.meId ?: "0" else v.assignedTo)
+                        Nexa.ui.toast(t("gems.report.done"), "success")
+                        onDone()
+                    } catch (e: Exception) {
+                        if (e is CancellationException) throw e
+                        error = describeError(e, t("reports.failed"))
+                    } finally {
+                        busy = false
+                    }
+                }
+            }, kind = ButtonKind.DANGER, enabled = ok, loading = busy)
         }
     }
 }

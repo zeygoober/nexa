@@ -137,6 +137,11 @@ object Nav {
             fish.nexa.ui.support.openGiftLink(parts[1])
             return true
         }
+        // a server template link: Create Server on Import a Template, with the link in
+        if (parts.size == 2 && parts[0] == "template") {
+            fish.nexa.ui.dialogs.Dialogs.createServer(template = "${fish.nexa.ui.profile.ProfileLinks.origin()}/template/${parts[1]}")
+            return true
+        }
         // an invite link, a profile link
         if (parts.size == 2 && parts[0] == "invite") {
             fish.nexa.ui.dialogs.Dialogs.openInvite(parts[1], path.substringAfter('#', "").let { if (it.isEmpty()) "" else "#$it" })

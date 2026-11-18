@@ -1,9 +1,11 @@
 import { AtSign, Headphones, HeadphoneOff, MonitorOff, MonitorUp, Check, LogIn, LogOut, MessageSquare, Mic, MicOff, PhoneIncoming, PhoneOutgoing, Play, Plus, RotateCcw, Sparkles, Trash2, Upload, UserPlus, type LucideIcon } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/common/Button";
+import { GemIcon } from "@/components/gems/GemIcon";
 import { Toggle } from "@/components/common/Toggle";
 import { promptText } from "@/components/modals/PromptModal";
 import { describeError } from "@/lib/errors";
+import { previewGemSounds } from "@/lib/gemSounds";
 import { MAX_PACKS, NEXA_PACK, PACK_NAME_MAX, SOUND_NAMES, SoundFileError, newPackId, type SoundPack, type SoundSettings } from "@/lib/soundPacks";
 import { previewSound, soundTrouble, type SoundName } from "@/lib/sounds";
 import { addSoundFile, dropSoundFile, tidySoundFiles } from "@/lib/soundSync";
@@ -65,6 +67,7 @@ function fileProblem(err: unknown): string {
 
 export default function SoundsPage() {
   const sounds = useSettings((x) => x.settings.sounds);
+  const gemSounds = useSettings((x) => x.settings.gemSounds !== false);
   const notifySounds = useSettings((x) => x.settings.notifications.sounds);
   const patch = useSettings((x) => x.patch);
   const toast = useUI((x) => x.toast);
@@ -272,6 +275,22 @@ export default function SoundsPage() {
       </ul>
       {hint ? <p className={st.hint} role="status" data-testid="sound-trouble">{hint}</p> : null}
       {custom ? <p className={s.footnote}>{t("settings.sounds.limits", { short: seconds(6000), long: seconds(20_000) })}</p> : null}
+
+      <h3 className={st.h5} data-setting="gemSounds">{t("settings.sounds.gemsHeading")}</h3>
+      <p className={st.hint}>{t("settings.sounds.gemsIntro")}</p>
+      <ul className={s.list} data-testid="gem-sound-list">
+        <li className={s.sound} data-off={!gemSounds} data-sound="gems">
+          <button className={s.play} onClick={() => previewGemSounds()} aria-label={t("settings.sounds.playSound", { name: t("settings.sounds.soundGems") })} title={t("settings.sounds.playSound", { name: t("settings.sounds.soundGems") })}>
+            <Play size={14} />
+          </button>
+          <span className={s.soundIcon} aria-hidden="true"><GemIcon size={16} /></span>
+          <span className={s.soundText}>
+            <span className={s.soundName}>{t("settings.sounds.soundGems")}</span>
+            <span className={s.soundSub}>{t("settings.sounds.whenGems")}</span>
+          </span>
+          <Toggle checked={gemSounds} onChange={(v) => patch({ gemSounds: v })} ariaLabel={t("settings.sounds.playThisSound", { name: t("settings.sounds.soundGems") })} />
+        </li>
+      </ul>
       <input ref={input} type="file" accept="audio/*,.mp3,.wav,.ogg,.oga,.m4a,.aac,.flac,.opus,.webm" hidden onChange={(e) => void onFile(e.target.files?.[0])} data-testid="sound-file-input" />
     </>
   );

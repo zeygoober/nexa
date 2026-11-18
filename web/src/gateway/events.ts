@@ -1,4 +1,5 @@
 import type { ReactionRole, Trade } from "@/api/types";
+import type { GemWallet } from "@/api/gems";
 import type { ReportReceipt, SafetyReport } from "@/api/reports";
 import type { DiscordState } from "@/api/connections";
 import type {
@@ -100,6 +101,7 @@ export type GatewayEvent =
   | { t: "webhooks_update"; d: { server_id: Snowflake; channel_id: Snowflake } }
   /** Someone voted on, or took back a vote on, a webhook message's poll. */
   | { t: "trade_update"; d: Trade }
+  | { t: "gems_update"; d: GemWallet }
   | { t: "poll_vote_add" | "poll_vote_remove"; d: { channel_id: Snowflake; message_id: Snowflake; user_id: Snowflake; answer_id: number; total_voters?: number } }
   | { t: "settings_update"; d: { version: number; session_id: Snowflake } }
   /** Nexa's note that a friend added you to a group, and its dismissal on another of your devices. */

@@ -256,7 +256,7 @@ fun MemberList(serverId: String, channelId: String?) {
             emptyList(), st, users, overwrites, meId, meFlags, you, unknown, locale,
         ) {
             value = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Default) {
-                fish.nexa.data.MemberRoster.sorted(st, users, overwrites, channelId != null, meId, meFlags, you, unknown, locale)
+                fish.nexa.data.MemberRoster.sorted(st, users, overwrites, channelId != null, meId, meFlags, you, unknown, locale, nexaOwner = fish.nexa.ui.profile.NexaOwner.id())
             }
         }
     }

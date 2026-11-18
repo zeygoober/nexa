@@ -219,10 +219,8 @@ fun openManageServer(server: ModServer, onChanged: () -> Unit) {
 private fun ColumnScope.ManageBody(view: ManageView, serverId: String, tab: String, refresh: Int, say: (ManageAsk) -> Unit) {
     val c = Nx.colors
     val srv = view.server ?: return
-    val ownerName = view.owner?.let { personOf(it) } ?: ""
     val everyoneId = srv.id
-    val seesOwner = if (view.ownerDeleted) label("seesNoOwner") else t("moderation.manage.seesOwner", "name" to ownerName)
-    fun sees(vararg extra: String) = listOf(seesOwner) + extra.toList()
+    fun sees(vararg extra: String) = listOf(label("seesAudit")) + extra.toList()
     val save = t("server.invites.vanitySave")
 
     val categories = view.channels.filter { it.type == "category" }.sortedBy { it.position }
@@ -251,7 +249,7 @@ private fun ColumnScope.ManageBody(view: ManageView, serverId: String, tab: Stri
     @Composable
     fun channelRow(ch: ManageChannel, first: Boolean) {
         val parent = ch.parentId?.let { id -> view.channels.firstOrNull { it.id == id } }
-        val hasTopic = !ch.private && ch.type != "category"
+        val hasTopic = ch.type != "category"
         val hasNsfw = ch.type != "category" && ch.type != "link"
         val hasSlowmode = ch.type in listOf("text", "announcement", "forum", "media")
         val hasLimit = ch.type == "voice"
@@ -345,13 +343,13 @@ private fun ColumnScope.ManageBody(view: ManageView, serverId: String, tab: Stri
             if (others.isNotEmpty()) RowAction(label("giveRole")) { pick("member_role_add", others) }
             if (mine.isNotEmpty()) RowAction(label("takeRole")) { pick("member_role_remove", mine) }
             RowAction(label("remove"), danger = true) {
-                plain("member_remove", name, sees(t("moderation.manage.seesRemoved", "name" to name))) { ManageRequest(userId = x.user.id) }
+                plain("member_remove", name, sees()) { ManageRequest(userId = x.user.id) }
             }
             RowAction(label("ban"), danger = true) {
-                plain("member_ban", name, sees(t("moderation.manage.seesBanned", "name" to name))) { ManageRequest(userId = x.user.id) }
+                plain("member_ban", name, sees()) { ManageRequest(userId = x.user.id) }
             }
             if (view.ownerGone) NxButton(label("makeOwner"), {
-                val lines = (if (view.ownerDeleted) emptyList() else listOf(seesOwner)) + t("moderation.manage.seesTransfer", "name" to name)
+                val lines = sees(t("moderation.manage.seesHeir", "name" to name))
                 say(ManageAsk("transfer", lines, target = name, danger = true, request = { ManageRequest(userId = x.user.id) }))
             }, kind = ButtonKind.SECONDARY, size = ButtonSize.TOUCH)
         }))
@@ -363,7 +361,7 @@ private fun ColumnScope.ManageBody(view: ManageView, serverId: String, tab: Stri
             if (!r.enabled) ManageTag(label("off"))
             if (r.alerts) ManageTag(label("postsCaught"))
         }, actions = {
-            if (!r.alerts) RowAction(label("edit")) {
+            RowAction(label("edit")) {
                 val words = r.kind == "words"
                 say(ManageAsk(
                     "automod_edit", sees(), target = r.name, confirm = save,
@@ -380,11 +378,9 @@ private fun ColumnScope.ManageBody(view: ManageView, serverId: String, tab: Stri
                     },
                 ))
             }
-            if (r.enabled || !r.alerts) {
-                val word = label(if (r.enabled) "turnOff" else "turnOn")
-                RowAction(word) {
-                    say(ManageAsk("automod_edit", sees(), target = r.name, confirm = word, request = { ManageRequest(ruleId = r.id, data = buildJsonObject { put("enabled", !r.enabled) }) }))
-                }
+            val word = label(if (r.enabled) "turnOff" else "turnOn")
+            RowAction(word) {
+                say(ManageAsk("automod_edit", sees(), target = r.name, confirm = word, request = { ManageRequest(ruleId = r.id, data = buildJsonObject { put("enabled", !r.enabled) }) }))
             }
             RowAction(label("delete"), danger = true) { plain("automod_delete", r.name) { ManageRequest(ruleId = r.id) } }
         })
@@ -392,7 +388,7 @@ private fun ColumnScope.ManageBody(view: ManageView, serverId: String, tab: Stri
 
     when (tab) {
         "overview" -> {
-            NoteBox(label("note"))
+            NoteBox(label("noteAudit"))
             ManageHead(t("server.channelSettings.overview")) {
                 NxButton(t("moderation.manage.a.server_edit"), {
                     say(ManageAsk(
@@ -401,7 +397,7 @@ private fun ColumnScope.ManageBody(view: ManageView, serverId: String, tab: Stri
                         fields = listOf(
                             ManageField.Text("name", t("integrations.name"), 100, required = true),
                             ManageField.Text("description", t("moderation.servers.description"), 1000, area = true),
-                            ManageField.Select("system_channel_id", t("server.serverOverview.systemMessagesChannel"), listOf("" to label("none")) + view.channels.filter { it.type == "text" && !it.private }.map { it.id to it.name }),
+                            ManageField.Select("system_channel_id", t("server.serverOverview.systemMessagesChannel"), listOf("" to label("none")) + view.channels.filter { it.type == "text" }.map { it.id to it.name }),
                             ManageField.Select("default_notifications", t("server.serverOverview.defaultNotificationSettings"), listOf("0" to t("server.serverOverview.allMessages"), "1" to t("server.serverOverview.onlyMentions"))),
                             ManageField.Toggle("nsfw", label("serverNsfw")),
                         ),

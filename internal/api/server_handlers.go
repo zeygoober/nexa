@@ -1605,6 +1605,11 @@ func (s *Server) actorHighest(ctx context.Context, srv *store.Server, uid ids.ID
 	if srv.OwnerID == uid || actingOwner(ctx, srv.ID, uid) {
 		return 1 << 30, true
 	}
+	if owner, err := s.Store.InstanceOwnerID(ctx); err == nil && owner == uid {
+		// Nexa's owner: above every role, as the permission cache has it, but
+		// still answerable to the server's own owner
+		return 1<<30 - 1, false
+	}
 	m, err := s.Store.Member(ctx, srv.ID, uid)
 	if err != nil {
 		return 0, false

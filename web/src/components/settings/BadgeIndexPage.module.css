@@ -163,6 +163,8 @@
   color: var(--text-muted);
 }
 /* which part is being arranged */
+/* one line in every language: a part's name never breaks, and longer ones
+   scroll the switch sideways (Android's PartSwitch does the same) */
 .parts {
   display: inline-flex;
   max-width: 100%;
@@ -170,8 +172,16 @@
   padding: 2px;
   border-radius: var(--radius-sm);
   background: var(--bg-input);
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  scrollbar-width: none;
+}
+.parts::-webkit-scrollbar {
+  display: none;
 }
 .part {
+  flex: none;
+  white-space: nowrap;
   min-height: 28px;
   padding: 0 12px;
   border-radius: 6px;

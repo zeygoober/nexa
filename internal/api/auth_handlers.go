@@ -50,6 +50,9 @@ type MeUser struct {
 	BackupCodesLeft int    `json:"backup_codes_left"`
 	// ShortNameCredits is how many one-character usernames this account may still take.
 	ShortNameCredits int `json:"short_name_credits"`
+	// GemState is a farming check or report holding this account's Gems, or
+	// earning turned off; empty when none.
+	GemState string `json:"gem_state,omitempty"`
 	// Nexa is the account's moderation standing, so the app knows about a
 	// ban before it tries to connect and a mute before it shows a composer.
 	Nexa *nexaState `json:"nexa,omitempty"`
@@ -62,6 +65,9 @@ func (s *Server) meView(ctx context.Context, u *store.User) MeUser {
 		if n, err := s.Store.BackupCodesLeft(ctx, u.ID); err == nil {
 			v.BackupCodesLeft = n
 		}
+	}
+	if w, err := s.Store.GemWallet(ctx, u.ID); err == nil {
+		v.GemState = w.State
 	}
 	if st, err := s.nexaState(ctx, u); err == nil {
 		v.Nexa = st

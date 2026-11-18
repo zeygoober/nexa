@@ -221,6 +221,7 @@ fun MainShell() {
         Column(Modifier.weight(1f).fillMaxHeight().blurredBy { maxOf(SCRIM_BLUR * Layers.dim, 2.dp * maxOf(drawer.value, members.value)) }.statusBarsPadding()) {
             ConnectionBanner()
             MaintenanceBanner()
+            GemHoldBanner()
             ViewAsBanner()
             // blurred under a sheet or a drawer, anything moving in it would mean blurring it all again
             val drawerOpen by remember { androidx.compose.runtime.derivedStateOf { drawer.value >= 1f || members.value >= 1f } }

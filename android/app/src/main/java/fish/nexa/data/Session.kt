@@ -226,6 +226,13 @@ class Session(private val nx: Nexa) {
                 val f = if (d.bool("pinned")) cm.m.flags or Message.MSG_FLAG_PINNED else cm.m.flags and Message.MSG_FLAG_PINNED.inv()
                 nx.messages.setFlags(ch, mid, f)
             }
+            "gems_update" -> {
+                // the hold banner reads gem_state from the account, the Gems page the wallet
+                val w = Gems.parseWallet(d) ?: return
+                Gems.setWallet(w)
+                val state = w.state.ifEmpty { null }
+                nx.users.me.value?.let { me -> if (me.gemState != state) nx.users.setMe(me.copy(gemState = state)) }
+            }
             "trade_update" -> {
                 val t = Trades.parse(d) ?: return
                 Trades.set(t)
@@ -623,6 +630,7 @@ class Session(private val nx: Nexa) {
         ThreadLast.clear()
         fish.nexa.ui.markdown.LinkedChannels.clear()
         Games.reset()
+        Gems.reset()
         Invites.clear()
         GiftPreviews.clear()
         nx.messages.clear()

@@ -671,6 +671,7 @@ func (s *Server) handleMessageCreate(w http.ResponseWriter, r *http.Request) {
 	s.Bcast.EmitChannel(ch.ID, "message_create", full)
 	s.Bcast.KeysMaybeNeeded(env.Conv)
 	s.luckyDraw(ctx, me)
+	s.earnGem(ctx, me, m)
 	// the people a message in a private thread mentions are brought into it
 	if ch.Type == store.ChannelPrivateThread {
 		s.mentionedIntoThread(r, ch, me, m.Mentions)

@@ -2,6 +2,8 @@ import { Award, ImagePlus, PenLine, Pipette, Plus, Search, Trash2, Users, X } fr
 import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import { moderation as modApi } from "@/api/moderation";
 import type { Badge, BadgeDef, BadgeIndexKind, BadgeShape } from "@/api/types";
+import type { GemRarity } from "@/api/gems";
+import { GEM_RARITIES } from "@/lib/gems";
 import { BadgeMark, BadgePill } from "@/components/badges/Badges";
 import { Button } from "@/components/common/Button";
 import { ColourInput } from "@/components/common/ColourInput";
@@ -10,7 +12,7 @@ import { LoadError } from "@/components/common/LoadError";
 import { Spinner } from "@/components/common/Spinner";
 import { Field, TextInput } from "@/components/common/TextInput";
 import { Toggle } from "@/components/common/Toggle";
-import { CONTRIBUTOR, defBadge, HAND_BADGES, EVENT_COLOURS, EVENT_ICONS, EVENT_PREFIX, hexColour, OVERRIDABLE, type BadgeLook } from "@/lib/badges";
+import { COLLECTIBLE_ART, collectibleArt, CONTRIBUTOR, defBadge, HAND_BADGES, EVENT_COLOURS, EVENT_ICONS, EVENT_PREFIX, hexColour, OVERRIDABLE, type BadgeLook } from "@/lib/badges";
 import { describeError } from "@/lib/errors";
 import { useModEvents } from "@/stores/moderation";
 import { useUI } from "@/stores/ui";
@@ -61,6 +63,8 @@ export function BadgesTab() {
   const [image, setImage] = useState<{ id: string; url: string } | null>(null);
   const [mode, setMode] = useState<Mode>("icon");
   const [indexKind, setIndexKind] = useState<BadgeIndexKind>("exclusive");
+  const [rarity, setRarity] = useState<"" | GemRarity>("");
+  const [art, setArt] = useState("");
   const [query, setQuery] = useState("");
   const [crop, setCrop] = useState<File | null>(null);
   const [uploading, setUploading] = useState(false);
@@ -97,11 +101,25 @@ export function BadgesTab() {
     setImage(pic);
     setMode(pic ? "picture" : "icon");
     setIndexKind(d?.index_kind ?? "exclusive");
+    setRarity(d?.rarity || "");
+    setArt(d?.art || "");
     setQuery("");
+  };
+  // a drawing brings its own line, but never over words someone typed: only an
+  // empty description, or the line the last drawing brought, is replaced
+  const artLine = (n: string) => {
+    const key = `gems.artDesc.${n}`;
+    const line = n ? t(key) : "";
+    return line === key ? "" : line;
+  };
+  const pickArt = (n: string) => {
+    const said = description.trim();
+    if (said === "" || said === artLine(art)) setDescription(artLine(n));
+    setArt(n);
   };
   const nameLength = [...name.trim()].length;
   const descLength = [...description.trim()].length;
-  const ready = nameLength > 0 && nameLength <= MAX_NAME && descLength <= MAX_DESCRIPTION && (mode === "icon" || image !== null) && !uploading;
+  const ready = nameLength > 0 && nameLength <= MAX_NAME && descLength <= MAX_DESCRIPTION && (rarity ? art !== "" : mode === "icon" || image !== null) && !uploading;
 
   const upload = async (blob: Blob, area: { x: number; y: number; w: number; h: number } | null) => {
     setUploading(true);
@@ -130,6 +148,8 @@ export function BadgesTab() {
         shape,
         image_id: mode === "picture" && image ? image.id : "0",
         index_kind: indexKind,
+        rarity,
+        art: rarity ? art : "",
       };
       if (editing) {
         const d = await modApi.editBadge(editing.id, body);
@@ -175,7 +195,9 @@ export function BadgesTab() {
     label: shownName,
     tip: description.trim(),
   };
-  const glow = hexColour(colour2 ?? colour);
+  // a collectible is one of the drawings, shown at bronze, with every material it fuses up to beside it
+  const drawn = rarity && art ? collectibleArt(art, 1) : undefined;
+  const glow = drawn ? "var(--gem)" : hexColour(colour2 ?? colour);
 
   const earned = useMemo(
     () =>
@@ -201,9 +223,13 @@ export function BadgesTab() {
           <p className={m.panelHint}>{t("badges.staff.hint")}</p>
           <div className={m.annForm}>
             <div className={b.stage} style={{ "--glow": glow } as CSSProperties} aria-hidden="true">
-              <Suspense fallback={<span className={b.stageMark} />}>
-                <BadgeMark look={look} size={64} />
-              </Suspense>
+              {drawn ? (
+                <img className={b.stageMark} src={drawn} alt="" draggable={false} />
+              ) : (
+                <Suspense fallback={<span className={b.stageMark} />}>
+                  <BadgeMark look={look} size={64} />
+                </Suspense>
+              )}
               <span className={b.stageText}>
                 <span className={b.stageName}>{shownName}</span>
                 <span className={b.stageDesc} data-empty={!description.trim() || undefined}>
@@ -211,7 +237,13 @@ export function BadgesTab() {
                 </span>
               </span>
               <span className={b.stageSmall}>
-                <BadgePill badge={previewBadge(look)} user={NOBODY} still />
+                {drawn ? (
+                  <span className={b.materials}>
+                    {[2, 3, 4, 5].map((m) => <img key={m} src={collectibleArt(art, m)} alt="" width={22} height={22} draggable={false} />)}
+                  </span>
+                ) : (
+                  <BadgePill badge={previewBadge(look)} user={NOBODY} still />
+                )}
               </span>
             </div>
 
@@ -228,103 +260,135 @@ export function BadgesTab() {
               />
             </Field>
 
-            <div>
-              <span className={b.label} id="badge-colour-label">{colour2 === null ? t("badges.staff.colour") : t("badges.staff.firstColour")}</span>
-              <Swatches value={colour} onChange={setColour} labelledBy="badge-colour-label" />
-            </div>
-            <Toggle
-              checked={colour2 !== null}
-              onChange={(on) => setColour2(on ? (EVENT_COLOURS.find((c) => c !== colour) ?? 0xffffff) : null)}
-              label={t("badges.staff.gradient")}
-              description={t("badges.staff.gradientHint")}
-            />
-            {colour2 !== null ? (
+            {/* a collectible stays one, and a badge given by hand never becomes one */}
+            {!editing || editing.rarity ? (
               <div>
-                <span className={b.label} id="badge-colour2-label">{t("badges.staff.secondColour")}</span>
-                <Swatches value={colour2} onChange={setColour2} labelledBy="badge-colour2-label" />
-              </div>
-            ) : null}
-
-            <div className={b.pair}>
-              <div>
-                <span className={b.label} id="badge-mode-label">{t("badges.staff.look")}</span>
-                <div className={b.segment} role="radiogroup" aria-labelledby="badge-mode-label" data-glide="">
-                  {(["icon", "picture"] as const).map((v) => (
-                    <button key={v} type="button" role="radio" aria-checked={mode === v} className={b.segmentItem} onClick={() => setMode(v)} data-testid={`badge-mode-${v}`}>
-                      {v === "icon" ? t("badges.staff.lookIcon") : t("badges.staff.lookPicture")}
+                <span className={b.label} id="badge-rarity-label">{t("gems.staff.rarity")}</span>
+                <div className={b.segment} role="radiogroup" aria-labelledby="badge-rarity-label" data-glide="">
+                  {([...(editing ? [] : [""]), ...GEM_RARITIES] as ("" | GemRarity)[]).map((v) => (
+                    <button key={v || "none"} type="button" role="radio" aria-checked={rarity === v} className={b.segmentItem} onClick={() => setRarity(v)} data-testid={`badge-rarity-${v || "none"}`}>
+                      {v ? t(`gems.rarity.${v}`) : t("gems.staff.rarityNone")}
                     </button>
                   ))}
                 </div>
+                <p className={b.kindHint}>{rarity ? t("gems.staff.rarityHint") : t("gems.staff.rarityNoneHint")}</p>
               </div>
-            </div>
+            ) : null}
 
-            {mode === "icon" ? (
+
+            {rarity ? (
               <div>
-                <span className={b.label} id="badge-icon-label">{t("badges.staff.icon")}</span>
-                <label className={b.search}>
-                  <Search size={15} aria-hidden="true" />
-                  <input
-                    value={query}
-                    onChange={(e) => setQuery(e.target.value)}
-                    placeholder={t("badges.staff.iconSearch")}
-                    aria-label={t("badges.staff.iconSearch")}
-                    data-testid="badge-icon-search"
-                  />
-                  {query ? (
-                    <button type="button" onClick={() => setQuery("")} aria-label={t("badges.staff.clearSearch")}>
-                      <X size={14} aria-hidden="true" />
+                <span className={b.label} id="badge-art-label">{t("gems.staff.art")}</span>
+                <div className={b.arts} role="radiogroup" aria-labelledby="badge-art-label">
+                  {COLLECTIBLE_ART.map((n) => (
+                    <button key={n} type="button" role="radio" aria-checked={art === n} aria-label={t(`gems.art.${n}`)} title={t(`gems.art.${n}`)} className={b.art} data-on={art === n || undefined} onClick={() => pickArt(n)} data-testid={`badge-art-${n}`}>
+                      <img src={collectibleArt(n, 1)} alt="" width={36} height={36} draggable={false} />
                     </button>
-                  ) : null}
-                </label>
-                <div className={b.icons} role="radiogroup" aria-labelledby="badge-icon-label">
-                  <Suspense fallback={<Spinner />}>
-                    {query.trim() ? (
-                      <IconSearch query={query} value={icon} onPick={setIcon} />
-                    ) : (
-                      [...new Set<string>([...(EVENT_ICONS as readonly string[]).includes(icon) ? [] : [icon], ...EVENT_ICONS])].map((n) => (
-                        <button key={n} type="button" role="radio" aria-checked={icon === n} aria-label={n} title={n} className={b.icon} data-on={icon === n || undefined} onClick={() => setIcon(n)}>
-                          <EventIcon name={n} size={18} />
-                        </button>
-                      ))
-                    )}
-                  </Suspense>
+                  ))}
                 </div>
+                <p className={b.kindHint}>{t("gems.staff.artHint")}</p>
               </div>
             ) : (
-              <div className={b.picture}>
-                {image ? <img src={image.url} alt="" className={b.pictureThumb} /> : <span className={b.pictureEmpty}><ImagePlus size={20} aria-hidden="true" /></span>}
-                <span className={b.pictureText}>
-                  <Button size="sm" variant="secondary" loading={uploading} onClick={() => fileRef.current?.click()} data-testid="badge-upload">
-                    <ImagePlus size={15} aria-hidden="true" />
-                    {image ? t("badges.staff.replacePicture") : t("badges.staff.uploadPicture")}
-                  </Button>
-                  <span className={b.pictureHint}>{t("badges.staff.pictureHint")}</span>
-                </span>
-                <input
-                  ref={fileRef}
-                  type="file"
-                  accept="image/png,image/jpeg,image/gif,image/webp"
-                  hidden
-                  onChange={(e) => {
-                    const f = e.target.files?.[0];
-                    e.target.value = "";
-                    if (f) setCrop(f);
-                  }}
-                />
+              <>
+              <div>
+                <span className={b.label} id="badge-colour-label">{colour2 === null ? t("badges.staff.colour") : t("badges.staff.firstColour")}</span>
+                <Swatches value={colour} onChange={setColour} labelledBy="badge-colour-label" />
               </div>
-            )}
+              <Toggle
+                checked={colour2 !== null}
+                onChange={(on) => setColour2(on ? (EVENT_COLOURS.find((c) => c !== colour) ?? 0xffffff) : null)}
+                label={t("badges.staff.gradient")}
+                description={t("badges.staff.gradientHint")}
+              />
+              {colour2 !== null ? (
+                <div>
+                  <span className={b.label} id="badge-colour2-label">{t("badges.staff.secondColour")}</span>
+                  <Swatches value={colour2} onChange={setColour2} labelledBy="badge-colour2-label" />
+                </div>
+              ) : null}
 
-            <div>
-              <span className={b.label} id="badge-kind-label">{t("badges.staff.indexKind")}</span>
-              <div className={b.segment} role="radiogroup" aria-labelledby="badge-kind-label" data-glide="">
-                {(["exclusive", "special", "hidden"] as const).map((v) => (
-                  <button key={v} type="button" role="radio" aria-checked={indexKind === v} className={b.segmentItem} onClick={() => setIndexKind(v)} data-testid={`badge-kind-${v}`}>
-                    {t(v === "hidden" ? "badges.staff.indexKind.hidden" : `badges.index.${v}`)}
-                  </button>
-                ))}
+              <div className={b.pair}>
+                <div>
+                  <span className={b.label} id="badge-mode-label">{t("badges.staff.look")}</span>
+                  <div className={b.segment} role="radiogroup" aria-labelledby="badge-mode-label" data-glide="">
+                    {(["icon", "picture"] as const).map((v) => (
+                      <button key={v} type="button" role="radio" aria-checked={mode === v} className={b.segmentItem} onClick={() => setMode(v)} data-testid={`badge-mode-${v}`}>
+                        {v === "icon" ? t("badges.staff.lookIcon") : t("badges.staff.lookPicture")}
+                      </button>
+                    ))}
+                  </div>
+                </div>
               </div>
-              <p className={b.kindHint}>{t(`badges.staff.indexKind.${indexKind}Hint`)}</p>
-            </div>
+
+              {mode === "icon" ? (
+                <div>
+                  <span className={b.label} id="badge-icon-label">{t("badges.staff.icon")}</span>
+                  <label className={b.search}>
+                    <Search size={15} aria-hidden="true" />
+                    <input
+                      value={query}
+                      onChange={(e) => setQuery(e.target.value)}
+                      placeholder={t("badges.staff.iconSearch")}
+                      aria-label={t("badges.staff.iconSearch")}
+                      data-testid="badge-icon-search"
+                    />
+                    {query ? (
+                      <button type="button" onClick={() => setQuery("")} aria-label={t("badges.staff.clearSearch")}>
+                        <X size={14} aria-hidden="true" />
+                      </button>
+                    ) : null}
+                  </label>
+                  <div className={b.icons} role="radiogroup" aria-labelledby="badge-icon-label">
+                    <Suspense fallback={<Spinner />}>
+                      {query.trim() ? (
+                        <IconSearch query={query} value={icon} onPick={setIcon} />
+                      ) : (
+                        [...new Set<string>([...(EVENT_ICONS as readonly string[]).includes(icon) ? [] : [icon], ...EVENT_ICONS])].map((n) => (
+                          <button key={n} type="button" role="radio" aria-checked={icon === n} aria-label={n} title={n} className={b.icon} data-on={icon === n || undefined} onClick={() => setIcon(n)}>
+                            <EventIcon name={n} size={18} />
+                          </button>
+                        ))
+                      )}
+                    </Suspense>
+                  </div>
+                </div>
+              ) : (
+                <div className={b.picture}>
+                  {image ? <img src={image.url} alt="" className={b.pictureThumb} /> : <span className={b.pictureEmpty}><ImagePlus size={20} aria-hidden="true" /></span>}
+                  <span className={b.pictureText}>
+                    <Button size="sm" variant="secondary" loading={uploading} onClick={() => fileRef.current?.click()} data-testid="badge-upload">
+                      <ImagePlus size={15} aria-hidden="true" />
+                      {image ? t("badges.staff.replacePicture") : t("badges.staff.uploadPicture")}
+                    </Button>
+                    <span className={b.pictureHint}>{t("badges.staff.pictureHint")}</span>
+                  </span>
+                  <input
+                    ref={fileRef}
+                    type="file"
+                    accept="image/png,image/jpeg,image/gif,image/webp"
+                    hidden
+                    onChange={(e) => {
+                      const f = e.target.files?.[0];
+                      e.target.value = "";
+                      if (f) setCrop(f);
+                    }}
+                  />
+                </div>
+              )}
+
+              <div>
+                <span className={b.label} id="badge-kind-label">{t("badges.staff.indexKind")}</span>
+                <div className={b.segment} role="radiogroup" aria-labelledby="badge-kind-label" data-glide="">
+                  {(["exclusive", "special", "hidden"] as const).map((v) => (
+                    <button key={v} type="button" role="radio" aria-checked={indexKind === v} className={b.segmentItem} onClick={() => setIndexKind(v)} data-testid={`badge-kind-${v}`}>
+                      {t(v === "hidden" ? "badges.staff.indexKind.hidden" : `badges.index.${v}`)}
+                    </button>
+                  ))}
+                </div>
+                <p className={b.kindHint}>{t(`badges.staff.indexKind.${indexKind}Hint`)}</p>
+              </div>
+              </>
+            )}
 
             <div className={m.annFooter}>
               {editing ? (

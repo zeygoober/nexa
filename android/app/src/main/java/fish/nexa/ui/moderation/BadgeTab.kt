@@ -4,6 +4,8 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.border
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
@@ -65,6 +67,8 @@ import androidx.compose.ui.unit.TextUnitType
 import androidx.compose.ui.unit.dp
 import fish.nexa.Nexa
 import fish.nexa.data.Badges
+import fish.nexa.data.Gems
+import fish.nexa.data.Ota
 import fish.nexa.data.ModEvent
 import fish.nexa.data.ModUser
 import fish.nexa.data.Moderation
@@ -180,6 +184,8 @@ fun BadgesTab() {
     var mode by remember { mutableStateOf("icon") }
     var indexKind by remember { mutableStateOf("exclusive") }
     var imageId by remember { mutableStateOf("0") }
+    var rarity by remember { mutableStateOf("") }
+    var art by remember { mutableStateOf("") }
     var query by remember { mutableStateOf("") }
     var uploading by remember { mutableStateOf(false) }
     var busy by remember { mutableStateOf(false) }
@@ -216,13 +222,16 @@ fun BadgesTab() {
         imageId = d?.imageId?.takeIf { it.isNotEmpty() } ?: "0"
         mode = if (imageId != "0") "picture" else "icon"
         indexKind = d?.indexKind ?: "exclusive"
+        rarity = d?.rarity ?: ""
+        art = d?.art ?: ""
         query = ""
     }
     val nameLength = lengthOf(name)
     val descLength = lengthOf(description)
-    val ready = nameLength in 1..MAX_NAME && descLength <= MAX_DESCRIPTION && (mode == "icon" || imageId != "0") && !uploading
+    val ready = nameLength in 1..MAX_NAME && descLength <= MAX_DESCRIPTION && (rarity.isNotEmpty() || mode == "icon" || imageId != "0") && (rarity.isEmpty() || art.isNotEmpty()) && !uploading
     fun current(id: String, holders: Int) = Badges.Def(
-        id, name.trim(), icon, colour, holders, description.trim(), colour2 ?: -1, glyph == "dark", shape, if (mode == "picture") imageId else "0", indexKind,
+        id, name.trim(), icon, colour, holders, description.trim(), colour2 ?: -1, glyph == "dark", shape, if (mode == "picture" && rarity.isEmpty()) imageId else "0", indexKind,
+        rarity = rarity, art = if (rarity.isNotEmpty()) art else "",
     )
     fun submit() {
         busy = true
@@ -287,9 +296,36 @@ fun BadgesTab() {
                     val preview = current("0", 0).let { d ->
                         d.copy(name = d.name.ifEmpty { t("badges.staff.namePlaceholder") }).badge
                     }
-                    Stage(preview, colour2 ?: colour, description.trim())
+                    Stage(preview, colour2 ?: colour, description.trim(), drawn = rarity.isNotEmpty() && art.isNotEmpty())
                     NxTextField(name, { name = it.take(MAX_NAME + 8) }, label = t("badges.staff.name"), placeholder = t("badges.staff.namePlaceholder"), hint = if (nameLength > MAX_NAME - 8) "$nameLength/$MAX_NAME" else null, capitalize = true)
                     NxTextField(description, { description = it.take(MAX_DESCRIPTION + 8) }, label = t("badges.staff.description"), placeholder = t("badges.staff.descriptionPlaceholder"), hint = "$descLength/$MAX_DESCRIPTION", capitalize = true)
+                    // a collectible stays one, and a badge given by hand never becomes one
+                    val was = editing
+                    if (was == null || was.rarity.isNotEmpty()) {
+                        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                            FieldLabel(t("gems.staff.rarity"))
+                            // each choice as wide as its word, as the web's; a language with long words scrolls rather than cutting one short
+                            Box(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(1.dp)) {
+                                Segmented(
+                                    (if (was == null) listOf("" to t("gems.staff.rarityNone")) else emptyList()) + Gems.RARITIES.map { it to t("gems.rarity.$it") },
+                                    rarity, { rarity = it }, t("gems.staff.rarity"), fill = false, itemPad = 12.dp,
+                                )
+                            }
+                            Txt(if (rarity.isNotEmpty()) t("gems.staff.rarityHint") else t("gems.staff.rarityNoneHint"), style = Nx.type.bodySmall.copy(fontSize = Nx.type.sp(13f), lineHeight = Nx.type.sp(18f)), color = c.textMuted)
+                        }
+                    }
+                    if (rarity.isNotEmpty()) {
+                        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                            FieldLabel(t("gems.staff.art"))
+                            ArtPicker(rarity, art) { n ->
+                                // a drawing brings its own line, but never over words someone typed
+                                val said = description.trim()
+                                if (said.isEmpty() || said == artLine(art)) description = artLine(n)
+                                art = n
+                            }
+                            Txt(t("gems.staff.artHint"), style = Nx.type.bodySmall.copy(fontSize = Nx.type.sp(13f), lineHeight = Nx.type.sp(18f)), color = c.textMuted)
+                        }
+                    } else {
                     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         FieldLabel(if (colour2 == null) t("badges.staff.colour") else t("badges.staff.firstColour"))
                         Swatches(colour) { colour = it }
@@ -323,6 +359,7 @@ fun BadgesTab() {
                         }
                     } else {
                         PictureField(imageId, uploading) { pickPicture.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)) }
+                    }
                     }
                     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         FieldLabel(t("badges.staff.indexKind"))
@@ -414,10 +451,11 @@ fun BadgesTab() {
 
 /** The badge being made, large on a glow of its own colour, with what pressing it will say. */
 @Composable
-private fun Stage(preview: Badges.Badge, glow: Int, description: String) {
+private fun Stage(preview: Badges.Badge, glow: Int, description: String, drawn: Boolean = false) {
     val c = Nx.colors
     val shape = Radii.Md
-    val tint = opaque(glow).copy(alpha = 0.22f)
+    // a collectible glows in the Gems colour, and shows every material it fuses up to
+    val tint = (if (drawn) c.link else opaque(glow)).copy(alpha = 0.22f)
     Row(
         Modifier
             .fillMaxWidth()
@@ -440,7 +478,58 @@ private fun Stage(preview: Badges.Badge, glow: Int, description: String) {
                 Txt(t("badges.staff.descriptionPlaceholder"), style = Nx.type.bodySmall.copy(fontSize = Nx.type.sp(13f), lineHeight = Nx.type.sp(18.2f), fontStyle = FontStyle.Italic), color = c.textMuted, maxLines = 3)
             }
         }
-        Box(Modifier.align(Alignment.Top)) { BadgePill(preview, "0", 0L, "", still = true) }
+        Box(Modifier.align(Alignment.Top)) {
+            if (drawn) {
+                Row(horizontalArrangement = Arrangement.spacedBy(2.dp)) {
+                    for (m in 2..Gems.MATERIALS) BadgePill(preview.copy(level = m), "0", 0L, "", still = true, size = 22.dp)
+                }
+            } else {
+                BadgePill(preview, "0", 0L, "", still = true)
+            }
+        }
+    }
+}
+
+/** The collectible drawings (store.CollectibleArt), as the app's badge pictures hold them: badges/col-<art>-<material>.svg. */
+private val collectibleArt: List<String> by lazy {
+    val drawing = Regex("""col-(.+)-1\.svg""")
+    Ota.list("badges").mapNotNull { drawing.matchEntire(it)?.groupValues?.get(1) }.distinct().sorted()
+}
+
+/** Staff pick a collectible's drawing, each shown at bronze, in one well as the web's (.arts): as many 52 dp cells a row as fit. */
+/** A drawing's line for a new collectable's description, or "" when it has none. */
+private fun artLine(n: String): String = if (n.isNotEmpty() && fish.nexa.ui.I18n.has("gems.artDesc.$n")) t("gems.artDesc.$n") else ""
+
+@Composable
+private fun ArtPicker(rarity: String, value: String, onPick: (String) -> Unit) {
+    val c = Nx.colors
+    val cell = RoundedCornerShape(10.dp)
+    androidx.compose.foundation.layout.BoxWithConstraints(Modifier.fillMaxWidth().background(c.bgInput, Radii.Md).padding(4.dp)) {
+        val cols = ((maxWidth + 4.dp) / 56.dp).toInt().coerceAtLeast(1)
+        Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            for (row in collectibleArt.chunked(cols)) {
+                Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                    for (n in row) {
+                        val on = value == n
+                        val label = t("gems.art.$n")
+                        Box(
+                            Modifier
+                                .weight(1f)
+                                .height(52.dp)
+                                .clip(cell)
+                                .then(if (on) Modifier.background(c.brand.copy(alpha = 0.16f)).border(1.dp, c.brand.copy(alpha = 0.40f), cell) else Modifier)
+                                .pressable(remember { MutableInteractionSource() }, role = Role.RadioButton) { onPick(n) }
+                                .semantics { contentDescription = label; selected = on },
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            BadgePill(Badges.Def("0", label, "", 0, 0, rarity = rarity, art = n).badge, "0", 0L, "", still = true, size = 36.dp)
+                        }
+                    }
+                    // the last row keeps the grid's columns
+                    repeat(cols - row.size) { Spacer(Modifier.weight(1f)) }
+                }
+            }
+        }
     }
 }
 

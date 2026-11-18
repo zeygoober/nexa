@@ -130,6 +130,7 @@ object Settings {
                     SettingsPageInfo("account", t("settings.account.myAccount"), "UserRound"),
                     SettingsPageInfo("profiles", t("settings.profile.profiles"), "IdCard"),
                     SettingsPageInfo("badgeIndex", t("badges.index.title"), "Award"),
+                    SettingsPageInfo("gems", t("gems.title"), "Gem"),
                     SettingsPageInfo("security", t("settings.security.security"), "KeyRound"),
                     SettingsPageInfo("devices", t("settings.devices.devices"), "MonitorSmartphone"),
                     SettingsPageInfo("subscription", t("support.settingsLabel"), "Heart"),
@@ -652,6 +653,7 @@ private fun SettingsPageContent(id: String, anchor: String?, openPage: (String, 
         "account" -> AccountPage(openPage)
         "profiles" -> ProfilesPage(anchor)
         "badgeIndex" -> BadgeIndexPage()
+        "gems" -> fish.nexa.ui.gems.GemsPage()
         "security" -> SecurityPage()
         "devices" -> DevicesPage()
         "subscription" -> fish.nexa.ui.support.SupportPanel(inSettings = true)
@@ -760,6 +762,7 @@ private fun settingsIndex(groups: List<SettingsGroup>): List<SettingResult> {
         Triple("sounds", "soundPack", "settings.sounds.packHeading"),
         Triple("sounds", "soundPack", "settings.sounds.createPack"),
         Triple("sounds", "soundVolume", "settings.sounds.volume"),
+        Triple("sounds", "gemSounds", "settings.sounds.gemsHeading"),
         Triple("appearance", "theme", "settings.appearance.theme"),
         Triple("appearance", "animateAvatars", "settings.appearance.animateAvatars"),
         Triple("appearance", "animateIcons", "settings.appearance.animateIcons"),
@@ -799,6 +802,9 @@ private fun settingsIndex(groups: List<SettingsGroup>): List<SettingResult> {
     for ((page, anchor, key) in anchored) if (page in shown) entries += SettingResult(page, anchor, t(key))
     // what a page is for, found by more than its name
     val within = listOf(
+        "gems" to "gems.team.title",
+        "gems" to "gems.capsule.title",
+        "gems" to "gems.collection.title",
         "developers" to "apps.portal.newApp",
         "developers" to "apps.portal.token",
         "developers" to "apps.portal.connect",

@@ -1,4 +1,5 @@
 import { ArrowLeft, ArrowRight, Check, Minus, Search } from "lucide-react";
+import { GemIcon } from "@/components/gems/GemIcon";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { trades } from "@/api/trades";
 import type { Trade, TradeLine } from "@/api/types";
@@ -15,8 +16,11 @@ import { useAuth } from "@/stores/auth";
 import { useTrades } from "@/stores/trades";
 import { useUI } from "@/stores/ui";
 import { displayName, useUsers } from "@/stores/users";
-import { lineName, NOBODY } from "./TradeLines";
+import { GEMS_KEY, gemsFirst, lineName, NOBODY } from "./TradeLines";
 import s from "./Trades.module.css";
+
+/** A count short enough for a tile's chip: 1,240 is 1.2K. */
+const compact = (n: number) => new Intl.NumberFormat(document.documentElement.lang || undefined, { notation: "compact", maximumFractionDigits: 1 }).format(n);
 
 /** How many slots the other person's side always shows, empty or not. */
 const MIN_SLOTS = 6;
@@ -43,6 +47,7 @@ export function TradeWindow({ userId, tradeId, onClose }: { userId?: string | un
   const [failed, setFailed] = useState(false);
   const [sel, setSel] = useState<Record<string, number>>({});
   const [q, setQ] = useState("");
+  const [gemsOpen, setGemsOpen] = useState(false);
   const [busy, setBusy] = useState(false);
   const selRef = useRef(sel);
   selRef.current = sel;
@@ -70,7 +75,7 @@ export function TradeWindow({ userId, tradeId, onClose }: { userId?: string | un
   useEffect(load, [tradeId, userId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const myOffer = trade ? (fromMe ? trade.from_offer : trade.to_offer) : [];
-  const theirOffer = trade ? (fromMe ? trade.to_offer : trade.from_offer) : [];
+  const theirOffer = gemsFirst(trade ? (fromMe ? trade.to_offer : trade.from_offer) : []);
   const myReady = !!trade && (fromMe ? trade.from_ready : trade.to_ready);
   const theirReady = !!trade && (fromMe ? trade.to_ready : trade.from_ready);
   // what the server holds of mine is what shows, unless a change of mine is on its way
@@ -152,8 +157,11 @@ export function TradeWindow({ userId, tradeId, onClose }: { userId?: string | un
 
   const shown = useMemo(() => {
     const needle = q.trim().toLowerCase();
-    return (mine ?? []).filter((l) => !needle || lineName(l).toLowerCase().includes(needle));
+    return (mine ?? []).filter((l) => l.key !== GEMS_KEY && (!needle || lineName(l).toLowerCase().includes(needle)));
   }, [mine, q]);
+  const myGems = mine?.find((l) => l.key === GEMS_KEY)?.qty ?? 0;
+  const gemsGiven = sel[GEMS_KEY] ?? 0;
+  const badgesHeld = (mine ?? []).some((l) => l.key !== GEMS_KEY);
   const loading = !trade || !mine;
   const slots = Math.max(MIN_SLOTS, Math.ceil(theirOffer.length / 3) * 3);
 
@@ -197,9 +205,27 @@ export function TradeWindow({ userId, tradeId, onClose }: { userId?: string | un
                 <span className={s.whoName}>{t("trades.yourOffer")}</span>
                 {myReady ? <span className={s.readyTag}><Check size={14} aria-hidden="true" />{t("trades.ready")}</span> : null}
               </div>
-              {mine.length ? (
+              {badgesHeld || myGems > 0 ? (
                 <>
                   <ul className={s.inv}>
+                    {myGems > 0 ? (
+                      <li className={s.cell}>
+                        <button
+                          type="button"
+                          className={s.tile}
+                          data-on={gemsGiven > 0 || undefined}
+                          aria-expanded={gemsOpen}
+                          aria-label={`${t("gems.unit")}, ${t("trades.have", { count: myGems })}`}
+                          title={t("gems.unit")}
+                          onClick={() => setGemsOpen((o) => !o)}
+                          data-testid="trade-gems"
+                        >
+                          <GemIcon size={34} />
+                          <span className={gemsGiven > 0 ? s.chipOn : s.chip}>{compact(gemsGiven > 0 ? gemsGiven : myGems)}</span>
+                        </button>
+                        {gemsGiven > 0 ? <button type="button" className={s.minus} aria-label={t("trades.takeGemsBack")} onClick={() => change(GEMS_KEY, 0)}><Minus size={12} aria-hidden="true" /></button> : null}
+                      </li>
+                    ) : null}
                     {shown.map((l) => {
                       const n = sel[l.key] ?? 0;
                       const name = lineName(l) || l.key;
@@ -224,10 +250,41 @@ export function TradeWindow({ userId, tradeId, onClose }: { userId?: string | un
                       );
                     })}
                   </ul>
-                  <label className={s.search}>
+                  {gemsOpen && myGems > 0 ? (
+                    <div className={s.gemPill} data-testid="trade-gems-amount">
+                      <GemIcon size={20} />
+                      <input
+                        type="number"
+                        inputMode="numeric"
+                        min={0}
+                        max={myGems}
+                        step={1}
+                        autoFocus
+                        value={gemsGiven || ""}
+                        placeholder="0"
+                        aria-label={t("trades.gemsToGive")}
+                        onChange={(e) => {
+                          const n = Math.floor(Number(e.target.value));
+                          change(GEMS_KEY, Number.isFinite(n) ? Math.max(0, Math.min(myGems, n)) : 0);
+                        }}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter" || e.key === "Escape") {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            setGemsOpen(false);
+                          }
+                        }}
+                        data-testid="trade-gems-input"
+                      />
+                      <span className={s.gemsOf}>{t("trades.gemsOf", { count: myGems })}</span>
+                      <button type="button" className={s.pillButton} onClick={() => change(GEMS_KEY, myGems)} data-testid="trade-gems-all">{t("trades.gemsAll")}</button>
+                      <button type="button" className={s.pillDone} aria-label={t("trades.gemsDone")} onClick={() => setGemsOpen(false)}><Check size={16} aria-hidden="true" /></button>
+                    </div>
+                  ) : null}
+                  {badgesHeld ? <label className={s.search}>
                     <Search size={15} aria-hidden="true" />
                     <input type="search" value={q} placeholder={t("trades.search")} aria-label={t("trades.search")} onChange={(e) => setQ(e.target.value)} />
-                  </label>
+                  </label> : null}
                 </>
               ) : <p className={s.empty}>{t("trades.noneToGive")}</p>}
             </section>
@@ -246,8 +303,13 @@ export function TradeWindow({ userId, tradeId, onClose }: { userId?: string | un
                   const l = theirOffer[i];
                   return (
                     <li key={l?.key ?? `e${i}`} className={s.slot} data-empty={!l || undefined} data-testid={l ? "trade-their-slot" : undefined}>
-                      {l?.badge ? <BadgePill badge={l.badge} user={NOBODY} size={36} /> : null}
-                      {l && l.qty > 1 ? <span className={s.chip}>×{l.qty}</span> : null}
+                      {l?.key === GEMS_KEY ? (
+                        <span className={s.gemSlot} role="img" aria-label={lineName(l)} title={lineName(l)}>
+                          <GemIcon size={34} />
+                          <span className={s.chip}>{compact(l.qty)}</span>
+                        </span>
+                      ) : l?.badge ? <BadgePill badge={l.badge} user={NOBODY} size={36} /> : null}
+                      {l && l.key !== GEMS_KEY && l.qty > 1 ? <span className={s.chip}>×{l.qty}</span> : null}
                     </li>
                   );
                 })}

@@ -57,7 +57,7 @@
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
-            <!-- Nexa's own links open here: conversations, messages, invites, profiles, shared notes and links that
+            <!-- Nexa's own links open here: conversations, messages, invites, server templates, profiles, shared notes and links that
                  add an app. The server publishes /.well-known/assetlinks.json for the release key, so Android
                  verifies them. -->
             <intent-filter android:autoVerify="true">
@@ -70,6 +70,7 @@
                 <data android:pathPrefix="/invite/" />
                 <data android:pathPrefix="/note/" />
                 <data android:pathPrefix="/gift/" />
+                <data android:pathPrefix="/template/" />
                 <data android:pathPattern="/@.*" />
                 <data android:path="/login/qr" />
                 <data android:path="/oauth2/authorize" />

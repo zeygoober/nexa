@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.remember
@@ -70,5 +71,25 @@ fun MaintenanceBanner() {
             Txt(if (secs > 0) t("maintenance.countdown", "time" to time) else t("maintenance.pending"), style = Nx.type.bodySmall.copy(fontWeight = FontWeight(600)), color = Nx.colors.textWarning)
             Txt(t("maintenance.downtime"), style = Nx.type.bodySmall, color = Nx.colors.text)
         }
+    }
+}
+
+/** While a farming check holds new Gems, a line under the other banners until it is answered on the Gems page (web GemHoldBanner). */
+@Composable
+fun GemHoldBanner() {
+    val me by Nexa.users.me.collectAsState()
+    if (me?.gemState != "check") return
+    Row(
+        Modifier.fillMaxWidth().background(Nx.colors.bgRaised).padding(horizontal = 16.dp, vertical = 10.dp),
+        verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
+        fish.nexa.ui.gems.GemIcon(20.dp)
+        Txt(t("gems.banner"), style = Nx.type.bodySmall, color = Nx.colors.text, modifier = Modifier.weight(1f))
+        fish.nexa.ui.components.NxButton(
+            t("gems.hold.confirm"),
+            onClick = { fish.nexa.ui.settings.Settings.open("gems") },
+            kind = fish.nexa.ui.components.ButtonKind.SECONDARY,
+            size = fish.nexa.ui.components.ButtonSize.SM,
+        )
     }
 }

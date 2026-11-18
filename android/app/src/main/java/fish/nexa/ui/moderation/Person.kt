@@ -179,6 +179,11 @@ fun PersonPage(userId: String, caseId: String?) {
                 NxButton(t("badges.staff.giveMenu"), { openGiveBadgesSheet(user) }, kind = ButtonKind.GHOST, size = ButtonSize.TOUCH, icon = "Award")
             if (fish.nexa.data.StaffRanks.can(mine, fish.nexa.data.StaffCan.OWNER_TOOLS))
                 NxButton(t("moderation.account.menu"), { openAccountDetails(user) }, kind = ButtonKind.GHOST, size = ButtonSize.TOUCH, icon = "Fingerprint")
+            // the owner gives and takes Gems; bots and deleted accounts hold none
+            if (fish.nexa.data.StaffRanks.can(mine, fish.nexa.data.StaffCan.OWNER_TOOLS) && !deleted && user.adminFlags and 64L == 0L)
+                NxButton(t("moderation.gems.menu"), { openGemsSheet(user) }, kind = ButtonKind.GHOST, size = ButtonSize.TOUCH, icon = "Gem")
+            if (fish.nexa.data.StaffRanks.can(mine, fish.nexa.data.StaffCan.OWNER_TOOLS) && !deleted && user.adminFlags and 64L == 0L)
+                NxButton(t("moderation.collectables.menu"), { openCollectablesSheet(user) }, kind = ButtonKind.GHOST, size = ButtonSize.TOUCH, icon = "Shapes")
             NxButton(t("moderation.menu.copyId"), {
                 val cm = Nexa.app.getSystemService(android.content.ClipboardManager::class.java)
                 cm?.setPrimaryClip(android.content.ClipData.newPlainText("id", user.id))

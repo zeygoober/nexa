@@ -115,10 +115,8 @@ function Body({ view, tab, setTab, setAsk, query, setQuery, members }: {
   members: ManageMember[] | null;
 }) {
   const srv = view.server!;
-  const ownerName = view.owner ? personName(view.owner) : "";
   const everyoneId = srv.id;
-  const seesOwner = view.owner_deleted ? t("moderation.manage.seesNoOwner") : t("moderation.manage.seesOwner", { name: ownerName });
-  const sees = (...extra: string[]) => [seesOwner, ...extra];
+  const sees = (...extra: string[]) => [t("moderation.manage.seesAudit"), ...extra];
   const say = (a: ManageAsk) => setAsk(a);
 
   const categories = useMemo(() => view.channels.filter((c) => c.type === "category").sort((a, b) => a.position - b.position), [view.channels]);
@@ -147,7 +145,7 @@ function Body({ view, tab, setTab, setAsk, query, setQuery, members }: {
       fields: [
         { kind: "text", key: "name", label: t("integrations.name"), max: 100, required: true },
         { kind: "area", key: "description", label: t("moderation.servers.description"), max: 1000 },
-        { kind: "select", key: "system_channel_id", label: t("server.serverOverview.systemMessagesChannel"), options: [["", t("moderation.manage.none")], ...view.channels.filter((c) => c.type === "text" && !c.private).map((c): [string, string] => [c.id, c.name])] },
+        { kind: "select", key: "system_channel_id", label: t("server.serverOverview.systemMessagesChannel"), options: [["", t("moderation.manage.none")], ...view.channels.filter((c) => c.type === "text").map((c): [string, string] => [c.id, c.name])] },
         { kind: "select", key: "default_notifications", label: t("server.serverOverview.defaultNotificationSettings"), options: [["0", t("server.serverOverview.allMessages")], ["1", t("server.serverOverview.onlyMentions")]] },
         { kind: "toggle", key: "nsfw", label: label("serverNsfw") },
       ],
@@ -184,7 +182,7 @@ function Body({ view, tab, setTab, setAsk, query, setQuery, members }: {
         initial: { name: c.name, topic: c.topic ?? "", nsfw: !!c.nsfw, slowmode_seconds: c.slowmode_seconds ?? 0, user_limit: c.user_limit ?? 0 },
         fields: [
           { kind: "text", key: "name", label: t("modals.createChannel.channelName"), max: 100, required: true },
-          ...(!c.private && c.type !== "category" ? [{ kind: "area", key: "topic", label: label("topic"), max: 1024 } as ManageField] : []),
+          ...(c.type !== "category" ? [{ kind: "area", key: "topic", label: label("topic"), max: 1024 } as ManageField] : []),
           ...(c.type !== "category" && c.type !== "link" ? [{ kind: "toggle", key: "nsfw", label: label("channelNsfw") } as ManageField] : []),
           ...(["text", "announcement", "forum", "media"].includes(c.type) ? [{ kind: "number", key: "slowmode_seconds", label: label("slowmode"), min: 0, max: 21600 } as ManageField] : []),
           ...(c.type === "voice" ? [{ kind: "number", key: "user_limit", label: label("userLimit"), min: 0, max: 99 } as ManageField] : []),
@@ -193,7 +191,7 @@ function Body({ view, tab, setTab, setAsk, query, setQuery, members }: {
           channel_id: c.id,
           data: {
             name: String(v.name).trim(),
-            ...(!c.private && c.type !== "category" ? { topic: String(v.topic) } : {}),
+            ...(c.type !== "category" ? { topic: String(v.topic) } : {}),
             ...(c.type !== "category" && c.type !== "link" ? { nsfw: !!v.nsfw } : {}),
             ...(["text", "announcement", "forum", "media"].includes(c.type) ? { slowmode_seconds: Number(v.slowmode_seconds) } : {}),
             ...(c.type === "voice" ? { user_limit: Number(v.user_limit) } : {}),
@@ -310,9 +308,9 @@ function Body({ view, tab, setTab, setAsk, query, setQuery, members }: {
           <div className={s.rowActions} data-flush="">
             {others.length ? <Button size="sm" variant="ghost" onClick={() => pick("member_role_add", others)}>{label("giveRole")}</Button> : null}
             {mine.length ? <Button size="sm" variant="ghost" onClick={() => pick("member_role_remove", mine)}>{label("takeRole")}</Button> : null}
-            <Button size="sm" variant="ghost" className={s.destroy} onClick={() => plain("member_remove", { target: name, sees: sees(t("moderation.manage.seesRemoved", { name })), request: () => ({ user_id: x.user.id }) })}>{label("remove")}</Button>
-            <Button size="sm" variant="ghost" className={s.destroy} onClick={() => plain("member_ban", { target: name, sees: sees(t("moderation.manage.seesBanned", { name })), request: () => ({ user_id: x.user.id }) })}>{label("ban")}</Button>
-            {view.owner_gone ? <Button size="sm" variant="secondary" data-testid={`manage-transfer-${x.user.username}`} onClick={() => say({ action: "transfer", target: name, sees: [...(view.owner_deleted ? [] : [seesOwner]), t("moderation.manage.seesTransfer", { name })], danger: true, request: () => ({ user_id: x.user.id }) })}>{label("makeOwner")}</Button> : null}
+            <Button size="sm" variant="ghost" className={s.destroy} onClick={() => plain("member_remove", { target: name, request: () => ({ user_id: x.user.id }) })}>{label("remove")}</Button>
+            <Button size="sm" variant="ghost" className={s.destroy} onClick={() => plain("member_ban", { target: name, request: () => ({ user_id: x.user.id }) })}>{label("ban")}</Button>
+            {view.owner_gone ? <Button size="sm" variant="secondary" data-testid={`manage-transfer-${x.user.username}`} onClick={() => say({ action: "transfer", target: name, sees: sees(t("moderation.manage.seesHeir", { name })), danger: true, request: () => ({ user_id: x.user.id }) })}>{label("makeOwner")}</Button> : null}
           </div>
         )}
       </div>
@@ -332,12 +330,10 @@ function Body({ view, tab, setTab, setAsk, query, setQuery, members }: {
           <span className={s.rowSub}>{t(`automod.kind.${r.kind}`)}</span>
         </div>
         <div className={s.rowActions} data-flush="">
-          {!r.alerts ? (
-            <Button size="sm" variant="ghost" onClick={() => say({ action: "automod_edit", target: r.name, sees: sees(), confirm: t("server.invites.vanitySave"), initial: { name: r.name, words: (r.words ?? []).join("\n") }, fields: [{ kind: "text", key: "name", label: t("integrations.name"), max: 100, required: true }, ...(r.kind === "words" ? [{ kind: "area", key: "words", label: label("ruleWords"), max: 20000 } as ManageField] : [])], request: (v) => ({ rule_id: r.id, data: { name: String(v.name).trim(), ...(r.kind === "words" ? { config: { words: String(v.words).split("\n").map((w) => w.trim()).filter(Boolean) } } : {}) } }) })}>
-              {label("edit")}
-            </Button>
-          ) : null}
-          {r.enabled || !r.alerts ? <Button size="sm" variant="ghost" onClick={toggle}>{label(r.enabled ? "turnOff" : "turnOn")}</Button> : null}
+          <Button size="sm" variant="ghost" onClick={() => say({ action: "automod_edit", target: r.name, sees: sees(), confirm: t("server.invites.vanitySave"), initial: { name: r.name, words: (r.words ?? []).join("\n") }, fields: [{ kind: "text", key: "name", label: t("integrations.name"), max: 100, required: true }, ...(r.kind === "words" ? [{ kind: "area", key: "words", label: label("ruleWords"), max: 20000 } as ManageField] : [])], request: (v) => ({ rule_id: r.id, data: { name: String(v.name).trim(), ...(r.kind === "words" ? { config: { words: String(v.words).split("\n").map((w) => w.trim()).filter(Boolean) } } : {}) } }) })}>
+            {label("edit")}
+          </Button>
+          <Button size="sm" variant="ghost" onClick={toggle}>{label(r.enabled ? "turnOff" : "turnOn")}</Button>
           <Button size="sm" variant="ghost" className={s.destroy} onClick={() => plain("automod_delete", { target: r.name, request: () => ({ rule_id: r.id }) })}>{label("delete")}</Button>
         </div>
       </div>
@@ -359,7 +355,7 @@ function Body({ view, tab, setTab, setAsk, query, setQuery, members }: {
       <div className={s.body} role="tabpanel">
         {tab === "overview" ? (
           <>
-            <p className={m.note}>{label("note")}</p>
+            <p className={m.note}>{label("noteAudit")}</p>
             <div className={s.head}>
               <h3 className={s.headTitle}>{t("server.channelSettings.overview")}</h3>
               <div className={s.headActions}><Button size="sm" variant="secondary" onClick={editServer} data-testid="manage-edit-server">{t("moderation.manage.a.server_edit")}</Button></div>

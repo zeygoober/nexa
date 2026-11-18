@@ -162,10 +162,19 @@ func TestPermissionCacheFollowsEveryWrite(t *testing.T) {
 		}, false, false, false},
 		// a Developer is an ordinary member of other people's servers
 		{"becoming a Developer", func(t *testing.T, w *permWorld) {
+			if _, err := w.s.ChangeUserFlags(ctx, w.owner.ID, FlagAdmin, 0); err != nil {
+				t.Fatal(err)
+			}
 			if _, err := w.s.ChangeUserFlags(ctx, w.bob.ID, FlagAdmin, 0); err != nil {
 				t.Fatal(err)
 			}
 		}, false, false, false},
+		// the oldest Developer is Nexa's owner, who holds everything
+		{"becoming Nexa's owner", func(t *testing.T, w *permWorld) {
+			if _, err := w.s.ChangeUserFlags(ctx, w.bob.ID, FlagAdmin, 0); err != nil {
+				t.Fatal(err)
+			}
+		}, false, true, false},
 		{"handing the server over", func(t *testing.T, w *permWorld) {
 			if err := w.s.UpdateServer(ctx, w.srv.ID, ServerPatch{OwnerID: &w.alice.ID}); err != nil {
 				t.Fatal(err)
