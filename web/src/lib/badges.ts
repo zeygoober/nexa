@@ -12,7 +12,7 @@ import { rankName, rankOf, rankTip } from "@/lib/staffRank";
 /** The badges staff give by hand, beside the event badges they make. */
 export const CONTRIBUTOR = "contributor";
 /** The Exclusive badges staff give by hand (store.ExclusiveHandBadges), in their order. */
-export const EXCLUSIVE_HAND = ["legend", "mentor", "patron", "influencer", "artist"] as const;
+export const EXCLUSIVE_HAND = ["mentor", "patron", "influencer", "artist"] as const;
 /** Every built-in badge staff give by hand (store.HandBadges). */
 export const HAND_BADGES: readonly string[] = [CONTRIBUTOR, ...EXCLUSIVE_HAND];
 /** The Secret badges people find by themselves (store.SecretBadges); staff never give them. */
@@ -182,7 +182,6 @@ function builtInLook(b: Badge, user: Who): BadgeLook | null {
     }
     case CONTRIBUTOR:
       return { art: art("contributor"), label: t("badges.contributor"), tip: t("badges.contributorTip") };
-    case "legend":
     case "mentor":
     case "patron":
     case "influencer":

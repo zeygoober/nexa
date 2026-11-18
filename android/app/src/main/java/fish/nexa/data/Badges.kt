@@ -23,7 +23,7 @@ import kotlinx.serialization.json.put
 object Badges {
     const val CONTRIBUTOR = "contributor"
     /** The Exclusive badges staff give by hand (store.ExclusiveHandBadges), in their order. */
-    val EXCLUSIVE_HAND = listOf("legend", "mentor", "patron", "influencer", "artist")
+    val EXCLUSIVE_HAND = listOf("mentor", "patron", "influencer", "artist")
     /** Every built-in badge staff give by hand (store.HandBadges). */
     val HAND_BADGES = listOf(CONTRIBUTOR) + EXCLUSIVE_HAND
     /** The Secret badges people find by themselves (store.SecretBadges); staff never give them. */
@@ -173,7 +173,7 @@ object Badges {
         "regular" -> b.level.coerceIn(1, 4).let { n -> Look("regular-$n", t("badges.regular.l$n"), t("badges.regularTip", "count" to REGULAR_TIERS[n - 1])) }
         "open_mic" -> b.level.coerceIn(1, 3).let { n -> Look("open-mic-$n", t("badges.openMic.l$n"), t("badges.openMicTip", "count" to OPEN_MIC_TIERS[n - 1])) }
         CONTRIBUTOR -> Look("contributor", t("badges.contributor"), t("badges.contributorTip"))
-        "legend", "mentor", "patron", "influencer", "artist" -> Look(b.id, t("badges.hand.${b.id}"), t("badges.hand.${b.id}Tip"))
+        "mentor", "patron", "influencer", "artist" -> Look(b.id, t("badges.hand.${b.id}"), t("badges.hand.${b.id}Tip"))
         // the Secret badges: their tooltips say nothing of how they are found
         "hopeful", "curious", "nosy", "lucky" -> Look(b.id, t("badges.secret.${b.id}"), t("badges.secret.${b.id}Tip"))
         // a badge staff made says what they wrote for it

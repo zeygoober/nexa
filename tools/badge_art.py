@@ -450,8 +450,7 @@ def all_badges():
         yield f"years-{i}", ((lambda m=material, t=str(i): digits_badge(t, m)), None), False
     yield "contributor", icon("wrench", "steel"), True
     # the Exclusive badges staff give by hand
-    yield "legend", icon("laurel", "olive"), True
-    yield "mentor", icon("lantern", "plum"), True
+    yield "mentor", icon("laurel", "olive"), True
     yield "patron", icon("goblet", "ruby"), True
     yield "influencer", icon("megaphone", "rose"), True
     yield "artist", icon("palette", "canvas"), True

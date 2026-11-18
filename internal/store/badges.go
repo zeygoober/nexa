@@ -53,14 +53,13 @@ const (
 const (
 	BadgeInfluencer = "influencer" // brought people to Nexa
 	BadgeArtist     = "artist"     // made art for Nexa
-	BadgeLegend     = "legend"     // part of Nexa's story
 	BadgeMentor     = "mentor"     // moved over from Yapin, as thanks
 	BadgePatron     = "patron"     // backed Nexa generously
 )
 
 // ExclusiveHandBadges are the Exclusive badges staff give by hand, in the
 // order profiles and the Badge Index list them.
-var ExclusiveHandBadges = []string{BadgeLegend, BadgeMentor, BadgePatron, BadgeInfluencer, BadgeArtist}
+var ExclusiveHandBadges = []string{BadgeMentor, BadgePatron, BadgeInfluencer, BadgeArtist}
 
 // HandBadges are every built-in badge staff give by hand: Contributor, then
 // the Exclusive ones. Nobody can earn or claim them any other way.
@@ -119,7 +118,7 @@ var ReportTiers = [5]int{1, 3, 10, 25, 50}
 var GiftTiers = [3]int{1, 5, 20}
 
 // defaultBadgeOrder is where a badge goes when its holder has not placed it.
-var defaultBadgeOrder = []string{BadgeStaff, BadgePlan, BadgeOG, BadgeLegend, BadgeMentor, BadgePatron, BadgeInfluencer, BadgeArtist, BadgeYears, BadgeContributor, BadgeBugHunter, BadgeIdeas, BadgeAppDeveloper, BadgeGiftGiver, BadgeFriendly, BadgeHost, BadgeBooster, BadgeRegular, BadgeOpenMic, BadgeHopeful, BadgeCurious, BadgeNosy, BadgeLucky}
+var defaultBadgeOrder = []string{BadgeStaff, BadgePlan, BadgeOG, BadgeMentor, BadgePatron, BadgeInfluencer, BadgeArtist, BadgeYears, BadgeContributor, BadgeBugHunter, BadgeIdeas, BadgeAppDeveloper, BadgeGiftGiver, BadgeFriendly, BadgeHost, BadgeBooster, BadgeRegular, BadgeOpenMic, BadgeHopeful, BadgeCurious, BadgeNosy, BadgeLucky}
 
 // Badge is one badge on a profile. Staff and plan carry nothing more: the
 // clients draw them from the account itself.
@@ -1193,7 +1192,7 @@ var badgeIndexNames = map[string]string{
 	"regular-1": "Regular", "regular-2": "Familiar", "regular-3": "Fixture", "regular-4": "Furniture",
 	"open-mic-1": "Speaker", "open-mic-2": "Verbose", "open-mic-3": "Yapper",
 	"hopeful": "Hopeful", "curious": "Curious", "nosy": "Nosy", "lucky": "Lucky",
-	"influencer": "Influencer", "artist": "Artist", "legend": "Legend", "mentor": "Mentor", "patron": "Patron",
+	"influencer": "Influencer", "artist": "Artist", "mentor": "Mentor", "patron": "Patron",
 }
 
 func (e BadgeIndexEntry) indexName() string {

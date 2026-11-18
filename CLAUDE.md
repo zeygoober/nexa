@@ -1093,8 +1093,8 @@ and `ideas` (bug reports and suggestions staff resolved, five levels at `ReportT
 `friendly` (friends who are people, `FriendlyTiers`), `host` (people in the largest server the account owns, `HostTiers`), `booster`
 (boosting any server), `regular` (best run of consecutive UTC days, `RegularTiers`), `open_mic` (lifetime call hours with someone else
 present, `OpenMicTiers`), and those staff give by hand in
-`user_badges`: `contributor`, the Exclusive `legend`, `mentor` (thanks for moving over from Yapin), `patron`, `influencer` and `artist`
-(`store.ExclusiveHandBadges`, `HandBadges`, web `HAND_BADGES`, Android `Badges.HAND_BADGES`; added 2026-11-10), and `event:<badge_defs id>`. Earned badges are worked out when asked for, never
+`user_badges`: `contributor`, the Exclusive `mentor` (thanks for moving over from Yapin, drawn with a laurel), `patron`, `influencer` and `artist`
+(`store.ExclusiveHandBadges`, `HandBadges`, web `HAND_BADGES`, Android `Badges.HAND_BADGES`; added 2026-11-10; on 2026-11-18 the owner gave Legend's laurel to Mentor and removed `legend`, which nobody held), and `event:<badge_defs id>`. Earned badges are worked out when asked for, never
 stored; bots, Nexa's accounts and deleted accounts have none. Staff can override an earned badge (`og`, `years`,
 `bug_hunter`, `ideas`, `app_developer`, `gift_giver`, `friendly`, `host`, `booster`, `regular`, `open_mic`) for one account in `badge_overrides` (migration 0055): no row
 follows the account, level 0 takes it away, above 0 gives it at that tier, and it holds until cleared. Rank and plan

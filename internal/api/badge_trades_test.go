@@ -156,18 +156,18 @@ func TestBadgeTradeReadyIsForWhatWasSeen(t *testing.T) {
 	aliceTok, aliceID := register(t, ts, "alice")
 	bobTok, bobID := register(t, ts, "bob")
 	carolTok, carolID := register(t, ts, "carol")
-	if res, body := do(t, ts, "PUT", "/api/v1/moderation/users/"+aliceID+"/badges", ownTok, map[string]any{"badges": []string{"legend", "mentor"}}); res.StatusCode != 200 {
+	if res, body := do(t, ts, "PUT", "/api/v1/moderation/users/"+aliceID+"/badges", ownTok, map[string]any{"badges": []string{"patron", "mentor"}}); res.StatusCode != 200 {
 		t.Fatalf("give: %d %v", res.StatusCode, body)
 	}
 	x, _, _ := openTrade(t, ts, aliceTok, bobID)
-	if code, body := x.offer(bobTok, tradeLines("legend", 1)); code != 409 || errCode(body) != "trade_you_short" {
+	if code, body := x.offer(bobTok, tradeLines("patron", 1)); code != 409 || errCode(body) != "trade_you_short" {
 		t.Errorf("offered what bob lacks: %d %v", code, body)
 	}
 	_, empty := x.get(aliceTok)
 	if code, body := x.ready(aliceTok, empty["version"].(float64)); code != 400 || errCode(body) != "trade_empty" {
 		t.Errorf("ready on nothing: %d %v", code, body)
 	}
-	x.offer(aliceTok, tradeLines("legend", 1))
+	x.offer(aliceTok, tradeLines("patron", 1))
 	_, seen := x.get(bobTok)
 	v := seen["version"].(float64)
 	if code, _ := x.ready(bobTok, v); code != 200 {
@@ -185,8 +185,8 @@ func TestBadgeTradeReadyIsForWhatWasSeen(t *testing.T) {
 
 	// the same copy in two trades
 	y, _, _ := openTrade(t, ts, aliceTok, carolID)
-	x.offer(aliceTok, tradeLines("legend", 1))
-	y.offer(aliceTok, tradeLines("legend", 1))
+	x.offer(aliceTok, tradeLines("patron", 1))
+	y.offer(aliceTok, tradeLines("patron", 1))
 	_, xs := x.get(aliceTok)
 	_, ys := y.get(aliceTok)
 	x.ready(aliceTok, xs["version"].(float64))
@@ -197,7 +197,7 @@ func TestBadgeTradeReadyIsForWhatWasSeen(t *testing.T) {
 	if code, body := y.ready(carolTok, ys["version"].(float64)); code != 409 || errCode(body) != "trade_they_short" {
 		t.Errorf("the same copy went twice: %d %v", code, body)
 	}
-	if h := holds(t, ts, carolTok); h["legend"] != 0 {
+	if h := holds(t, ts, carolTok); h["patron"] != 0 {
 		t.Errorf("carol was given a copy that was gone: %v", h)
 	}
 }
@@ -217,7 +217,7 @@ func TestBadgeTradeIsPrivateAndFollowsMessageRules(t *testing.T) {
 	if code, _ := x.get(carolTok); code != 404 {
 		t.Errorf("a stranger read the trade: %d", code)
 	}
-	if code, _ := x.offer(carolTok, tradeLines("legend", 1)); code != 404 {
+	if code, _ := x.offer(carolTok, tradeLines("patron", 1)); code != 404 {
 		t.Errorf("a stranger offered: %d", code)
 	}
 	if res, _ := do(t, ts, "POST", "/api/v1/trades/"+x.id+"/end", carolTok, nil); res.StatusCode != 404 {
