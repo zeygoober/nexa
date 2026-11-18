@@ -103,3 +103,6 @@ export function centsOf(text: string): number | null {
 export function planName(plan: Plan): string {
   return plan === "pro" ? t("support.plan.pro") : plan === "supporter" ? t("support.plan.supporter") : t("support.plan.free");
 }
+
+/** What each plan multiplies the Gems a message earns by, on top of the badge team (store.GemPlanBoost; Android Plans.GEM_BOOST). */
+export const GEM_BOOST: Record<Plan, number> = { "": 1, supporter: 1.5, pro: 2 };

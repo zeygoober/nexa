@@ -511,7 +511,12 @@ serves until SIGINT or SIGTERM.
   `Api.captchaSolver` solve it and resend, so a guarded call needs nothing of its own. One captcha shows at a
   time (a token is good for one request); a control whose request may meet one is disabled until it ends. A
   Turnstile token counts only for the action it was rendered with and on one of Nexa's own hostnames (keep the
-  widget's hostnames the same; Cloudflare's test secrets skip both checks).
+  widget's hostnames the same; Cloudflare's test secrets skip both checks). Turnstile's script replaces itself
+  with a newer copy and a new `window.turnstile`, so the web always renders through the live object (`live` in
+  `lib/captcha.ts`), never one kept from the first load. A widget that says nothing for 45 s while no challenge
+  is showing gives up (web `SILENT_MS`, Android's page script), so one dead captcha never holds the queue. The
+  server's siteverify call carries an idempotency key and is tried once more after a dropped connection or a 5xx
+  (`verifyCaptcha`), and a failed check is logged with its action.
 - hCaptcha stays as a fallback for apps that predate the move back to Turnstile (2026-11-01): with
   `HCAPTCHA_*` set, `/instance`'s `captcha` keeps naming `hcaptcha` (old apps read only that) and `turnstile`
   carries Turnstile's key, which current apps read first. Current apps mark every token with
@@ -531,7 +536,8 @@ serves until SIGINT or SIGTERM.
   build, with `/slack` and `/github` variants. Links in webhook and app messages get server-side previews
   (`unfurlWebhookMessage`).
 - `static.go` serves `web/dist` (hashed assets immutable, `index.html` for any other path), its own page heads
-  for link previews, and the CSP (plugins load from `blob:`, Turnstile from `challenges.cloudflare.com`).
+  for link previews, and the CSP (plugins load from `blob:`, Turnstile from `challenges.cloudflare.com`, and
+  frames may come from `www.youtube-nocookie.com`, YouTube's player).
 - Bots on Discovery (`GET /api/v1/discovery/bots`, signed in, `Store.DiscoverApps`; web `discovery/BotDiscovery.tsx`, Android
   `ui/discovery/BotDiscovery.kt`): an app is listed from the moment its developer turns on `applications.discoverable` (migration
   0057; Show on Discover on the Bot tab, captcha `discovery_list`), only while it is public (`app_not_public` otherwise). Admins take
@@ -740,7 +746,7 @@ it:
 - Everything a person can make the server fetch goes through `internal/egress` (WARP's SOCKS5 proxy,
   `EGRESS_PROXY=warp|off|socks5://...`): link previews (`unfurl`, asked for by the sender's app, which seals
   the preview in the message), the media proxy (only addresses the server signed; `POST /proxy/refresh`
-  re-signs old ones), the players, music cards' details, IGDB, Discord's Rich Presence apps and Discord
+  re-signs old ones), the music players, music cards' details, IGDB, Discord's Rich Presence apps and Discord
   templates. Discord's gateway, Cloudflare Realtime, the tunnel and the music widgets' Deezer searches
   (`internal/music`: a fixed host that answers 403 to every WARP address) go out directly.
 - Music links (`unfurl/music.go`) carry a `music` card, held by `sanitizeMusic` in web `crypto/message.ts` and
@@ -757,9 +763,19 @@ it:
   `lastfmEvery` for those connected, and what is playing becomes an activity with `source: "lastfm"` through `Hub.SetListening`, unless something that knows more already says what they hear. Only the
   username is stored; it is in the data export and the legal report. Last.fm's terms forbid using its artwork and want a credit and link back (Powered by AudioScrobbler in Settings), and free API use is
   for non-commercial purposes.
-- Other sites' players are served through this server by `api/frame_proxy.go`: YouTube at `/yt/`, Spotify at
-  `/sp/`, SoundCloud at `/sc/`. Tokens are signed per site, so one site's token opens no other. The apps frame
-  them sandboxed without `allow-same-origin` (Android in a WebView whose page holds the same sandboxed frame).
+- Music players are served through this server by `api/frame_proxy.go`: Spotify at `/sp/`, SoundCloud at `/sc/`,
+  paced per address by `limPlayers`. Tokens are signed per site, so one site's token opens no other. The apps
+  frame them sandboxed without `allow-same-origin` (Android in a WebView whose page holds the same sandboxed
+  frame).
+- YouTube plays straight from YouTube (the owner's decision, 2026-11-18, "Always play directly"): YouTube asked
+  WARP's address to sign in, which stopped every video played through `/yt/`, so that proxy is gone. Web
+  `chat/YouTubePlayer.tsx` frames `www.youtube-nocookie.com/embed/<id>` only once play is pressed (the page's
+  `frame-src` allows that host; the frame keeps `allow-same-origin`, which the player needs, and sends Nexa's
+  origin as its referrer), and the homepage demo asks for an account instead. YouTube therefore sees a viewer's
+  address while they watch. The video's picture and details still come through the server. Android opens
+  YouTube videos and trailers in YouTube's app or the browser. The Privacy Policy still says YouTube plays
+  through the server; the proposed wording is in `docs/proposals/youtube-direct-disclosure.md` until the owner
+  asks for the legal text to change.
 - A Tenor page previews as type `gif` of the GIF its `og:image` names (`unfurl/tenor.go`).
 - Guarded fetches allow only ports 80 (HTTP) and 443 (HTTPS), checked again when dialing. The public-address
   guard also checks IPv4 embedded in NAT64 and 6to4 addresses and refuses local-use translation, Teredo and
@@ -960,7 +976,7 @@ it:
   topics or keys, so it never shows more than a join would; Gift Links (`/moderation/gift-links`, the panel's `gifts` place, web
   `GiftLinksTab.tsx`, Android `ui/moderation/GiftLinks.kt`): free links in `gift_links` claimed at the usual `/gift/<code>`, whose
   `session_id` starts `owner:` (`ownerGiftPrefix`) and whose `plan_gifts` row starts `owner-link:` (`ownerGiftClaim`), which keeps
-  them out of the Your Links list and out of the Gift Giver badge; Give or Take Gems and Give or Take Collectables on a person's page (see Gems). Nexa collects no email address, so there is none to show.
+  them out of the Your Links list and out of the Gift Giver badge; Give or Take Gems and Give or Take Collectables on a person's page (see Gems); Owners beside a badge's holders in the panel's Badges (`GET /moderation/badges/{badge}/owners`, `Store.BadgeOwners`, logged as `badge_owners_view` with a staff-made badge's name, since its key is only a number; web `BadgeOwnersModal.tsx`, Android `openOwnersSheet` in `BadgeTab.kt`): who holds copies now, most first, each level or material with how many, trades counted; and the Trade Log (`GET /moderation/trades`, `Store.TradeLog`, the panel's `trades` place, logged once per first page, so each filter or search is a line; web `TradesTab.tsx`, Android `ui/moderation/TradeLog.kt`): every trade newest first, by status or a username prefix, read straight from `badge_trades`, so trades from before it existed show too, until one of the two accounts is deleted (`TestBadgeOwnersAndTradeLogAreTheOwnersAlone`). Nexa collects no email address, so there is none to show.
 - Manage Server (the owner's decision, 2026-11-09; `api/moderation_manage.go`, `moderation_manage_guard.go`,
   `store/moderation_manage.go`; web `moderation/manage/`, Android `ui/moderation/Manage.kt`), `rankOwner` only, on a server's page,
   member or not: `GET /moderation/servers/{id}/manage` (logged as `owner_server_view`), `.../manage/members` and `POST .../manage`
@@ -1136,10 +1152,10 @@ People trade badges in a window both share, in the style of Pet Simulator 99's: 
 
 - Earned badges are worked out and stored nowhere, so trading keeps what it changes beside them, per Badge Index key (`bug-3`, `og`, `years-2`, `event:12`; `TradeKey`, `ParseTradeKey`; each level of a tiered badge is its own badge, so an earned level 3 holds levels 1 to 3): `badge_holdings.copies` is what trades gave, `spent` says the one earned copy was traded away. Someone holds `copies` plus one if they earned it and have not spent it. An earned copy exists once and is never earned again (staff saying it again changes nothing), so only trades make more; nothing is written until a trade happens. `earnedBadges` applies it (`heldBadges`, `applyHoldings`): the profile shows the highest level held, and a badge trades touched carries no `count`.
 - Not tradable: staff ranks and plans (`ParseTradeKey` says no). Everything else is, Secret badges included (the owner's choice, 2026-11-13), so a trade shows a Secret badge's name to the person it is offered to; the Badge Index still shows a locked Secret as a padlock. Staff's holders lists and an override only touch the earned copy, while `Exist` counts copies as they are held now, so three copies in two people's hands read "3 exist" (`countTrades`).
-- The Badge Index entry carries `qty` for its own owner only, and the apps show "×N" from two copies up. Profiles and everyone else never get a quantity. What a person can offer is `GET /trades/holdings`, theirs alone.
-- A trade is one row (`badge_trades`) both edit: `from_offer` and `to_offer` (each side only offers its own badges), `from_ready`, `to_ready` and `version`. Any change to an offer clears both Ready marks and counts the version up, and `PUT /trades/{id}/ready` names the version it was given for (`trade_changed` otherwise), so nothing can be swapped in under someone's click. When the second Ready lands the trade happens in the same transaction: every removal is a conditional write (`take`), earned copy last, so a copy offered in two trades goes to the first and the other fails with `trade_they_short`; failing rolls the Ready back too. Routes: `POST /trades` opens one or returns the one already open between the two, `GET /trades/{id}`, `PUT /trades/{id}/offer`, `PUT /trades/{id}/ready`, `POST /trades/{id}/end` (declined by the one it was opened with, cancelled by the one who opened it). Only the two people can read or change it.
+- The Badge Index entry carries `qty` for its own owner only, and the apps show "×N" from two copies up. Profiles and everyone else never get a quantity, except the owner's Owners list (see Nexa, moderation and safety, the owner's tools). What a person can offer is `GET /trades/holdings`, theirs alone.
+- A trade is one row (`badge_trades`) both edit: `from_offer` and `to_offer` (each side only offers its own badges), `from_ready`, `to_ready` and `version`. Any change to an offer clears both Ready marks and counts the version up, and `PUT /trades/{id}/ready` names the version it was given for (`trade_changed` otherwise), so nothing can be swapped in under someone's click. When the second Ready lands the trade happens in the same transaction: every removal is a conditional write (`take`), earned copy last, so a copy offered in two trades goes to the first and the other fails with `trade_they_short`; failing rolls the Ready back too. Routes: `POST /trades` opens one or returns the one already open between the two, `GET /trades/{id}`, `PUT /trades/{id}/offer`, `PUT /trades/{id}/ready`, `POST /trades/{id}/end` (declined by the one it was opened with, cancelled by the one who opened it). Only the two people can change it; besides them only the owner's Trade Log reads it.
 - Opening follows the rules of a DM (`dmGate`, shared with `handleDMCreate`: blocks, DM privacy, a captcha for a first message to a stranger, never Nexa, bots or yourself), under `limTrade`, with at most `MaxPendingPerRecip` open per person and `MaxPendingTrades` in all; a block ends offers and Ready across it. It posts a `system_trade` message mentioning the other person (older apps draw it as a plain system line), whose current trade is attached when messages load (`hydrateTrades`) and updated by the `trade_update` event to both people. A trade left open stays until someone ends it, and can be joined later when the other person was not there. The account purge deletes holdings and trades.
-- Trades are new data Nexa keeps, so the Privacy Policy needs a line about them; the owner's rule is that legal text is not edited without being asked, so the proposed wording sits in a separate file until then.
+- Trades are new data Nexa keeps, so the Privacy Policy needs a line about them; the owner's rule is that legal text is not edited without being asked, so the proposed wording sits in `docs/proposals/trade-log-disclosure.md` until then.
 
 ### Gems (`store/gems.go`, `api/gems.go`, migration 0064; the owner's request, 2026-11-16)
 
@@ -1149,10 +1165,14 @@ A currency earned by chatting, spent on capsules of collectibles, fused and trad
 `ui/moderation/ReportDecision.kt`. Settings, Gems on both. Gems are not end-to-end encrypted: the server keeps and moves them.
 
 - Earning: a stored message earns its sender one Gem at most once a minute (`limGem`, `earnGem` after the insert; people only), times the
-  team. A failure costs the Gem, never the message. Nothing about the message is kept beyond `gem_watch`'s per-day counts below.
+  team, times the plan (`store.GemPlanBoost`: Supporter 150%, Pro 200%; the owner's choice, 2026-11-18). A failure costs the Gem, never the
+  message. `gemMultiplier` keeps the product five minutes in `gemTeams`, so a plan bought or ended shows within five minutes. `/gems` sends
+  `multiplier` (both together) and `plan_boost`; Your Team shows the plan badge as ×1.5 or ×2 instead of its 0% (web `GemsPage.tsx`, Android
+  `GemsPage.kt`), and the Support page shows the same numbers (`GEM_BOOST`, web `lib/plans.ts`, Android `Plans.GEM_BOOST`). Nothing about the message is kept beyond `gem_watch`'s per-day counts below.
 - The team is the first `GemTeamSize` (five) badges the profile shows (`GemTeam`, cached five minutes in `gemTeams`). Each adds percent
   (`gemPower`): 2, or 2 per level up to 10 for a tiered badge; a collectible its rarity's power (`gemRarityPower`: 4, 8, 16, 40) times its
-  material; a staff rank, plan, Booster or Gift Giver 0, since those come of paying and Gems are never bought.
+  material; a staff rank, plan, Booster or Gift Giver 0, since those come of paying and Gems are never bought (a plan counts once, as the
+  boost above).
 - Collectibles are staff-made badges with `badge_defs.rarity` (common, rare, epic, huge) and `art`, a drawing from `CollectibleArt`
   picked in the panel's Badges tab (web `COLLECTIBLE_ART` from the files, Android `Ota.list("badges")`). Picking a drawing fills the description with its line, `gems.artDesc.<art>` in the viewer's language, only over an empty description or the line the last drawing brought, never the name (web `pickArt` in `BadgesTab.tsx`, Android `artLine` in `BadgeTab.kt`). A collectible stays one and a hand-given badge never becomes one. They are held only as `badge_holdings` copies under `event:<id>-<material>`, material 1 (bronze) to 5 (prism),
   and come only from capsules, fusing and trades. Art: `badges/col-<art>-<material>.svg`, `col-<art>-locked.svg`, `gem.svg` (the currency)
@@ -1230,7 +1250,7 @@ several games with exactly one name, the most rated wins (`mostRated`): IGDB lis
   largest file (`MAX_UPLOAD_BYTES` sizes only files no plan covers, from webhooks, apps and notes), uploads
   per rolling 30 days, the Quality screen share and top share bitrate, the paid name effects (Holo, Neon,
   Flame: refused without a plan, `plan_required`, and sent as the first colour solid, `store.styleForPlan`)
-  and Pro's two server boosts (`fileMaxFor`). Chatting, calls and everything else stay free. `users.plan` is
+  and Pro's two server boosts (`fileMaxFor`), plus more Gems per message (see Gems). Chatting, calls and everything else stay free. `users.plan` is
   public, as a badge.
 - Whop took over from Stripe (the owner's decision, 2026-11-11, "Replace Stripe"; `internal/stripe` is gone). The
   four renewing plans are Whop plans named in `WHOP_PLAN_*`, priced from their variants and cached; a gift of a
@@ -1243,6 +1263,10 @@ several games with exactly one name, the most rated wins (`mostRated`): IGDB lis
   repeated or out-of-order events end the same way; an older membership ending never overrides a newer one.
   Gifts and paid time are applied once per payment id. Manage Subscription opens the membership's `manage_url`.
   Whether Whop is the merchant of record depends on the tax setting chosen in Whop's dashboard.
+- The Support page (web `support/SupportPage.tsx`, Android `ui/support/Support.kt`, redesigned 2026-11-18) opens with the plan badges'
+  art, then a card for each paid plan in its own colour with its badge art over the corner, its Gems line first and the buy button at the
+  foot, then What You Get (the Gems ladder, the viewer's own name in the three paid effects, their name with each plan badge), then
+  Compare Plans, the table without buttons. Settings, Subscription shows the same panel.
 - An account wears the better of its subscription and a running gift (`plan_gifts`, never between people
   either of whom blocked the other). Gift links are claimed by whoever opens `/gift/<code>` first.
   `recomputePlanTx` writes `users.plan` and drops the boosts of an account no longer Pro. Deleting an account
@@ -1594,8 +1618,8 @@ bundled assets without credentials; sockets, XHR, workers, media devices and nat
 real token is read or issued. `demo/runtime.ts` replaces the API with memory-only operations; unknown routes
 fail closed with Create an Account to Continue, as do people, invites, calls, uploads, payments and security
 actions. New app endpoints must never reach a real transport in the demo. `lib/demoMode.ts` is true only
-there: RequireAuth skips the gateway, AppShell skips live effects and update prompts, voice and plugins ask
-for an account first, `desktopBridge()` refuses, LookEffect allows local CSS. Only `/demo.html` allows
+there: RequireAuth skips the gateway, AppShell skips live effects and update prompts, voice, plugins and
+YouTube's play button ask for an account first, `desktopBridge()` refuses, LookEffect allows local CSS. Only `/demo.html` allows
 same-origin framing (every other page forbids it), with a stricter CSP. Dialogs focus with `preventScroll` so
 the gate cannot scroll the homepage.
 
@@ -1795,6 +1819,8 @@ and must stay in step and compatible with installed apps (anything new is option
   Games page (web `moderation/GamesTab.tsx`, Android `ui/moderation/Games.kt`, rank Admin, `mod_games` carries the
   count) shows the program, the game, and how many shared it, never who. Staff set the name and IGDB game before adding;
   a turned-down program is not asked about again until Allow Again. Web `games/GameChooser.tsx` is the box art shelf.
+- Framed players (from 1.2.13; `FRAMED` in `permissions.ts`): YouTube's player may ask for fullscreen inside
+  Nexa's page, and nothing else from another origin is granted.
 - Open Original (from 1.2.10; `originals.ts`) hands decrypted images and videos to the default browser through
   a temporary listener on 127.0.0.1 that accepts only exact random-token paths and Host headers, serves inert
   types with no-store and a sandbox CSP, and expires each original after ten minutes. Files stay in memory,

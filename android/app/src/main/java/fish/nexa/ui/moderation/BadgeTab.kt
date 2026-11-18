@@ -35,6 +35,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateListOf
@@ -282,6 +283,8 @@ fun BadgesTab() {
     }
 
     fun holdersButtonOpen(badge: Badges.Badge, label: String, top: Int) = openHoldersSheet(badge, label, top) { load() }
+    // the owner's: who holds copies now, what trades moved included (staff ranks and plans are never traded)
+    val mayOwners = fish.nexa.data.StaffRanks.can(fish.nexa.data.StaffCan.OWNER_TOOLS)
 
     LazyColumn(Modifier.fillMaxSize().imePadding(), state = listState, contentPadding = PanelPad, verticalArrangement = Arrangement.spacedBy(22.dp)) {
         item("form") {
@@ -392,6 +395,7 @@ fun BadgesTab() {
                                 editing = editing?.id == d.id,
                             ) {
                                 HoldersButton(d.holders) { holdersButtonOpen(badge, d.name, 1) }
+                                if (mayOwners) OwnersButton { openOwnersSheet(badge, d.name) }
                                 ModIconButton("PenLine", t("badges.staff.editNamed", "name" to d.name), {
                                     startEdit(d)
                                     // the card it opens in is at the top of the page
@@ -410,6 +414,7 @@ fun BadgesTab() {
                             val badge = Badges.Badge(id)
                             BadgeRow(pill = { BadgePill(badge, "0", 0L, "", still = true, named = true) }, note = t("badges.staff.${id}Note")) {
                                 HoldersButton(hand[id] ?: 0) { holdersButtonOpen(badge, handName(id), 1) }
+                                if (mayOwners) OwnersButton { openOwnersSheet(badge, handName(id)) }
                             }
                         }
                     }
@@ -424,6 +429,7 @@ fun BadgesTab() {
                             val badge = Badges.Badge(id, level = 1)
                             BadgeRow(pill = { BadgePill(badge, "0", 0L, "", still = true, named = true) }) {
                                 HoldersButton(null) { holdersButtonOpen(badge, earnedLabel(id), top) }
+                                if (mayOwners) OwnersButton { openOwnersSheet(badge, earnedLabel(id)) }
                             }
                         }
                         for (id in listOf("staff", "plan")) {
@@ -629,6 +635,107 @@ private fun HoldersButton(count: Int?, onClick: () -> Unit) = NxButton(
     if (count == null) t("badges.staff.holdersButton") else t("badges.staff.holders", "count" to count),
     onClick, kind = ButtonKind.SECONDARY, size = ButtonSize.SM, icon = "Users",
 )
+
+/** The owner's: who holds copies of a badge now (web `badge-owners-*`). */
+@Composable
+private fun OwnersButton(onClick: () -> Unit) = NxButton(t("badges.owners.button"), onClick, kind = ButtonKind.GHOST, size = ButtonSize.SM, icon = "Layers")
+
+/**
+ * The web's BadgeOwnersModal, the owner's view of a badge: who holds copies of it now, most first. Unlike
+ * the holders list it counts what trades moved, and each level or material someone holds is drawn with how
+ * many. A row opens that person in the panel.
+ */
+@OptIn(ExperimentalLayoutApi::class)
+private fun openOwnersSheet(badge: Badges.Badge, label: String) {
+    var owners by mutableStateOf<List<Moderation.BadgeOwner>?>(null)
+    var total by mutableIntStateOf(0)
+    var copies by mutableIntStateOf(0)
+    var failed by mutableStateOf(false)
+    var more by mutableStateOf(false)
+    suspend fun load() {
+        failed = false
+        try {
+            val r = Moderation.badgeOwners(badge.id, 0, HOLDERS_PAGE)
+            owners = r.owners
+            total = r.total
+            copies = r.copies
+        } catch (e: Exception) {
+            if (e is kotlinx.coroutines.CancellationException) throw e
+            failed = true
+        }
+    }
+    suspend fun loadMore() {
+        val have = owners ?: return
+        more = true
+        try {
+            val r = Moderation.badgeOwners(badge.id, have.size, HOLDERS_PAGE)
+            owners = have + r.owners
+            total = r.total
+        } catch (e: Exception) {
+            if (e is kotlinx.coroutines.CancellationException) throw e
+            Nexa.ui.toast(describeError(e, t("moderation.loadFailed")), "error")
+        } finally {
+            more = false
+        }
+    }
+    openSheet("badge-owners", title = t("badges.owners.title", "name" to label)) { close ->
+        val c = Nx.colors
+        val scope = rememberCoroutineScope()
+        val people by fish.nexa.data.NexaInbox.people.collectAsState()
+        LaunchedEffect(Unit) { load() }
+        Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(14.dp)) {
+            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                Box(Modifier.weight(1f)) { BadgePill(badge, "0", 1L, "pro", still = true, named = true) }
+                if (owners != null) Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    val small = Nx.type.bodySmall.copy(fontSize = Nx.type.sp(13f))
+                    Txt(t("badges.owners.people", "count" to total), style = small, color = c.textSubtle, maxLines = 1)
+                    Txt(t("badges.index.copies", "count" to copies), style = small, color = c.textMuted, maxLines = 1)
+                }
+            }
+            Txt(t("badges.owners.hint"), style = Nx.type.bodySmall.copy(fontSize = Nx.type.sp(13f)), color = c.textMuted)
+            val list = owners
+            when {
+                failed -> LoadFailed({ scope.launch { load() } })
+                list == null -> LoadingRow()
+                list.isEmpty() -> Txt(t("badges.owners.nobody"), style = Nx.type.bodySmall.copy(fontSize = Nx.type.sp(13f)), color = c.textMuted, modifier = Modifier.padding(8.dp))
+                else -> Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                    for (o in list) {
+                        val p = people[o.userId]
+                        val name = p?.displayName?.ifEmpty { null } ?: p?.username?.ifEmpty { null } ?: o.userId
+                        Row(
+                            Modifier.fillMaxWidth().clip(Radii.Sm).pressable(remember { MutableInteractionSource() }) { close(); goPanel("users/${o.userId}") }.padding(8.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(12.dp),
+                        ) {
+                            Avatar(o.userId, name, p?.avatarId, 32.dp)
+                            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                                fish.nexa.ui.chat.PersonName(o.userId, name, style = Nx.type.body.copy(fontSize = Nx.type.sp(14f), fontWeight = FontWeight(600)), color = c.textStrong, maxLines = 1)
+                                FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(4.dp), itemVerticalAlignment = Alignment.CenterVertically) {
+                                    p?.username?.takeIf { it.isNotEmpty() }?.let { Txt("@$it", style = Nx.type.hint.copy(fontSize = Nx.type.sp(12f)), color = c.textMuted, maxLines = 1) }
+                                    if (o.traded) SourceChip(t("badges.owners.traded"), "given")
+                                }
+                            }
+                            // each level or material held, drawn, with how many
+                            FlowRow(
+                                Modifier.fillMaxWidth(0.5f).semantics { contentDescription = t("badges.owners.copiesOf", "count" to o.total) },
+                                horizontalArrangement = Arrangement.spacedBy(10.dp, Alignment.End),
+                                verticalArrangement = Arrangement.spacedBy(4.dp),
+                                itemVerticalAlignment = Alignment.CenterVertically,
+                            ) {
+                                for (l in o.lines) Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(3.dp)) {
+                                    if (l.badge != null) BadgePill(l.badge, "0", 0L, "", still = true, size = 22.dp)
+                                    else Box(Modifier.size(22.dp).background(c.bgSurface, CircleShape))
+                                    Txt("×${l.qty}", style = Nx.type.bodySmall.copy(fontSize = Nx.type.sp(13f), fontWeight = FontWeight(700), fontFeatureSettings = "tnum"), color = c.textBrand, maxLines = 1)
+                                }
+                            }
+                        }
+                    }
+                    if (list.size < total) NxButton(t("badges.holders.more"), { scope.launch { loadMore() } }, kind = ButtonKind.SECONDARY, size = ButtonSize.SM, loading = more, modifier = Modifier.padding(top = 8.dp))
+                }
+            }
+        }
+    }
+}
 
 /** `.row`: a badge, what it is, and what can be done with it, the tools going under the badge when they do not fit beside it. */
 @OptIn(ExperimentalLayoutApi::class)

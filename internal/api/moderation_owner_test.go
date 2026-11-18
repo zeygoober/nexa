@@ -224,3 +224,23 @@ func TestOwnerGiftLinks(t *testing.T) {
 		t.Fatalf("a free link earned Gift Giver: %v", body)
 	}
 }
+
+// Who holds what and every trade between two people are the owner's alone:
+// an Admin, who has the holders list, is refused both.
+func TestBadgeOwnersAndTradeLogAreTheOwnersAlone(t *testing.T) {
+	_, ts := newTestServer(t)
+	ownTok, _ := register(t, ts, "theowner")
+	admTok, admID := register(t, ts, "anadmin")
+	setRank(t, ts, ownTok, admID, "admin")
+	for _, path := range []string{"/api/v1/moderation/badges/og/owners", "/api/v1/moderation/trades"} {
+		if res, _ := do(t, ts, "GET", path, admTok, nil); res.StatusCode != 403 {
+			t.Fatalf("an admin read %s: %d", path, res.StatusCode)
+		}
+		if res, body := do(t, ts, "GET", path, ownTok, nil); res.StatusCode != 200 {
+			t.Fatalf("the owner could not read %s: %d %v", path, res.StatusCode, body)
+		}
+	}
+	if res, _ := do(t, ts, "GET", "/api/v1/moderation/badges/staff/owners", ownTok, nil); res.StatusCode != 404 {
+		t.Fatalf("staff ranks have owners: %d", res.StatusCode)
+	}
+}

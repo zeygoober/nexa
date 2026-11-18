@@ -26,6 +26,8 @@ func (s *Server) modOwnerRoutes(mux *http.ServeMux) {
 	mux.Handle("DELETE /api/v1/moderation/gift-links/{code}", s.staff(rankOwner, s.handleModGiftLinkRevoke))
 	mux.Handle("GET /api/v1/moderation/users/{id}/gems", s.staff(rankOwner, s.handleModGems))
 	mux.Handle("POST /api/v1/moderation/users/{id}/gems", s.userLimited(s.limManage, s.holdsRank(rankOwner, s.handleModGemsChange)))
+	mux.Handle("GET /api/v1/moderation/badges/{badge}/owners", s.staff(rankOwner, s.handleModBadgeOwners))
+	mux.Handle("GET /api/v1/moderation/trades", s.staff(rankOwner, s.handleModTradeLog))
 	mux.Handle("GET /api/v1/moderation/users/{id}/collectables", s.staff(rankOwner, s.handleModCollectables))
 	mux.Handle("POST /api/v1/moderation/users/{id}/collectables", s.userLimited(s.limManage, s.holdsRank(rankOwner, s.handleModCollectableChange)))
 }

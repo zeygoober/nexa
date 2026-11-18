@@ -168,6 +168,42 @@ func TestCaptchaUnreachableIsNotAPass(t *testing.T) {
 	}
 }
 
+// A check whose connection died, or that Cloudflare answered with a server
+// error, is sent once more with the same idempotency key, so the token is not
+// spent by the first try. Before that, about one captcha in several was
+// answered "could not be checked just now" (2026-11-18).
+func TestCaptchaCheckIsRetriedOnce(t *testing.T) {
+	serial(t)
+	srv, ts := newTestServer(t)
+	srv.Cfg.TurnstileSiteKey = "site-key"
+	srv.Cfg.TurnstileSecretKey = "secret-key"
+	srv.Cfg.PublicURL = "https://chat.example"
+	var keys []string
+	first := true
+	stand := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		_ = r.ParseForm()
+		keys = append(keys, r.PostForm.Get("idempotency_key"))
+		if first {
+			first = false
+			// the connection drops before an answer, as a pooled one Cloudflare closed does
+			conn, _, _ := w.(http.Hijacker).Hijack()
+			conn.Close()
+			return
+		}
+		_ = json.NewEncoder(w).Encode(map[string]any{"success": true, "action": "register", "hostname": "chat.example"})
+	}))
+	defer stand.Close()
+	prev := captchaVerifyURL
+	captchaVerifyURL = stand.URL
+	defer func() { captchaVerifyURL = prev }()
+	if res, body := withCaptcha(t, ts, "POST", "/api/v1/auth/register", "", "good-register", registerBody("bob")); res.StatusCode != 201 {
+		t.Fatalf("register after one dropped check: %d %v", res.StatusCode, body)
+	}
+	if len(keys) < 2 || keys[0] == "" || keys[len(keys)-1] != keys[0] {
+		t.Errorf("checks should share one idempotency key: %q", keys)
+	}
+}
+
 // What a stolen session would be used for, and the abusable writes of a
 // signed-in account, each want a captcha made for them.
 func TestCaptchaGuardsAccountChanges(t *testing.T) {

@@ -1,6 +1,8 @@
-/* The Support page (SupportPage.tsx): a lit statement, then one table of what
-   each plan changes, each plan in its own light (--tier-* in tokens.css), and
-   the limits drawn as gauges on one scale so the difference reads at a glance. */
+/* The Support page (SupportPage.tsx): an open statement with the plans' own badge
+   art, then the two plans as cards in their own light (--tier-* in tokens.css),
+   the bold part of the page; then what they give shown on the viewer's own name,
+   and one quiet table of what each plan changes, with the limits drawn as gauges
+   on one scale so the difference reads at a glance. */
 
 .page { display: flex; flex-direction: column; height: 100%; min-height: 0; }
 .header { flex: none; height: var(--header-h); display: flex; align-items: center; gap: 10px; padding-inline: 16px 12px; border-bottom: 1px solid var(--border-subtle); }
@@ -12,20 +14,75 @@
 .panel[data-in-settings] { padding: 0; max-width: none; }
 @media (max-width: 767px) { .panel { padding: 22px 16px 32px; --gap: 18px; } }
 
-/* --- the statement ------------------------------------------------------- */
-.hero { position: relative; display: grid; grid-template-columns: auto 1fr; column-gap: 16px; row-gap: 6px; align-items: center; padding: 26px 28px; border-radius: var(--radius-lg); background: radial-gradient(120% 140% at 0% 0%, color-mix(in srgb, var(--tier-supporter) 16%, transparent), transparent 60%), radial-gradient(90% 120% at 100% 100%, color-mix(in srgb, var(--tier-pro) 18%, transparent), transparent 62%), var(--sheen), var(--bg-raised); box-shadow: inset 0 1px 0 var(--edge-light), 0 0 0 1px var(--panel-edge), var(--shadow-medium); }
-.heart { grid-row: span 2; width: 52px; height: 52px; border-radius: 18px; display: grid; place-items: center; color: #fff; background: linear-gradient(160deg, color-mix(in oklab, var(--tier-supporter), #fff 14%), var(--tier-supporter) 55%, color-mix(in oklab, var(--tier-supporter), var(--tier-pro) 45%)); box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.28), 0 14px 30px -12px var(--tier-supporter); }
-.title { margin: 0; font-family: var(--font-display); font-size: 28px; line-height: 1.15; font-weight: 700; letter-spacing: -0.014em; color: var(--text-strong); text-wrap: balance; }
-.lede { margin: 0; max-width: 60ch; font-size: 16px; line-height: 1.5; color: var(--text-subtle); }
-.standing { grid-column: 1 / -1; margin-top: 12px; display: flex; flex-wrap: wrap; align-items: center; gap: 10px; font-size: 14px; color: var(--text-muted); }
+/* --- the statement: words on the left, the plans' badges and the Gem on the right --- */
+.hero { position: relative; isolation: isolate; display: grid; grid-template-columns: minmax(0, 1fr) 230px; grid-template-areas: "title art" "lede art" "standing art" "notice art"; grid-template-rows: 1fr auto auto 1fr; column-gap: 28px; row-gap: 10px; align-items: center; padding: 6px 0 2px; }
+.hero::before { content: ""; position: absolute; z-index: -1; inset: -48px -32px -24px 30%; pointer-events: none; background: radial-gradient(38% 52% at 78% 42%, color-mix(in srgb, var(--tier-pro) 30%, transparent), transparent 72%), radial-gradient(32% 48% at 58% 30%, color-mix(in srgb, var(--tier-supporter) 22%, transparent), transparent 72%); }
+.title { grid-area: title; align-self: end; margin: 0; font-family: var(--font-display); font-size: 40px; line-height: 1.05; font-weight: 800; letter-spacing: -0.022em; color: var(--text-strong); text-wrap: balance; }
+.lede { grid-area: lede; align-self: start; margin: 0; max-width: 54ch; font-size: 16px; line-height: 1.5; color: var(--text-subtle); }
+.heroArt { grid-area: art; position: relative; block-size: 176px; }
+.heroArt img { position: absolute; display: block; user-select: none; }
+.artSupporter { inline-size: 112px; inset-block-start: 26px; inset-inline-start: 0; transform: rotate(-14deg); filter: drop-shadow(0 14px 22px color-mix(in srgb, var(--tier-supporter) 45%, transparent)); }
+.artPro { inline-size: 124px; inset-block-start: 14px; inset-inline-end: 0; transform: rotate(11deg); filter: drop-shadow(0 14px 24px color-mix(in srgb, var(--tier-pro) 50%, transparent)); }
+.artGem { inline-size: 70px; inset-block-start: 96px; inset-inline-start: 78px; transform: rotate(-6deg); filter: drop-shadow(0 10px 16px rgba(0, 0, 0, 0.35)); }
+.standing { grid-area: standing; align-self: start; margin-top: 4px; display: flex; flex-wrap: wrap; align-items: center; gap: 10px; font-size: 14px; color: var(--text-muted); }
 .standing > button { margin-inline-start: auto; }
-.notice { grid-column: 1 / -1; margin: 6px 0 0; font-size: 14px; color: var(--text); }
+.notice { grid-area: notice; align-self: start; margin: 0; font-size: 14px; color: var(--text); }
 @media (max-width: 767px) {
-  .hero { padding: 20px 18px; grid-template-columns: 1fr; }
-  .heart { grid-row: auto; width: 44px; height: 44px; border-radius: 15px; }
-  .title { font-size: 23px; }
+  .hero { grid-template-columns: minmax(0, 1fr); grid-template-areas: "art" "title" "lede" "standing" "notice"; grid-template-rows: none; row-gap: 8px; }
+  .perkShow { min-block-size: 100px; }
+  .hero::before { inset: -40px -16px auto -16px; block-size: 220px; }
+  .heroArt { block-size: 128px; inline-size: 200px; justify-self: center; }
+  .artSupporter { inline-size: 92px; inset-block-start: 16px; }
+  .artPro { inline-size: 100px; inset-block-start: 6px; }
+  .artGem { inline-size: 56px; inset-block-start: 70px; inset-inline-start: 72px; }
+  .title { font-size: 30px; }
+  .lede { font-size: 15px; }
   .standing > button { margin-inline-start: 0; }
 }
+
+/* --- the two plans, each a card in its own light ---------------------------- */
+.cards { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px; }
+.card { position: relative; isolation: isolate; overflow: hidden; display: flex; flex-direction: column; gap: 18px; padding: 26px 26px 24px; border-radius: var(--radius-xl); color: #fff; background: radial-gradient(110% 80% at 100% 0%, color-mix(in oklab, var(--tint), #fff 20%) 0%, transparent 58%), linear-gradient(160deg, var(--tint) 0%, color-mix(in oklab, var(--tint), #000 50%) 100%); box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.32), inset 0 0 0 1px rgba(255, 255, 255, 0.08), 0 26px 48px -26px var(--tint); }
+.emblem { position: absolute; z-index: -1; inline-size: 168px; inset-block-start: -30px; inset-inline-end: -34px; transform: rotate(-12deg); opacity: 0.92; filter: drop-shadow(0 16px 26px rgba(0, 0, 0, 0.35)); user-select: none; }
+.cardHead { padding-inline-end: 96px; display: flex; flex-direction: column; gap: 4px; }
+.cardName { margin: 0; font-family: var(--font-display); font-size: 30px; line-height: 1.1; font-weight: 800; letter-spacing: -0.02em; text-shadow: 0 1px 12px rgba(0, 0, 0, 0.18); }
+.cardPrice { margin: 0; font-size: 17px; font-weight: 600; color: rgba(255, 255, 255, 0.84); font-variant-numeric: tabular-nums; }
+.cardList { flex: 1; list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 10px; }
+.cardList li { display: flex; align-items: flex-start; gap: 10px; font-size: 15px; line-height: 1.4; font-weight: 500; color: rgba(255, 255, 255, 0.94); }
+.cardList li[data-lead] { margin-bottom: 4px; padding: 10px 12px; border-radius: var(--radius-md); align-items: center; font-weight: 700; color: #fff; background: rgba(255, 255, 255, 0.14); box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.12); }
+.leadGem { margin-block: -2px; }
+.tick { flex: none; inline-size: 20px; block-size: 20px; margin-top: 1px; border-radius: 999px; display: grid; place-items: center; background: rgba(255, 255, 255, 0.22); }
+.cardFoot { display: flex; align-items: center; min-block-size: 44px; }
+.card .cardBuy { background: #fff; color: color-mix(in oklab, var(--tint), #000 28%); box-shadow: 0 10px 22px -12px rgba(0, 0, 0, 0.5); }
+.card .cardBuy:hover:not(:disabled) { background: color-mix(in oklab, #fff, var(--tint) 10%); box-shadow: 0 12px 26px -12px rgba(0, 0, 0, 0.55); }
+.card .cardBuy:active:not(:disabled) { background: color-mix(in oklab, #fff, var(--tint) 18%); box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.2); }
+.card .cardBuy:disabled { opacity: 1; background: rgba(255, 255, 255, 0.2); color: rgba(255, 255, 255, 0.72); box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.16); }
+.card .current { padding: 8px 14px; border-radius: 999px; font-size: 14px; font-weight: 700; color: #fff; background: rgba(255, 255, 255, 0.18); }
+@media (max-width: 767px) {
+  .cards { grid-template-columns: minmax(0, 1fr); gap: 14px; }
+  .card { padding: 22px 20px 20px; gap: 16px; }
+  .emblem { inline-size: 136px; inset-block-start: -24px; inset-inline-end: -28px; }
+  .cardHead { padding-inline-end: 72px; }
+  .cardName { font-size: 27px; }
+}
+
+/* --- what you get, shown on the viewer's own name ---------------------------- */
+.sectionTitle { margin: 6px 0 -8px; font-family: var(--font-display); font-size: 20px; font-weight: 700; letter-spacing: -0.01em; color: var(--text-strong); }
+.perks { display: flex; flex-direction: column; gap: var(--gap); }
+.perkGrid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 14px; }
+.perk { display: flex; flex-direction: column; gap: 6px; padding: 14px 14px 16px; border-radius: var(--radius-lg); background: var(--bg-raised); box-shadow: 0 0 0 1px var(--panel-edge); min-width: 0; }
+.perkShow { min-block-size: 120px; margin-bottom: 8px; padding: 14px; border-radius: var(--radius-md); background: var(--bg-surface); display: grid; place-items: center; overflow: hidden; }
+.perkTitle { margin: 0 4px; font-family: var(--font-display); font-size: 16px; font-weight: 700; color: var(--text-strong); }
+.perkBody { margin: 0 4px; font-size: 13.5px; line-height: 1.45; color: var(--text-muted); }
+.ladder { display: flex; align-items: flex-end; gap: 18px; }
+.step { display: flex; flex-direction: column; align-items: center; gap: 3px; }
+.step b { font-size: 16px; font-weight: 800; color: var(--tint-text); font-variant-numeric: tabular-nums; }
+.step small { font-size: 12px; color: var(--text-muted); }
+.effects { display: flex; flex-direction: column; align-items: center; gap: 4px; min-width: 0; max-inline-size: 100%; }
+.effectName { font-size: 20px; line-height: 1.3; font-weight: 700; max-inline-size: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.wearers { display: flex; flex-direction: column; gap: 10px; min-width: 0; max-inline-size: 100%; }
+.wearer { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.wearer b { font-size: 16px; font-weight: 700; color: var(--text-strong); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
 
 /* --- by the month or the year -------------------------------------------- */
 .period { align-self: center; display: inline-flex; padding: 4px; gap: 2px; border-radius: 999px; background: var(--bg-input); box-shadow: inset 0 0 0 1px var(--border-subtle); }
@@ -47,7 +104,7 @@
 /* --- the table ----------------------------------------------------------- */
 .table { display: grid; grid-template-columns: minmax(130px, 0.9fr) repeat(var(--cols), minmax(0, 1fr)); border-radius: var(--radius-lg); background: var(--sheen), var(--bg-raised); box-shadow: inset 0 1px 0 var(--edge-light), 0 0 0 1px var(--panel-edge), var(--shadow-low); overflow: hidden; }
 .row { display: contents; }
-.head, .cell, .foot, .label, .corner { padding: 14px 18px; }
+.head, .cell, .label, .corner { padding: 14px 18px; }
 .head { display: flex; flex-direction: column; gap: 2px; padding-top: 20px; border-top: 3px solid var(--tint); background: linear-gradient(180deg, color-mix(in srgb, var(--tint) 10%, transparent), transparent); }
 .head[data-plan="free"] { border-top-color: transparent; background: none; }
 .planName { font-family: var(--font-display); font-size: 19px; font-weight: 700; color: var(--tint-text); }
@@ -55,17 +112,18 @@
 .price { font-size: 14px; color: var(--text-muted); font-variant-numeric: tabular-nums; }
 .label { font-size: 14px; font-weight: 600; color: var(--text-subtle); border-top: 1px solid var(--border-subtle); display: flex; align-items: center; }
 .cell { border-top: 1px solid var(--border-subtle); display: flex; align-items: center; min-width: 0; }
-.cell[data-plan="supporter"], .cell[data-plan="pro"], .foot[data-plan="supporter"], .foot[data-plan="pro"] { background: color-mix(in srgb, var(--tint) 4%, transparent); }
+.cell[data-plan="supporter"], .cell[data-plan="pro"] { background: color-mix(in srgb, var(--tint) 4%, transparent); }
 .value { display: flex; flex-direction: column; gap: 6px; min-width: 0; inline-size: 100%; }
 .value b { font-size: 15px; font-weight: 650; color: var(--text-strong); }
 .value small { font-size: 12px; line-height: 1.35; color: var(--text-muted); }
 .none { color: var(--text-placeholder); }
-.foot { border-top: 1px solid var(--border-subtle); display: flex; align-items: center; }
-.current { font-size: 13px; font-weight: 600; color: var(--tint-text); }
+.gemsCell { display: inline-flex; align-items: center; gap: 6px; font-variant-numeric: tabular-nums; }
 .buy[data-plan="supporter"] { background: linear-gradient(180deg, color-mix(in oklab, var(--tier-supporter), #fff 12%), var(--tier-supporter)); color: #fff; box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.25), 0 8px 20px -10px var(--tier-supporter); }
+.buy[data-plan="supporter"]:hover:not(:disabled) { background: linear-gradient(180deg, color-mix(in oklab, var(--tier-supporter), #fff 20%) 0%, var(--tier-supporter) 60%); box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.28), 0 10px 22px -10px var(--tier-supporter); }
+.buy[data-plan="supporter"]:active:not(:disabled) { background: color-mix(in oklab, var(--tier-supporter), #000 10%); box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.25); }
 @media (max-width: 767px) {
   .table { grid-template-columns: minmax(0, 1fr) minmax(0, 1.25fr); }
-  .head, .cell, .foot, .label, .corner { padding: 12px 14px; }
+  .head, .cell, .label, .corner { padding: 12px 14px; }
 }
 
 /* how much each plan holds, on one scale for the row */

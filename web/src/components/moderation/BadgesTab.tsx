@@ -1,4 +1,4 @@
-import { Award, ImagePlus, PenLine, Pipette, Plus, Search, Trash2, Users, X } from "lucide-react";
+import { Award, ImagePlus, Layers, PenLine, Pipette, Plus, Search, Trash2, Users, X } from "lucide-react";
 import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import { moderation as modApi } from "@/api/moderation";
 import type { Badge, BadgeDef, BadgeIndexKind, BadgeShape } from "@/api/types";
@@ -14,10 +14,12 @@ import { Field, TextInput } from "@/components/common/TextInput";
 import { Toggle } from "@/components/common/Toggle";
 import { COLLECTIBLE_ART, collectibleArt, CONTRIBUTOR, defBadge, HAND_BADGES, EVENT_COLOURS, EVENT_ICONS, EVENT_PREFIX, hexColour, OVERRIDABLE, type BadgeLook } from "@/lib/badges";
 import { describeError } from "@/lib/errors";
+import { can, useMyRank } from "@/lib/staffRank";
 import { useModEvents } from "@/stores/moderation";
 import { useUI } from "@/stores/ui";
 import { t } from "@/i18n";
 import { BadgeHoldersModal } from "./BadgeHoldersModal";
+import { BadgeOwnersModal } from "./BadgeOwnersModal";
 import m from "./Moderation.module.css";
 import b from "./BadgesTab.module.css";
 
@@ -70,6 +72,8 @@ export function BadgesTab() {
   const [uploading, setUploading] = useState(false);
   const [busy, setBusy] = useState(false);
   const [holders, setHolders] = useState<HoldersOf | null>(null);
+  const [owners, setOwners] = useState<HoldersOf | null>(null);
+  const mayOwners = can(useMyRank(), "ownerTools");
   const fileRef = useRef<HTMLInputElement>(null);
 
   const load = useCallback(() => {
@@ -210,6 +214,18 @@ export function BadgesTab() {
       <Users size={15} aria-hidden="true" />
       {count === undefined ? t("badges.staff.holdersButton") : t("badges.staff.holders", { count })}
     </Button>
+  );
+  // the owner's: who holds copies now, what trades moved included (staff ranks and plans are never traded)
+  const toolsFor = (of: HoldersOf, count?: number) => (
+    <>
+      {holdersButton(of, count)}
+      {mayOwners && of.top > 0 ? (
+        <Button size="sm" variant="ghost" onClick={() => setOwners(of)} title={t("badges.owners.buttonHint")} data-testid={`badge-owners-${of.badge.id}`}>
+          <Layers size={15} aria-hidden="true" />
+          {t("badges.owners.button")}
+        </Button>
+      ) : null}
+    </>
   );
 
   return (
@@ -419,7 +435,7 @@ export function BadgesTab() {
                         <BadgePill badge={badge} user={NOBODY} still named />
                         {d.description ? <span className={b.desc}>{d.description}</span> : <span className={m.grow} />}
                         <span className={b.tools}>
-                          {holdersButton({ badge, label: d.name, top: 1 }, d.holders)}
+                          {toolsFor({ badge, label: d.name, top: 1 }, d.holders)}
                           <Button size="sm" variant="ghost" onClick={() => startEdit(d)} aria-label={t("badges.staff.editNamed", { name: d.name })} title={t("badges.staff.edit")}>
                             <PenLine size={15} aria-hidden="true" />
                           </Button>
@@ -441,7 +457,7 @@ export function BadgesTab() {
                     <li key={id} className={b.row} data-testid={`badge-def-${id}`}>
                       <BadgePill badge={{ id }} user={NOBODY} still named />
                       <span className={b.desc}>{t(`badges.staff.${id}Note`)}</span>
-                      <span className={b.tools}>{holdersButton({ badge: { id }, label: id === CONTRIBUTOR ? t("badges.contributor") : t(`badges.hand.${id}`), top: 1 }, hand[id] ?? 0)}</span>
+                      <span className={b.tools}>{toolsFor({ badge: { id }, label: id === CONTRIBUTOR ? t("badges.contributor") : t(`badges.hand.${id}`), top: 1 }, hand[id] ?? 0)}</span>
                     </li>
                   ))}
                 </ul>
@@ -455,7 +471,7 @@ export function BadgesTab() {
                     <li key={badge.id} className={b.row} data-testid={`badge-earned-${badge.id}`}>
                       <BadgePill badge={badge} user={NOBODY} still named />
                       <span className={m.grow} />
-                      <span className={b.tools}>{holdersButton({ badge, label: earnedLabel(badge), top })}</span>
+                      <span className={b.tools}>{toolsFor({ badge, label: earnedLabel(badge), top })}</span>
                     </li>
                   ))}
                   {(["staff", "plan"] as const).map((id) => (
@@ -492,6 +508,7 @@ export function BadgesTab() {
         />
       ) : null}
       {holders ? <BadgeHoldersModal of={holders} onClose={() => setHolders(null)} onChanged={load} /> : null}
+      {owners ? <BadgeOwnersModal of={owners} onClose={() => setOwners(null)} /> : null}
     </div>
   );
 }

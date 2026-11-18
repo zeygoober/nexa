@@ -73,7 +73,17 @@ let loading: Promise<Turnstile> | null = null;
 /** The function the script calls once its API is ready (its `onload`). */
 const READY = "nexaTurnstileReady";
 
+/**
+ * Turnstile's API, loaded once. Turnstile upgrades itself in a page left open:
+ * it loads a newer copy of its script, which puts a new object at
+ * window.turnstile and takes the widgets over. The object the first load gave
+ * is dead from then on (a widget it renders never answers, and removing one
+ * leaves the real one behind), and a captcha asked for after that never came
+ * up. So this only says the API is there; callers take window.turnstile at the
+ * moment they use it (live()).
+ */
 function loadTurnstile(): Promise<Turnstile> {
+  if (window.turnstile) return Promise.resolve(window.turnstile);
   loading ??= new Promise<Turnstile>((resolve, reject) => {
     const script = document.createElement("script");
     let waiting: ReturnType<typeof setTimeout> | undefined;
@@ -135,10 +145,22 @@ export function captchaToken(action: string): Promise<string | null> {
   return run;
 }
 
+/** The API as it is now, after any upgrade Turnstile made of itself. */
+const live = (loaded: Turnstile): Turnstile => window.turnstile ?? loaded;
+
+/**
+ * How long a captcha may give no sign at all (no token, no error, no click
+ * asked for) before it is given up. Each one queues behind the last, so one
+ * that never answered held every later captcha with it until a reload.
+ */
+const SILENT_MS = 45_000;
+
 async function showCaptcha(action: string): Promise<string | null> {
   const key = await currentSiteKey();
   if (!key) return null;
-  const turnstile = await loadTurnstile();
+  const loaded = await loadTurnstile();
+  // the instance that renders this widget is the one that removes it
+  const turnstile = live(loaded);
   return new Promise<string>((resolve, reject) => {
     const overlay = document.createElement("div");
     overlay.className = "captcha-overlay";
@@ -163,6 +185,7 @@ async function showCaptcha(action: string): Promise<string | null> {
 
     let id = "";
     let settled = false;
+    let silent: ReturnType<typeof setTimeout> | undefined;
     // where focus was before the sheet asked for it, to hand it back
     let before: HTMLElement | null = null;
     const onKey = (e: KeyboardEvent): void => {
@@ -174,11 +197,14 @@ async function showCaptcha(action: string): Promise<string | null> {
     const finish = (then: () => void): void => {
       if (settled) return;
       settled = true;
+      clearTimeout(silent);
       document.removeEventListener("keydown", onKey, true);
-      try {
-        if (id) turnstile.remove(id);
-      } catch {
-        /* already gone */
+      for (const ts of new Set([turnstile, live(turnstile)])) {
+        try {
+          if (id) ts.remove(id);
+        } catch {
+          /* already gone, or held by the other instance */
+        }
       }
       const hadFocus = overlay.contains(document.activeElement);
       overlay.remove();
@@ -197,13 +223,20 @@ async function showCaptcha(action: string): Promise<string | null> {
     // The sheet comes up over the form while focus stays on the button that
     // asked for it: a keyboard user tabbed on into the form, and a screen
     // reader said nothing. Focus moves into it when it shows, and back after.
+    const timedOut = (): void => finish(() => reject(captchaError("captcha_failed", t("captcha.theCaptchaTimedOutPleaseTry"))));
+    // waiting with nothing on screen; while a click is asked for, Turnstile's own timeout runs
+    const wait = (): void => {
+      clearTimeout(silent);
+      silent = setTimeout(timedOut, SILENT_MS);
+    };
     const show = (): void => {
+      clearTimeout(silent);
       overlay.classList.add("captcha-shown");
       before = document.activeElement instanceof HTMLElement ? document.activeElement : null;
       sheet.focus();
     };
     try {
-      const timedOut = (): void => finish(() => reject(captchaError("captcha_failed", t("captcha.theCaptchaTimedOutPleaseTry"))));
+      wait();
       id = turnstile.render(slot, {
         sitekey: key,
         // the server takes a token only for the action it was solved for
@@ -216,7 +249,10 @@ async function showCaptcha(action: string): Promise<string | null> {
         "expired-callback": timedOut,
         "timeout-callback": timedOut,
         "before-interactive-callback": show,
-        "after-interactive-callback": () => overlay.classList.remove("captcha-shown"),
+        "after-interactive-callback": () => {
+          overlay.classList.remove("captcha-shown");
+          wait();
+        },
       }) ?? "";
       if (!id) throw new Error("not rendered");
     } catch {

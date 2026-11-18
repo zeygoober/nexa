@@ -36,14 +36,12 @@ func TestMusicPlayerProxyRefuses(t *testing.T) {
 	srv.Secret = []byte("k")
 	sp := srv.frameSign(spotifySite, time.Now().Add(time.Hour).Unix())
 	sc := srv.frameSign(soundcloudSite, time.Now().Add(time.Hour).Unix())
-	yt := srv.ytSign(time.Now().Add(time.Hour).Unix())
 	cases := []struct {
 		method, path string
 		want         int
 	}{
 		{"GET", "/sp/" + sp + "/p/evil.example/x.js", http.StatusForbidden},
 		{"GET", "/sp/" + sp + "/p/spotify.com.evil.example/x", http.StatusForbidden},
-		{"GET", "/sp/" + yt + "/p/open.spotify.com/x", http.StatusForbidden},
 		{"GET", "/sp/" + sc + "/embed/track/4cOdK2wGLETKBW3PvgPWqT", http.StatusForbidden},
 		{"GET", "/sp/" + sp + "/embed/user/4cOdK2wGLETKBW3PvgPWqT", http.StatusForbidden},
 		{"POST", "/sp/" + sp + "/p/guc3-spclient.spotify.com/gabo-receiver-service/public/v3/events", http.StatusNoContent},
@@ -51,7 +49,6 @@ func TestMusicPlayerProxyRefuses(t *testing.T) {
 		{"GET", "/sc/" + sc + "/p/dwt.evil.example/tags.js", http.StatusForbidden},
 		{"GET", "/sc/" + sc + "/player/?url=https%3A%2F%2Fevil.example%2Ftracks%2F1", http.StatusForbidden},
 		{"POST", "/sc/" + sc + "/p/api-v2.soundcloud.com/event-logging/batch", http.StatusNoContent},
-		{"GET", "/yt/" + sp + "/p/www.youtube.com/s/x.js", http.StatusForbidden},
 	}
 	for _, c := range cases {
 		req, _ := http.NewRequest(c.method, ts.URL+c.path, nil)
@@ -67,6 +64,9 @@ func TestMusicPlayerProxyRefuses(t *testing.T) {
 		}
 		if csp := res.Header.Get("Content-Security-Policy"); !strings.Contains(csp, "sandbox allow-scripts allow-presentation") || strings.Contains(csp, "allow-same-origin") {
 			t.Errorf("%s: policy %q", c.path, csp)
+		}
+		if res.Header.Get("Set-Cookie") != "" || res.Header.Get("X-Frame-Options") != "" {
+			t.Errorf("%s: cookie or frame header passed on", c.path)
 		}
 	}
 }

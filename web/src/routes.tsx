@@ -57,6 +57,7 @@ const AdminCases = lazyPage(() => adminPanel().then((m) => ({ default: m.CasesTa
 const AdminLogs = lazyPage(() => adminPanel().then((m) => ({ default: m.LogsTab })));
 const AdminAnnouncements = lazyPage(() => adminPanel().then((m) => ({ default: m.AnnouncementsTab })));
 const AdminGifts = lazyPage(() => adminPanel().then((m) => ({ default: m.GiftLinksTab })));
+const AdminTrades = lazyPage(() => adminPanel().then((m) => ({ default: m.TradesTab })));
 const AdminBadges = lazyPage(() => adminPanel().then((m) => ({ default: m.BadgesTab })));
 const AdminGames = lazyPage(() => adminPanel().then((m) => ({ default: m.GamesTab })));
 const AdminReports = lazyPage(() => import("@/components/reports/ReportsTab").then((m) => ({ default: m.ReportsTab })));
@@ -121,6 +122,7 @@ export function AppRoutes() {
                     <Route path="cases" element={<AdminCases />} />
                     <Route path="cases/:caseId" element={<AdminCases />} />
                     <Route path="logs" element={<AdminLogs />} />
+                    <Route path="trades" element={<AdminTrades />} />
                     <Route path="announcements" element={<AdminAnnouncements />} />
                     <Route path="badges" element={<AdminBadges />} />
                     <Route path="games" element={<AdminGames />} />

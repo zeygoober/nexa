@@ -11,7 +11,7 @@ import (
 
 // The music players whose services ask that their audio be played only in
 // their own player: Spotify's embed and SoundCloud's widget, each played
-// through this server as YouTube's is (frame_proxy.go), so neither learns who
+// through this server (frame_proxy.go), so neither learns who
 // is listening. The card around them is the app's own (internal/unfurl/music.go);
 // the player opens only when someone presses play.
 
@@ -77,9 +77,9 @@ var (
 
 func (s *Server) musicPlayerRoutes(mux *http.ServeMux) {
 	mux.Handle("GET /api/v1/music/player/{platform}/{kind}/{id}", s.authed(s.handleMusicPlayer))
-	mux.Handle("GET /sp/{token}/embed/{kind}/{id}", ipLimited(s.limYouTube, s.handleSpotifyEmbed))
+	mux.Handle("GET /sp/{token}/embed/{kind}/{id}", ipLimited(s.limPlayers, s.handleSpotifyEmbed))
 	mux.Handle("/sp/{token}/p/{host}/{rest...}", s.frameProxyRoute(spotifySite))
-	mux.Handle("GET /sc/{token}/player/{$}", ipLimited(s.limYouTube, s.handleSoundCloudEmbed))
+	mux.Handle("GET /sc/{token}/player/{$}", ipLimited(s.limPlayers, s.handleSoundCloudEmbed))
 	mux.Handle("/sc/{token}/p/{host}/{rest...}", s.frameProxyRoute(soundcloudSite))
 }
 

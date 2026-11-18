@@ -25,9 +25,10 @@ import (
 // can talk to nothing else. The site sees Cloudflare's address and no cookies,
 // never the viewer's; the viewer's browser contacts only this server.
 //
-// YouTube was the first (youtube_proxy.go); the music players whose terms ask
-// for their own player rather than one Nexa draws (Spotify, SoundCloud,
-// Bandcamp: music_players.go) go the same way. Each is a frameSite: the path
+// The music players whose terms ask for their own player rather than one Nexa
+// draws (Spotify, SoundCloud: music_players.go) go this way. YouTube went this
+// way too until 2026-11-18, when YouTube's bot check on the egress address
+// stopped every video; the apps now frame youtube-nocookie.com directly. Each is a frameSite: the path
 // it is served under, the hosts it may reach, and what of its traffic is
 // reporting about the viewer and so goes nowhere.
 //
@@ -75,10 +76,6 @@ type frameSite struct {
 	// shimExtra runs in the player's page after the shim, for what one
 	// player needs of its own.
 	shimExtra string
-	// pageReferer, when set, is sent as the embed page's Referer instead of
-	// Nexa's own origin (YouTube refuses a player that names no embedder;
-	// the others are told nothing of who embeds them).
-	pageReferer func(s *Server, r *http.Request) string
 }
 
 func (fs *frameSite) prefix(token string) string { return "/" + fs.root + "/" + token }
@@ -205,7 +202,7 @@ func (s *Server) frameHeaders(w http.ResponseWriter, r *http.Request) {
 // frameProxyRoute serves /<root>/{token}/p/{host}/{rest...}: everything the
 // player asks for after its page.
 func (s *Server) frameProxyRoute(fs *frameSite) http.Handler {
-	return ipLimited(s.limYouTube, func(w http.ResponseWriter, r *http.Request) {
+	return ipLimited(s.limPlayers, func(w http.ResponseWriter, r *http.Request) {
 		token, host := r.PathValue("token"), strings.ToLower(r.PathValue("host"))
 		s.frameHeaders(w, r)
 		if r.Method == http.MethodOptions {
@@ -279,11 +276,7 @@ func (s *Server) frameForward(fs *frameSite, w http.ResponseWriter, r *http.Requ
 			req.Header[k] = v
 		}
 	}
-	if page {
-		if fs.pageReferer != nil {
-			req.Header.Set("Referer", fs.pageReferer(s, r))
-		}
-	} else {
+	if !page {
 		req.Header.Set("Origin", "https://"+fs.home)
 		req.Header.Set("Referer", "https://"+fs.home+"/")
 	}

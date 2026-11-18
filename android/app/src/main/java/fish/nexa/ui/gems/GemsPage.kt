@@ -377,7 +377,12 @@ fun GemsPage() {
             Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(4.dp)) {
                 if (m != null) {
                     Tile(Modifier.size(64.dp)) { BadgePill(m.badge, "0", 0L, "", size = 40.dp) }
-                    Txt(t("gems.team.power", "value" to gemNumber(m.power.toLong())), style = Nx.type.bodySmall.copy(fontSize = Nx.type.sp(12f), fontWeight = FontWeight(if (m.power == 0) 500 else 700), fontFeatureSettings = "tnum"), color = if (m.power == 0) c.textMuted else c.textStrong, maxLines = 1)
+                    if (m.badge.id == "plan" && v.planBoost > 100) {
+                        // a plan multiplies everything rather than adding, so it reads in its own light
+                        Txt(t("support.gems.times", "value" to gemNumber(v.planBoost / 100.0, 2)), style = Nx.type.bodySmall.copy(fontSize = Nx.type.sp(12f), fontWeight = FontWeight(700), fontFeatureSettings = "tnum"), color = if (v.planBoost >= 200) c.textPro else c.textSupporter, maxLines = 1)
+                    } else {
+                        Txt(t("gems.team.power", "value" to gemNumber(m.power.toLong())), style = Nx.type.bodySmall.copy(fontSize = Nx.type.sp(12f), fontWeight = FontWeight(if (m.power == 0) 500 else 700), fontFeatureSettings = "tnum"), color = if (m.power == 0) c.textMuted else c.textStrong, maxLines = 1)
+                    }
                 } else {
                     Box(Modifier.size(64.dp).ring(Radii.Md, c.border).graphicsLayer { alpha = 0.6f }.semantics { contentDescription = t("gems.team.emptySlot") })
                     Txt(" ", style = Nx.type.bodySmall.copy(fontSize = Nx.type.sp(12f)))

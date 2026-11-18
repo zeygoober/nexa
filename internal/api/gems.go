@@ -105,6 +105,7 @@ func (s *Server) gemMultiplier(ctx context.Context, me *store.User) int {
 	if err != nil {
 		return 100
 	}
+	mult = mult * store.GemPlanBoost(me.Plan) / 100
 	s.gemTeams.put(me.ID, mult)
 	return mult
 }
@@ -239,7 +240,8 @@ func (s *Server) settleGemReports(ctx context.Context, me *store.User, note stri
 type gemsView struct {
 	Wallet       *store.GemWallet      `json:"wallet"`
 	Team         []store.GemTeamMember `json:"team"`
-	Multiplier   int                   `json:"multiplier"`
+	Multiplier   int                   `json:"multiplier"` // the team's times the plan's, what a message earns
+	PlanBoost    int                   `json:"plan_boost"` // the plan's alone, 100 without one
 	Price        int                   `json:"capsule_price"`
 	FuseCost     int                   `json:"fuse_cost"`
 	Odds         map[string]int        `json:"odds"`
@@ -256,6 +258,8 @@ func (s *Server) gemsFor(ctx context.Context, me *store.User) (*gemsView, error)
 	if err != nil {
 		return nil, err
 	}
+	boost := store.GemPlanBoost(me.Plan)
+	mult = mult * boost / 100
 	s.gemTeams.put(me.ID, mult)
 	all, err := s.Store.Collectibles(ctx)
 	if err != nil {
@@ -271,7 +275,7 @@ func (s *Server) gemsFor(ctx context.Context, me *store.User) (*gemsView, error)
 			mine = append(mine, l)
 		}
 	}
-	return &gemsView{Wallet: w, Team: team, Multiplier: mult, Price: store.GemCapsulePrice, FuseCost: store.GemFuseCost, Odds: store.CapsuleOdds(all), Collectibles: all, Collection: mine}, nil
+	return &gemsView{Wallet: w, Team: team, Multiplier: mult, PlanBoost: boost, Price: store.GemCapsulePrice, FuseCost: store.GemFuseCost, Odds: store.CapsuleOdds(all), Collectibles: all, Collection: mine}, nil
 }
 
 func (s *Server) handleGems(w http.ResponseWriter, r *http.Request) {

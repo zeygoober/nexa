@@ -30,7 +30,7 @@ import (
 // make a blob: URL, so that lets no new script in from anywhere else, and
 // script-src still refuses https: sources and eval, so a plugin cannot
 // fetch more code past the hash it was pinned to.
-const CSP = "default-src 'self'; script-src 'self' 'wasm-unsafe-eval' blob: https://challenges.cloudflare.com; style-src 'self' 'unsafe-inline' https:; img-src 'self' https: data: blob:; media-src 'self' https: blob:; connect-src 'self' wss: https: blob:; frame-src 'self' https://challenges.cloudflare.com; worker-src 'self' blob:; font-src 'self' data: https:; object-src 'none'; base-uri 'self'; frame-ancestors 'none'; form-action 'self'"
+const CSP = "default-src 'self'; script-src 'self' 'wasm-unsafe-eval' blob: https://challenges.cloudflare.com; style-src 'self' 'unsafe-inline' https:; img-src 'self' https: data: blob:; media-src 'self' https: blob:; connect-src 'self' wss: https: blob:; frame-src 'self' https://www.youtube-nocookie.com https://challenges.cloudflare.com; worker-src 'self' blob:; font-src 'self' data: https:; object-src 'none'; base-uri 'self'; frame-ancestors 'none'; form-action 'self'"
 
 func init() {
 	_ = mime.AddExtensionType(".webmanifest", "application/manifest+json")

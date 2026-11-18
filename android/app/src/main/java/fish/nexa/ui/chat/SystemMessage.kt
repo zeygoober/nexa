@@ -342,7 +342,7 @@ fun TradeRow(cm: ChatMessage, ctx: ListCtx) {
 
 /** One side of a trade on its card: a heading and a picture, a name and how many for each badge. */
 @Composable
-private fun TradeSide(title: String, lines: List<fish.nexa.data.Trades.Line>) {
+internal fun TradeSide(title: String, lines: List<fish.nexa.data.Trades.Line>) {
     val c = Nx.colors
     androidx.compose.foundation.layout.Column(verticalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(6.dp)) {
         Txt(title, style = Nx.type.heading.copy(fontSize = Nx.type.sp(14f)), color = c.textStrong)

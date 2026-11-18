@@ -1,0 +1,59 @@
+/* A row is a button that opens the person; it keeps the holders list's look. */
+.row {
+  width: 100%;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: start;
+  cursor: pointer;
+}
+
+.row:focus-visible {
+  outline: 2px solid var(--focus-ring, var(--brand));
+  outline-offset: -2px;
+}
+
+/* each level or material held, drawn, with how many */
+.copies {
+  display: flex;
+  flex: 0 1 auto;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 4px 10px;
+  max-width: 55%;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.copy {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+}
+
+.qty {
+  color: var(--text-brand);
+  font-size: 13px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.blank {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: var(--bg-surface);
+}
+
+/* how many people, then how many copies between them */
+.totals {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 0 10px;
+}
+
+.copiesTotal {
+  color: var(--text-muted);
+}

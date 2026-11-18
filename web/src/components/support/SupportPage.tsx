@@ -18,7 +18,10 @@ import { PageHeaderButtons } from "@/components/shell/PageHeader";
 import { shareOrigin } from "@/lib/appLinks";
 import { isBot } from "@/lib/botCopies";
 import { copyText } from "@/lib/clipboard";
-import { centsOf, limitsOf, PAID_PLANS, payWhatYouWant, plansInfo, PWYW_MAX, PWYW_MIN } from "@/lib/plans";
+import { centsOf, GEM_BOOST, limitsOf, PAID_PLANS, payWhatYouWant, plansInfo, PWYW_MAX, PWYW_MIN } from "@/lib/plans";
+import { badgeArt, GEM_ART } from "@/lib/badges";
+import { nameStyleClass, nameStyleVars, readNameStyle, withEffect, type NameEffect } from "@/lib/nameStyle";
+import { GemIcon } from "@/components/gems/GemIcon";
 import { OWNER_USERNAME } from "@/lib/legal";
 import { formatBytes, formatShortDate } from "@/lib/time";
 import { fold } from "@/search/text";
@@ -40,8 +43,15 @@ type Period = "month" | "year";
 const LIST_PRICES: Record<Paid, Record<Period, number>> = { supporter: { month: 500, year: 4800 }, pro: { month: 1000, year: 9600 } };
 
 const PLANS: Plan[] = ["", "supporter", "pro"];
+/** The name effects only plans have (NAME_EFFECTS' paid ones), shown on the viewer's own name. */
+const PAID_EFFECTS: NameEffect[] = ["holo", "neon", "flame"];
 
 export { planName };
+
+/** A multiplier as the reader's language writes it (1.5, 1,5). */
+function times(n: number): string {
+  return t("support.gems.times", { value: new Intl.NumberFormat(undefined, { maximumFractionDigits: 2 }).format(n) });
+}
 
 function money(cents: number, currency: string): string {
   return new Intl.NumberFormat(undefined, { style: "currency", currency: currency.toUpperCase(), minimumFractionDigits: cents % 100 ? 2 : 0 }).format(cents / 100);
@@ -126,6 +136,7 @@ export function SupportPanel({ inSettings = false }: { inSettings?: boolean }) {
     const hi = info.pro;
     const bar = (v: number, a: number, b: number) => <span className={s.gauge} aria-hidden="true"><i style={{ inlineSize: `${gauge(v, a, b) * 100}%` }} /></span>;
     return [
+      { id: "gems", label: t("support.row.gems"), cell: (p) => <span className={s.value}><b className={s.gemsCell}><GemIcon size={16} />{times(GEM_BOOST[p])}</b></span> },
       { id: "file", label: t("support.row.file"), cell: (_p, l) => <span className={s.value}><b>{formatBytes(l.file_max)}</b>{bar(l.file_max, lo.file_max, hi.file_max)}</span> },
       { id: "storage", label: t("support.row.storage"), cell: (_p, l) => <span className={s.value}><b>{formatBytes(l.month_upload_max)}</b>{bar(l.month_upload_max, lo.month_upload_max, hi.month_upload_max)}</span> },
       {
@@ -148,15 +159,27 @@ export function SupportPanel({ inSettings = false }: { inSettings?: boolean }) {
     ];
   }, [info]);
 
+  /** What a plan gives, said on its card, the Gems first. */
+  const cardLines = (p: Paid): string[] => {
+    const l = limitsOf(p);
+    const out = [t("support.card.gems", { value: new Intl.NumberFormat(undefined, { maximumFractionDigits: 2 }).format(GEM_BOOST[p]) })];
+    out.push(t("support.card.file", { size: formatBytes(l.file_max) }), t("support.card.uploads", { size: formatBytes(l.month_upload_max) }));
+    if (l.share_quality) out.push(t("support.card.share", { n: Math.round(l.share_max_bps / 1e6) }));
+    if (l.name_effects) out.push(t("support.card.effects"));
+    out.push(t("support.card.badge", { plan: planName(p) }));
+    if (l.boosts) out.push(t("support.card.boosts", { count: l.boosts }));
+    return out;
+  };
+
   const action = (p: Plan) => {
     if (p === plan) return <span className={s.current}>{t("support.current")}</span>;
     if (p === "") return null;
     if (plan !== "") {
       // a plan already running changes in the portal
-      return billing?.manageable ? <Button variant="secondary" size="sm" block onClick={manage} loading={busy === "manage"}>{t("support.switch", { plan: planName(p) })}</Button> : null;
+      return billing?.manageable ? <Button size="lg" block className={s.cardBuy} onClick={manage} loading={busy === "manage"}>{t("support.switch", { plan: planName(p) })}</Button> : null;
     }
     return (
-      <Button size="sm" block className={s.buy} data-plan={p} onClick={() => void buy(p)} loading={busy === p} disabled={!enabled || busy !== null} data-testid={`buy-${p}`}>
+      <Button size="lg" block className={s.cardBuy} onClick={() => void buy(p)} loading={busy === p} disabled={!enabled || busy !== null} data-testid={`buy-${p}`}>
         {t("support.get", { plan: planName(p) })}
       </Button>
     );
@@ -170,7 +193,11 @@ export function SupportPanel({ inSettings = false }: { inSettings?: boolean }) {
   return (
     <div className={s.panel} data-in-settings={inSettings || undefined}>
       <section className={s.hero} aria-labelledby="support-title">
-        <span className={s.heart} aria-hidden="true"><Heart size={26} fill="currentColor" /></span>
+        <div className={s.heroArt} aria-hidden="true">
+          <img className={s.artSupporter} src={badgeArt("plan-supporter")} alt="" draggable={false} />
+          <img className={s.artPro} src={badgeArt("plan-pro")} alt="" draggable={false} />
+          <img className={s.artGem} src={GEM_ART} alt="" draggable={false} />
+        </div>
         <h1 className={s.title} id="support-title">{t("support.title")}</h1>
         <p className={s.lede}>{t("support.lede")}</p>
         <div className={s.standing} data-testid="support-standing">
@@ -209,6 +236,75 @@ export function SupportPanel({ inSettings = false }: { inSettings?: boolean }) {
         </div>
       ) : null}
 
+      <div className={s.cards} data-testid="plan-cards">
+        {PAID_PLANS.map((p) => (
+          <article key={p} className={s.card} data-plan={p} data-mine={p === plan || undefined} aria-labelledby={`plan-card-${p}`}>
+            <img className={s.emblem} src={badgeArt(`plan-${p}`)} alt="" aria-hidden="true" draggable={false} />
+            <header className={s.cardHead}>
+              <h2 className={s.cardName} id={`plan-card-${p}`}>{planName(p)}</h2>
+              <p className={s.cardPrice}>{period === "month" || plan !== "" ? t("support.perMonth", { price: price(p, "month") }) : t("support.perYear", { price: price(p, "year") })}</p>
+            </header>
+            <ul className={s.cardList}>
+              {cardLines(p).map((line, i) => (
+                <li key={i} data-lead={i === 0 || undefined}>
+                  {i === 0 ? <GemIcon size={22} className={s.leadGem} /> : <span className={s.tick} aria-hidden="true"><Check size={13} strokeWidth={3} /></span>}
+                  <span>{line}</span>
+                </li>
+              ))}
+            </ul>
+            <div className={s.cardFoot}>{action(p)}</div>
+          </article>
+        ))}
+      </div>
+
+      <section className={s.perks} aria-labelledby="support-perks">
+        <h2 className={s.sectionTitle} id="support-perks">{t("support.perks.title")}</h2>
+        <div className={s.perkGrid}>
+          <article className={s.perk} data-testid="perk-gems">
+            <div className={s.perkShow}>
+              <div className={s.ladder}>
+                {PLANS.map((p, i) => (
+                  <span key={p || "free"} className={s.step} data-plan={p || "free"}>
+                    <GemIcon size={26 + i * 9} />
+                    <b>{times(GEM_BOOST[p])}</b>
+                    <small>{planName(p)}</small>
+                  </span>
+                ))}
+              </div>
+            </div>
+            <h3 className={s.perkTitle}>{t("support.perk.gems.title")}</h3>
+            <p className={s.perkBody}>{t("support.perk.gems.body")}</p>
+          </article>
+          <article className={s.perk} data-testid="perk-effects">
+            <div className={s.perkShow}>
+              <div className={s.effects}>
+                {PAID_EFFECTS.map((e) => {
+                  const look = withEffect(readNameStyle(me?.name_style), e);
+                  return <span key={e} className={[s.effectName, "person-name", nameStyleClass(look, false)].join(" ")} style={nameStyleVars(look, false)}>{me ? displayName(me) : "Nexa"}</span>;
+                })}
+              </div>
+            </div>
+            <h3 className={s.perkTitle}>{t("support.row.effects")}</h3>
+            <p className={s.perkBody}>{t("support.perk.effects.body")}</p>
+          </article>
+          <article className={s.perk} data-testid="perk-badge">
+            <div className={s.perkShow}>
+              <div className={s.wearers}>
+                {PAID_PLANS.map((p) => (
+                  <span key={p} className={s.wearer}>
+                    <b>{me ? displayName(me) : "Nexa"}</b>
+                    <PlanBadge plan={p} />
+                  </span>
+                ))}
+              </div>
+            </div>
+            <h3 className={s.perkTitle}>{t("support.row.badge")}</h3>
+            <p className={s.perkBody}>{t("support.perk.badge.body")}</p>
+          </article>
+        </div>
+      </section>
+
+      <h2 className={s.sectionTitle}>{t("support.compare")}</h2>
       {mobile ? (
         <div className={s.picker} role="tablist" aria-label={t("support.plans")}>
           {PLANS.map((p) => (
@@ -237,12 +333,6 @@ export function SupportPanel({ inSettings = false }: { inSettings?: boolean }) {
                 {r.cell(p, limitsOf(p))}
               </div>
             ))}
-          </div>
-        ))}
-        <div className={s.corner} />
-        {columns.map((p) => (
-          <div key={p || "free"} className={s.foot} data-plan={p || "free"}>
-            {action(p)}
           </div>
         ))}
       </div>

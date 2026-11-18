@@ -64,6 +64,8 @@ fun actionLabel(action: String): String = if (action.startsWith(OWNER_SERVER)) o
     "account_view" -> t("moderation.log.accountView")
     "owner_join" -> t("moderation.log.ownerJoin")
     "server_preview" -> t("moderation.log.serverPreview")
+    "badge_owners_view" -> t("moderation.log.badgeOwners")
+    "trade_log_view" -> t("moderation.log.tradeLog")
     "gift_link_create" -> t("moderation.log.giftCreate")
     "gift_link_revoke" -> t("moderation.log.giftRevoke")
     "gems_give" -> t("moderation.log.gemsGive")
@@ -108,6 +110,8 @@ fun logIcon(action: String): String = if (action == "server_manage" || action.st
     "account_view" -> "Fingerprint"
     "owner_join" -> "LogIn"
     "server_preview" -> "Eye"
+    "badge_owners_view" -> "Award"
+    "trade_log_view" -> "ArrowLeftRight"
     "gift_link_create", "gift_link_revoke" -> "Gift"
     "gems_give", "gems_take" -> "Gem"
     "collectable_give", "collectable_take" -> "Shapes"
@@ -119,7 +123,7 @@ val LOG_GROUPS: Map<String, List<String>> = mapOf(
     "punishments" to listOf("message_remove", "avatar_remove", "field_reset", "server_reset", "expression_takedown", "app_discovery_hide", "mute", "ban", "delete", "account_delete_profile"),
     "lifts" to listOf("unmute", "unban", "expression_relist", "discovery_restore"),
     "announcements" to listOf("announcement", "announcement_delete"),
-    "access" to listOf("rank_change", "admin_grant", "admin_revoke", "account_disable", "account_enable", "account_view", "owner_join", "server_preview", *OWNER_SERVER_ACTIONS.toTypedArray(), "gift_link_create", "gift_link_revoke", "gems_give", "gems_take", "collectable_give", "collectable_take"),
+    "access" to listOf("rank_change", "admin_grant", "admin_revoke", "account_disable", "account_enable", "account_view", "owner_join", "server_preview", "badge_owners_view", "trade_log_view", *OWNER_SERVER_ACTIONS.toTypedArray(), "gift_link_create", "gift_link_revoke", "gems_give", "gems_take", "collectable_give", "collectable_take"),
     "badges" to listOf("badge_change", "badge_create", "badge_edit", "badge_delete", "badge_index_order", "badge_description"),
     "games" to listOf("game_list", "game_reject", "game_forget"),
 )
@@ -181,6 +185,8 @@ fun logDetail(e: ModLogEntry): String {
         "badge_description" -> d.str("description")?.takeIf { it.isNotEmpty() }?.let { "${d.str("badge") ?: ""}: “$it”" }
             ?: t("badges.log.descriptionReset", "badge" to (d.str("badge") ?: ""))
         "owner_join", "server_preview" -> d.str("server_name")?.let { "“$it”" } ?: ""
+        "badge_owners_view" -> d.str("name")?.takeIf { it.isNotEmpty() }?.let { "“$it”" } ?: d.str("badge") ?: ""
+        "trade_log_view" -> d.str("q")?.takeIf { it.isNotEmpty() }?.let { "“$it”" } ?: ""
         "gift_link_create" -> d.str("plan")?.let { fish.nexa.ui.support.planName(it) } ?: ""
         "game_list", "game_reject" -> d.str("process")?.let { "$it: “${d.str("name") ?: ""}”" } ?: ""
         "game_forget" -> d.str("process") ?: ""

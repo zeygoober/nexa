@@ -64,6 +64,8 @@ const (
 	LogAccountView    = "account_view"
 	LogOwnerJoin      = "owner_join"
 	LogServerPreview  = "server_preview"
+	LogBadgeOwners    = "badge_owners_view"
+	LogTradeLog       = "trade_log_view"
 	LogGiftLinkCreate = "gift_link_create"
 	LogGiftLinkRevoke = "gift_link_revoke"
 	// Gems the owner gave or took: the amount and what the person then had

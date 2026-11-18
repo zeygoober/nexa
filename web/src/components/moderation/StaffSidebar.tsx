@@ -1,4 +1,4 @@
-import { Award, BellRing, Bot, Bug, Flag, FolderOpen, Gamepad2, Gift, Lightbulb, Megaphone, Phone, ScrollText, Server, Shield, Sticker, Users, type LucideIcon } from "lucide-react";
+import { ArrowLeftRight, Award, BellRing, Bot, Bug, Flag, FolderOpen, Gamepad2, Gift, Lightbulb, Megaphone, Phone, ScrollText, Server, Shield, Sticker, Users, type LucideIcon } from "lucide-react";
 import { useEffect } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { moderation as modApi } from "@/api/moderation";
@@ -49,7 +49,10 @@ export const STAFF_GROUPS: { id: string; label: () => string; places: StaffPlace
   {
     id: "records",
     label: () => t("moderation.nav.records"),
-    places: [{ id: "logs", label: () => t("moderation.tabs.logs"), icon: ScrollText, rank: "helper" }],
+    places: [
+      { id: "logs", label: () => t("moderation.tabs.logs"), icon: ScrollText, rank: "helper" },
+      { id: "trades", label: () => t("moderation.tabs.trades"), icon: ArrowLeftRight, rank: "owner" },
+    ],
   },
   {
     id: "running",

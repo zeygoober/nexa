@@ -5,6 +5,11 @@ import fish.nexa.ui.components.glideArea
 import fish.nexa.ui.components.glideItem
 import fish.nexa.ui.components.rememberGlide
 import androidx.compose.foundation.background
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.draw.rotate
+import androidx.compose.foundation.layout.offset
+import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.unit.em
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
@@ -250,51 +255,7 @@ fun SupportPanel(inSettings: Boolean = false) {
     fun buy(p: String) = go(p, "/billing/checkout", buildJsonObject { put("plan", p); put("period", period) })
 
     Column(verticalArrangement = Arrangement.spacedBy(18.dp)) {
-        // the statement
-        val heroShape = Radii.Lg
-        Column(
-            Modifier
-                .fillMaxWidth()
-                .panel(heroShape, c)
-                .background(Brush.radialGradient(listOf(c.tierSupporter.copy(alpha = 0.16f), Color.Transparent), center = Offset.Zero, radius = 900f), heroShape)
-                .background(Brush.radialGradient(listOf(c.tierPro.copy(alpha = 0.18f), Color.Transparent), center = Offset(Float.POSITIVE_INFINITY, Float.POSITIVE_INFINITY), radius = 900f), heroShape)
-                .padding(horizontal = 18.dp, vertical = 20.dp),
-            verticalArrangement = Arrangement.spacedBy(6.dp),
-        ) {
-            val heart = RoundedCornerShape(15.dp)
-            Box(
-                Modifier
-                    .size(44.dp)
-                    .boxShadow(heart, 14f, 30f, c.tierSupporter.copy(alpha = 0.9f), spread = -12f)
-                    .background(Brush.linearGradient(listOf(mixOklab(c.tierSupporter, Color.White, 0.14f), c.tierSupporter, mixOklab(c.tierSupporter, c.tierPro, 0.45f))), heart)
-                    .topEdge(heart, Color.White.copy(alpha = 0.28f)),
-                contentAlignment = Alignment.Center,
-            ) { Icon("Heart", Color.White, size = 24.dp, filled = true) }
-            Txt(t("support.title"), style = Nx.type.title.copy(fontSize = Nx.type.sp(23f), lineHeight = Nx.type.sp(26.5f)), color = c.textStrong, modifier = Modifier.padding(top = 6.dp).semantics { heading() })
-            Txt(t("support.lede"), style = Nx.type.body.copy(lineHeight = Nx.type.sp(24f)), color = c.textSubtle)
-            FlowRow(
-                Modifier.padding(top = 10.dp),
-                horizontalArrangement = Arrangement.spacedBy(10.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp),
-                itemVerticalAlignment = Alignment.CenterVertically,
-            ) {
-                if (plan == "") Txt(t("support.onFree"), style = Nx.type.bodySmall, color = c.textMuted)
-                else {
-                    PlanBadge(plan)
-                    val b = billing
-                    Txt(
-                        when {
-                            b == null || b.periodEnd == 0L -> t("support.thanks")
-                            b.cancelAtEnd -> t("support.endsOn", "date" to Time.shortDate(b.periodEnd))
-                            else -> t("support.renewsOn", "date" to Time.shortDate(b.periodEnd))
-                        },
-                        style = Nx.type.bodySmall, color = c.textMuted,
-                    )
-                }
-                if (billing?.manageable == true) NxButton(t("support.manage"), manage, kind = ButtonKind.SECONDARY, size = ButtonSize.TOUCH, loading = busy == "manage")
-            }
-            if (!enabled) Txt(t("support.notOpen"), style = Nx.type.bodySmall, color = c.text, modifier = Modifier.padding(top = 6.dp))
-        }
+        SupportHero(plan, billing, enabled, busy, manage)
 
         // by the month or the year
         if (plan == "") Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
@@ -303,7 +264,11 @@ fun SupportPanel(inSettings: Boolean = false) {
             }
         }
 
-        // one plan at a time
+        TierCards(plan, period, enabled, busy, billing?.manageable == true, ::price, { buy(it) }, manage)
+        Perks()
+
+        // every plan beside the others, one at a time
+        SectionTitle(t("support.compare"))
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
             for (p in PLANS) {
                 val on = shown == p
@@ -323,7 +288,7 @@ fun SupportPanel(inSettings: Boolean = false) {
             }
         }
 
-        PlanCard(shown, plan, period, enabled, busy, billing?.manageable == true, ::price, { buy(it) }, manage)
+        PlanCard(shown, plan, period, ::price)
         Txt(t("support.everythingElse"), style = Nx.type.bodySmall, color = c.textMuted, align = TextAlign.Center, modifier = Modifier.fillMaxWidth())
 
         if (enabled) PayWhatYouWant()
@@ -350,12 +315,7 @@ private fun PlanCard(
     p: String,
     mine: String,
     period: String,
-    enabled: Boolean,
-    busy: String?,
-    manageable: Boolean,
     price: (String, String) -> String,
-    buy: (String) -> Unit,
-    manage: () -> Unit,
 ) {
     val c = Nx.colors
     val info = Plans.info()
@@ -405,6 +365,12 @@ private fun PlanCard(
                 Box(Modifier.fillMaxWidth(gauge(v, lo, hi)).fillMaxHeight().background(if (p == "") c.textMuted else tone, CircleShape))
             }
         }
+        Line(t("support.row.gems")) {
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                fish.nexa.ui.gems.GemIcon(16.dp)
+                Value(times(Plans.GEM_BOOST[p] ?: 1.0))
+            }
+        }
         Line(t("support.row.file")) { Value(Time.bytes(l.fileMax)); Gauge(l.fileMax, info.free.fileMax, info.pro.fileMax) }
         Line(t("support.row.storage")) { Value(Time.bytes(l.monthUploadMax)); Gauge(l.monthUploadMax, info.free.monthUploadMax, info.pro.monthUploadMax) }
         Line(t("support.row.share")) {
@@ -418,15 +384,6 @@ private fun PlanCard(
                 Value(l.boosts.toString())
                 Small(t("support.boosts.hint", "size" to Time.bytes(info.boostFileMax)))
             } else None()
-        }
-        Box(Modifier.fillMaxWidth().height(1.dp).background(c.borderSubtle))
-        Box(Modifier.fillMaxWidth().background(wash).padding(16.dp)) {
-            when {
-                p == mine -> Txt(t("support.current"), style = Nx.type.bodySmall.copy(fontWeight = FontWeight(600)), color = c.textMuted, align = TextAlign.Center, modifier = Modifier.fillMaxWidth())
-                p == "" -> Unit
-                mine != "" -> if (manageable) NxButton(t("support.switch", "plan" to planName(p)), manage, kind = ButtonKind.SECONDARY, block = true, loading = busy == "manage")
-                else -> TierButton(t("support.get", "plan" to planName(p)), p, { buy(p) }, enabled = enabled && busy == null, loading = busy == p)
-            }
         }
     }
 }
@@ -1080,3 +1037,267 @@ suspend fun maybePrompt() {
         }
     }
 }
+
+/** A multiplier as the reader's language writes it: ×1.5 (web `times`). */
+private fun times(n: Double): String = t("support.gems.times", "value" to fish.nexa.ui.gems.gemNumber(n, 2))
+
+/** A plan's own badge art, as the web's `badgeArt("plan-…")` (taken over the air). */
+@Composable
+private fun PlanArt(plan: String, size: Dp, modifier: Modifier = Modifier) {
+    coil3.compose.AsyncImage(fish.nexa.data.Ota.uri("badges/plan-$plan.svg"), null, Modifier.size(size).then(modifier))
+}
+
+/** The page's opening: the two plans' art with a Gem between them, the title, and where this account stands (Support.module.css `.hero`). */
+@Composable
+private fun SupportHero(plan: String, billing: fish.nexa.net.Billing?, enabled: Boolean, busy: String?, manage: () -> Unit) {
+    val c = Nx.colors
+    val wide = Nav.wide
+    @Composable
+    fun Art() {
+        val w = if (wide) 230.dp else 200.dp
+        val h = if (wide) 176.dp else 128.dp
+        Box(
+            Modifier
+                .width(w)
+                .height(h)
+                .drawBehind {
+                    drawCircle(Brush.radialGradient(listOf(c.tierPro.copy(alpha = 0.30f), Color.Transparent), center = Offset(size.width * 0.72f, size.height * 0.45f), radius = size.width * 0.62f), radius = size.width * 0.62f, center = Offset(size.width * 0.72f, size.height * 0.45f))
+                    drawCircle(Brush.radialGradient(listOf(c.tierSupporter.copy(alpha = 0.22f), Color.Transparent), center = Offset(size.width * 0.32f, size.height * 0.35f), radius = size.width * 0.5f), radius = size.width * 0.5f, center = Offset(size.width * 0.32f, size.height * 0.35f))
+                }
+                .clearAndSetSemantics {},
+        ) {
+            val s = if (wide) 1f else 0.8f
+            PlanArt("supporter", (112 * s).dp, Modifier.offset(x = 0.dp, y = (26 * s).dp).rotate(-14f))
+            PlanArt("pro", (124 * s).dp, Modifier.align(Alignment.TopEnd).offset(y = (14 * s).dp).rotate(11f))
+            fish.nexa.ui.gems.GemIcon((70 * s).dp, Modifier.offset(x = (78 * s).dp, y = (96 * s).dp).rotate(-6f))
+        }
+    }
+    @Composable
+    fun Words(modifier: Modifier) = Column(modifier, verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        Txt(
+            t("support.title"),
+            style = Nx.type.title.copy(fontSize = Nx.type.sp(if (wide) 40f else 30f), lineHeight = Nx.type.sp(if (wide) 42f else 32f), fontWeight = FontWeight(800), letterSpacing = (-0.022).em),
+            color = c.textStrong,
+            modifier = Modifier.semantics { heading() },
+        )
+        Txt(t("support.lede"), style = Nx.type.body.copy(fontSize = Nx.type.sp(if (wide) 16f else 15f), lineHeight = Nx.type.sp(if (wide) 24f else 22.5f)), color = c.textSubtle)
+        FlowRow(
+            Modifier.padding(top = 4.dp),
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+            itemVerticalAlignment = Alignment.CenterVertically,
+        ) {
+            if (plan == "") Txt(t("support.onFree"), style = Nx.type.bodySmall, color = c.textMuted)
+            else {
+                PlanBadge(plan)
+                Txt(
+                    when {
+                        billing == null || billing.periodEnd == 0L -> t("support.thanks")
+                        billing.cancelAtEnd -> t("support.endsOn", "date" to Time.shortDate(billing.periodEnd))
+                        else -> t("support.renewsOn", "date" to Time.shortDate(billing.periodEnd))
+                    },
+                    style = Nx.type.bodySmall, color = c.textMuted,
+                )
+            }
+            if (billing?.manageable == true) NxButton(t("support.manage"), manage, kind = ButtonKind.SECONDARY, size = ButtonSize.TOUCH, loading = busy == "manage")
+        }
+        if (!enabled) Txt(t("support.notOpen"), style = Nx.type.bodySmall, color = c.text)
+    }
+    if (wide) Row(Modifier.fillMaxWidth().padding(top = 6.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(28.dp)) {
+        Words(Modifier.weight(1f))
+        Art()
+    } else Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) { Art() }
+        Words(Modifier.fillMaxWidth())
+    }
+}
+
+/** What a plan gives, said on its card, the Gems first (web `cardLines`). */
+private fun cardLines(p: String): List<String> {
+    val l = Plans.limitsOf(p)
+    val out = mutableListOf(t("support.card.gems", "value" to fish.nexa.ui.gems.gemNumber(Plans.GEM_BOOST[p] ?: 1.0, 2)))
+    out += t("support.card.file", "size" to Time.bytes(l.fileMax))
+    out += t("support.card.uploads", "size" to Time.bytes(l.monthUploadMax))
+    if (l.shareQuality) out += t("support.card.share", "n" to Math.round(l.shareMaxBps / 1e6))
+    if (l.nameEffects) out += t("support.card.effects")
+    out += t("support.card.badge", "plan" to planName(p))
+    if (l.boosts > 0) out += t("support.card.boosts", "count" to l.boosts)
+    return out
+}
+
+/** A paid plan as a card in its own light, its badge art over the corner (Support.module.css `.card`). */
+@Composable
+private fun TierCard(p: String, mine: String, period: String, enabled: Boolean, busy: String?, manageable: Boolean, price: (String, String) -> String, buy: (String) -> Unit, manage: () -> Unit, modifier: Modifier = Modifier) {
+    val c = Nx.colors
+    val tone = tint(c, p)
+    val wide = Nav.wide
+    val shape = Radii.Xl
+    Box(
+        modifier
+            .boxShadow(shape, 26f, 48f, tone, spread = -26f)
+            .clip(shape)
+            .drawBehind {
+                // 160deg from the plan's light down to half of it in black, lit again from the top corner
+                val dx = size.height * 0.36f
+                drawRect(Brush.linearGradient(listOf(tone, mixOklab(tone, Color.Black, 0.5f)), start = Offset(size.width / 2 - dx, 0f), end = Offset(size.width / 2 + dx, size.height)))
+                drawRect(Brush.radialGradient(0f to mixOklab(tone, Color.White, 0.2f), 0.58f to Color.Transparent, center = Offset(size.width, 0f), radius = size.width * 1.1f))
+            }
+            .topEdge(shape, Color.White.copy(alpha = 0.32f))
+            .ring(shape, Color.White.copy(alpha = 0.08f))
+            .semantics(mergeDescendants = false) { contentDescription = planName(p) },
+    ) {
+        val emblem = if (wide) 168.dp else 136.dp
+        PlanArt(p, emblem, Modifier.align(Alignment.TopEnd).offset(x = if (wide) 34.dp else 28.dp, y = if (wide) (-30).dp else (-24).dp).rotate(-12f).alpha(0.92f).clearAndSetSemantics {})
+        Column(
+            Modifier.fillMaxWidth().padding(start = if (wide) 26.dp else 20.dp, end = if (wide) 26.dp else 20.dp, top = if (wide) 26.dp else 22.dp, bottom = if (wide) 24.dp else 20.dp),
+            verticalArrangement = Arrangement.spacedBy(if (wide) 18.dp else 16.dp),
+        ) {
+            Column(Modifier.padding(end = if (wide) 96.dp else 72.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                Txt(planName(p), style = Nx.type.title.copy(fontSize = Nx.type.sp(if (wide) 30f else 27f), lineHeight = Nx.type.sp(if (wide) 33f else 30f), fontWeight = FontWeight(800), letterSpacing = (-0.02).em), color = Color.White, modifier = Modifier.semantics { heading() })
+                Txt(
+                    if (period == "month" || mine != "") t("support.perMonth", "price" to price(p, "month")) else t("support.perYear", "price" to price(p, "year")),
+                    style = Nx.type.body.copy(fontSize = Nx.type.sp(17f), fontWeight = FontWeight(600)), color = Color.White.copy(alpha = 0.84f),
+                )
+            }
+            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                cardLines(p).forEachIndexed { i, line ->
+                    if (i == 0) Row(
+                        Modifier
+                            .padding(bottom = 4.dp)
+                            .fillMaxWidth()
+                            .background(Color.White.copy(alpha = 0.14f), Radii.Md)
+                            .ring(Radii.Md, Color.White.copy(alpha = 0.12f))
+                            .padding(horizontal = 12.dp, vertical = 10.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(10.dp),
+                    ) {
+                        fish.nexa.ui.gems.GemIcon(22.dp)
+                        Txt(line, style = Nx.type.body.copy(fontSize = Nx.type.sp(15f), lineHeight = Nx.type.sp(21f), fontWeight = FontWeight(700)), color = Color.White)
+                    } else Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                        Box(Modifier.padding(top = 1.dp).size(20.dp).background(Color.White.copy(alpha = 0.22f), CircleShape), contentAlignment = Alignment.Center) {
+                            Icon("Check", Color.White, size = 13.dp, stroke = 3f)
+                        }
+                        Txt(line, style = Nx.type.body.copy(fontSize = Nx.type.sp(15f), lineHeight = Nx.type.sp(21f), fontWeight = FontWeight(500)), color = Color.White.copy(alpha = 0.94f))
+                    }
+                }
+            }
+            // side by side, the buttons line up at the foot of the taller card
+            if (wide) androidx.compose.foundation.layout.Spacer(Modifier.weight(1f))
+            Box(Modifier.fillMaxWidth().heightIn(min = 44.dp), contentAlignment = Alignment.CenterStart) {
+                when {
+                    p == mine -> Txt(
+                        t("support.current"),
+                        style = Nx.type.bodySmall.copy(fontSize = Nx.type.sp(14f), fontWeight = FontWeight(700)), color = Color.White,
+                        modifier = Modifier.background(Color.White.copy(alpha = 0.18f), CircleShape).padding(horizontal = 14.dp, vertical = 8.dp),
+                    )
+                    mine != "" -> if (manageable) CardButton(t("support.switch", "plan" to planName(p)), tone, manage, loading = busy == "manage")
+                    else -> CardButton(t("support.get", "plan" to planName(p)), tone, { buy(p) }, enabled = enabled && busy == null, loading = busy == p)
+                }
+            }
+        }
+    }
+}
+
+/** The white button on a plan's card, its words in the plan's deep tone (Support.module.css `.cardBuy`). */
+@Composable
+private fun CardButton(text: String, tone: Color, onClick: () -> Unit, enabled: Boolean = true, loading: Boolean = false) {
+    val shape = Radii.Sm
+    val ink = mixOklab(tone, Color.Black, 0.28f)
+    Box(
+        Modifier
+            .fillMaxWidth()
+            .height(48.dp)
+            .then(if (enabled) Modifier.boxShadow(shape, 10f, 22f, Color.Black.copy(alpha = 0.5f), spread = -12f).background(Color.White, shape) else Modifier.background(Color.White.copy(alpha = 0.2f), shape).ring(shape, Color.White.copy(alpha = 0.16f)))
+            .clip(shape)
+            .pressable(remember { MutableInteractionSource() }, enabled = enabled && !loading, onClick = onClick)
+            .semantics { role = Role.Button },
+        contentAlignment = Alignment.Center,
+    ) {
+        if (loading) fish.nexa.ui.components.LoadingDots(ink)
+        else Txt(text, style = Nx.type.button.copy(fontSize = Nx.type.sp(16f)), color = if (enabled) ink else Color.White.copy(alpha = 0.72f), maxLines = 1)
+    }
+}
+
+/** The two paid plans, side by side when there is room (Support.module.css `.cards`). */
+@Composable
+private fun TierCards(mine: String, period: String, enabled: Boolean, busy: String?, manageable: Boolean, price: (String, String) -> String, buy: (String) -> Unit, manage: () -> Unit) {
+    if (Nav.wide) Row(Modifier.fillMaxWidth().height(IntrinsicSize.Max), horizontalArrangement = Arrangement.spacedBy(18.dp)) {
+        for (p in Plans.PAID) TierCard(p, mine, period, enabled, busy, manageable, price, buy, manage, Modifier.weight(1f).fillMaxHeight())
+    } else Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(14.dp)) {
+        for (p in Plans.PAID) TierCard(p, mine, period, enabled, busy, manageable, price, buy, manage, Modifier.fillMaxWidth())
+    }
+}
+
+/** What You Get: each perk shown on the viewer's own name rather than said (Support.module.css `.perks`). */
+@Composable
+private fun Perks() {
+    val c = Nx.colors
+    val me by Nexa.users.me.collectAsState()
+    val name = me?.displayName?.ifBlank { null } ?: me?.username ?: "Nexa"
+    Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
+        SectionTitle(t("support.perks.title"))
+        @Composable
+        fun Perk(title: String, body: String, modifier: Modifier, show: @Composable () -> Unit) {
+            Column(modifier.panel(Radii.Lg, c).padding(start = 14.dp, end = 14.dp, top = 14.dp, bottom = 16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                Box(
+                    Modifier.padding(bottom = 8.dp).fillMaxWidth().heightIn(min = if (Nav.wide) 120.dp else 100.dp).background(c.bgSurface, Radii.Md).clip(Radii.Md).padding(14.dp),
+                    contentAlignment = Alignment.Center,
+                ) { show() }
+                Txt(title, style = Nx.type.heading.copy(fontSize = Nx.type.sp(16f), lineHeight = Nx.type.sp(21f)), color = c.textStrong, modifier = Modifier.padding(horizontal = 4.dp).semantics { heading() })
+                Txt(body, style = Nx.type.bodySmall.copy(fontSize = Nx.type.sp(13.5f), lineHeight = Nx.type.sp(19.5f)), color = c.textMuted, modifier = Modifier.padding(horizontal = 4.dp))
+            }
+        }
+        val tiles: List<@Composable (Modifier) -> Unit> = listOf(
+            { m ->
+                Perk(t("support.perk.gems.title"), t("support.perk.gems.body"), m) {
+                    Row(horizontalArrangement = Arrangement.spacedBy(18.dp), verticalAlignment = Alignment.Bottom) {
+                        PLANS.forEachIndexed { i, p ->
+                            Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                                fish.nexa.ui.gems.GemIcon((26 + i * 9).dp)
+                                Txt(times(Plans.GEM_BOOST[p] ?: 1.0), style = Nx.type.body.copy(fontSize = Nx.type.sp(16f), fontWeight = FontWeight(800)), color = tintText(c, p))
+                                Txt(planName(p), style = Nx.type.bodySmall.copy(fontSize = Nx.type.sp(12f)), color = c.textMuted, maxLines = 1)
+                            }
+                        }
+                    }
+                }
+            },
+            { m ->
+                Perk(t("support.row.effects"), t("support.perk.effects.body"), m) {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                        val own = fish.nexa.data.NameStyle.read(me?.nameStyle)
+                        for (e in listOf("holo", "neon", "flame")) {
+                            fish.nexa.ui.chat.PersonName(
+                                null, name,
+                                style = Nx.type.body.copy(fontSize = Nx.type.sp(20f), lineHeight = Nx.type.sp(26f), fontWeight = FontWeight(700)),
+                                color = c.textStrong,
+                                nameStyle = fish.nexa.data.NameStyle.withEffect(own, e).toJson(),
+                            )
+                        }
+                    }
+                }
+            },
+            { m ->
+                Perk(t("support.row.badge"), t("support.perk.badge.body"), m) {
+                    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                        for (p in Plans.PAID) Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            Txt(name, style = Nx.type.body.copy(fontSize = Nx.type.sp(16f), fontWeight = FontWeight(700)), color = c.textStrong, maxLines = 1, modifier = Modifier.weight(1f, fill = false))
+                            PlanBadge(p)
+                        }
+                    }
+                }
+            },
+        )
+        if (Nav.wide) Row(Modifier.fillMaxWidth().height(IntrinsicSize.Max), horizontalArrangement = Arrangement.spacedBy(14.dp)) {
+            for (tile in tiles) tile(Modifier.weight(1f).fillMaxHeight())
+        } else for (tile in tiles) tile(Modifier.fillMaxWidth())
+    }
+}
+
+/** A heading over one of the page's parts (Support.module.css `.sectionTitle`). */
+@Composable
+private fun SectionTitle(text: String) = Txt(
+    text,
+    style = Nx.type.heading.copy(fontSize = Nx.type.sp(20f), lineHeight = Nx.type.sp(25f), letterSpacing = (-0.01).em),
+    color = Nx.colors.textStrong,
+    modifier = Modifier.padding(top = 6.dp).semantics { heading() },
+)

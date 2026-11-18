@@ -121,7 +121,7 @@ type Server struct {
 	limReads    *ratelimit.Limiter
 	limUnfurl   *ratelimit.Limiter
 	limProxy    *ratelimit.Limiter
-	limYouTube  *ratelimit.Limiter
+	limPlayers  *ratelimit.Limiter
 	limRefresh  *ratelimit.Limiter
 	limVoice    *ratelimit.Limiter
 	limTurn     *ratelimit.Limiter
@@ -351,10 +351,10 @@ func NewServer(cfg config.Config, st *store.Store, log *slog.Logger, bc Broadcas
 		// so an unmetered one is both a way to exhaust Nexa's
 		// bandwidth and a way to aim Nexa at someone else's.
 		limProxy: ratelimit.New(ratelimit.Every(120, time.Minute), 60, 10*time.Minute),
-		// YouTube's player through /yt/, per address: a video asks for its
-		// page and scripts at once and then a piece every few seconds, and a
-		// household may watch a few at a time
-		limYouTube: ratelimit.New(ratelimit.Every(1200, time.Minute), 400, 10*time.Minute),
+		// the music players through /sp/ and /sc/, per address: a player asks
+		// for its page and scripts at once and then a piece every few
+		// seconds, and a household may play a few at a time
+		limPlayers: ratelimit.New(ratelimit.Every(1200, time.Minute), 400, 10*time.Minute),
 		// re-signing old media links, per account: a conversation scrolled
 		// back through asks once per screenful, up to a hundred links a time
 		limRefresh: ratelimit.New(ratelimit.Every(60, time.Minute), 30, 10*time.Minute),
@@ -508,7 +508,7 @@ func NewServer(cfg config.Config, st *store.Store, log *slog.Logger, bc Broadcas
 func (s *Server) limiters() map[string]*ratelimit.Limiter {
 	out := map[string]*ratelimit.Limiter{
 		"generic": s.limGeneric, "auth-ip": s.limAuthIP, "auth-user": s.limAuthUsr, "register": s.limReg, "signup": s.limSignup, "message": s.limMsg,
-		"upload": s.limUpload, "parts": s.limParts, "links": s.limLinks, "reads": s.limReads, "relay": s.limRelay, "unfurl": s.limUnfurl, "proxy": s.limProxy, "youtube": s.limYouTube, "refresh": s.limRefresh, "voice": s.limVoice, "turn": s.limTurn,
+		"upload": s.limUpload, "parts": s.limParts, "links": s.limLinks, "reads": s.limReads, "relay": s.limRelay, "unfurl": s.limUnfurl, "proxy": s.limProxy, "players": s.limPlayers, "refresh": s.limRefresh, "voice": s.limVoice, "turn": s.limTurn,
 		"guest": s.limGuest, "leave-key": s.limLeftKey, "rotator": s.limRotator, "key-reject": s.limKeyBad, "password": s.limPass, "profile": s.limProfile, "lucky": s.limLucky, "gem": s.limGem, "gem-spend": s.limGemSpend, "expressions": s.limExpr,
 		"import": s.limImport, "crash": s.limCrash, "perf": s.limPerf, "bug": s.limBug, "report": s.limReport, "bug-file": s.limBugFile, "key-ask": s.limKeyAsk,
 		"webhook": s.limHook, "webhook-channel": s.limHookCh, "webhook-manage": s.limHookMgr, "poll-vote": s.limVote, "discord": s.limDiscord, "server-tag": s.limTag, "music-search": s.limMusic, "music-preview": s.limPreview,

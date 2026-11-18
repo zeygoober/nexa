@@ -37,6 +37,8 @@ object Gems {
         val team: List<Member>,
         /** Earning in percent: 100 is one Gem a message. */
         val multiplier: Int,
+        /** What the plan alone multiplies earning by, in percent (100 without one). */
+        val planBoost: Int,
         val capsulePrice: Long,
         val fuseCost: Int,
         /** The chance of each rarity in hundredths of a percent, as the server draws it. */
@@ -82,6 +84,7 @@ object Gems {
                 Member(badge(m["badge"]) ?: return@mapNotNull null, m.int("power"))
             }.orEmpty(),
             multiplier = o.int("multiplier").takeIf { it > 0 } ?: 100,
+            planBoost = o.int("plan_boost").takeIf { it > 0 } ?: 100,
             capsulePrice = o.long("capsule_price"),
             fuseCost = o.int("fuse_cost").takeIf { it > 0 } ?: 5,
             odds = (o["odds"] as? JsonObject)?.mapNotNull { (k, v) -> (v as? JsonPrimitive)?.intOrNull?.let { k to it } }?.toMap().orEmpty(),

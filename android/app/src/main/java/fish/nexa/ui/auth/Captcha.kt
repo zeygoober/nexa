@@ -107,13 +107,18 @@ object CaptchaHost : CaptchaProvider {
 <style>html,body{margin:0;background:$color;display:flex;align-items:center;justify-content:center;min-height:100%}</style></head>
 <body><div id="slot"></div>
 <script>
-function done(t){NexaCaptcha.onToken(t)}
-function fail(c){NexaCaptcha.onError(c||"failed")}
+function done(t){clearTimeout(silent);NexaCaptcha.onToken(t)}
+function fail(c){clearTimeout(silent);NexaCaptcha.onError(c||"failed")}
+// a captcha that gives no sign at all (no token, no error, no click asked for) is given up,
+// or it holds every captcha after it (lib/captcha.ts SILENT_MS); while a click is asked for,
+// Turnstile's own timeout runs
+var silent
+function wait(){clearTimeout(silent);silent=setTimeout(function(){fail("timeout")},45000)}
 // the API is ready only when it calls this (its onload)
 var started=false
-function ready(){started=true;turnstile.render("#slot",{sitekey:${JSONObject.quote(siteKey)},action:${JSONObject.quote(action)},theme:"${if (dark) "dark" else "light"}",appearance:"interaction-only",
+function ready(){started=true;wait();turnstile.render("#slot",{sitekey:${JSONObject.quote(siteKey)},action:${JSONObject.quote(action)},theme:"${if (dark) "dark" else "light"}",appearance:"interaction-only",
   callback:done,"error-callback":function(){fail("failed")},"expired-callback":function(){fail("timeout")},"timeout-callback":function(){fail("timeout")},
-  "before-interactive-callback":function(){NexaCaptcha.onShow()},"after-interactive-callback":function(){NexaCaptcha.onHide()}})}
+  "before-interactive-callback":function(){clearTimeout(silent);NexaCaptcha.onShow()},"after-interactive-callback":function(){wait();NexaCaptcha.onHide()}})}
 // a blocked script still loads and never calls ready
 setTimeout(function(){if(!started)fail("unavailable")},15000)
 </script>
@@ -158,7 +163,13 @@ setTimeout(function(){if(!started)fail("unavailable")},15000)
                             settings.domStorageEnabled = true
                             settings.cacheMode = WebSettings.LOAD_DEFAULT
                             webChromeClient = WebChromeClient()
-                            webViewClient = WebViewClient()
+                            webViewClient = object : WebViewClient() {
+                                // a page whose renderer died never answers, and the captchas behind it would wait for good
+                                override fun onRenderProcessGone(view: WebView, detail: android.webkit.RenderProcessGoneDetail): Boolean {
+                                    r.result.completeExceptionally(ApiError(0, "captcha_unavailable", t("captcha.theCaptchaCouldNotStart")))
+                                    return true
+                                }
+                            }
                             addJavascriptInterface(object {
                                 @JavascriptInterface fun onToken(token: String) = r.result.complete(token).let { }
                                 @JavascriptInterface fun onError(code: String) {

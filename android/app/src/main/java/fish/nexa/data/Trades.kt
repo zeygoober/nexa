@@ -41,6 +41,9 @@ object Trades {
         val status: String,
         val channelId: String,
         val messageId: String,
+        /** When it was opened, and when it ended (null while open). */
+        val createdAt: Long = 0,
+        val resolvedAt: Long? = null,
     ) {
         val pending get() = status == "pending"
         fun mineIsFrom(me: String?) = fromId == me
@@ -79,6 +82,8 @@ object Trades {
             status = s("status") ?: "pending",
             channelId = s("channel_id") ?: "",
             messageId = s("message_id") ?: "",
+            createdAt = (o["created_at"] as? JsonPrimitive)?.longOrNull ?: 0,
+            resolvedAt = (o["resolved_at"] as? JsonPrimitive)?.longOrNull,
         )
     }
 

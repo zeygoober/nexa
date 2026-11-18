@@ -401,6 +401,9 @@
   color: var(--text-strong);
   font-variant-numeric: tabular-nums;
 }
+/* a plan multiplies everything rather than adding, so it reads in its own light */
+.power[data-plan="supporter"] { color: var(--text-supporter); }
+.power[data-plan="pro"] { color: var(--text-pro); }
 .power[data-none] {
   font-weight: 500;
   color: var(--text-muted);

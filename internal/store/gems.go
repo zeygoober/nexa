@@ -812,11 +812,26 @@ type GemTeamMember struct {
 	Power int   `json:"power"`
 }
 
+// GemPlanBoost is what a plan multiplies everything a person earns by, in
+// percent, on top of their team (the owner's choice, 2026-11-18): Supporter
+// earns half as much again and Pro twice as much. The plan's badge still adds
+// nothing to a team, so paying counts once.
+func GemPlanBoost(plan string) int {
+	switch plan {
+	case PlanPro:
+		return 200
+	case PlanSupporter:
+		return 150
+	}
+	return 100
+}
+
 // GemTeamSize is how many badges make a team: the ones a profile shows first.
 const GemTeamSize = 5
 
 // gemPower is what one badge adds to a team. A staff rank, a plan, Booster and
-// Gift Giver add nothing, since Gems are never bought and those come of paying.
+// Gift Giver add nothing: a plan boosts earning through GemPlanBoost instead,
+// and the rest come of paying.
 func gemPower(b Badge) int {
 	switch {
 	case b.ID == BadgeStaff || b.ID == BadgePlan || b.ID == BadgeBooster || b.ID == BadgeGiftGiver:

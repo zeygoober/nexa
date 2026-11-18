@@ -26,6 +26,7 @@ export { PackPage } from "@/components/moderation/PackPage";
 export { PersonPage } from "@/components/moderation/PersonPage";
 export { ServerPage } from "@/components/moderation/ServerPage";
 export { ServersTab } from "@/components/moderation/ServersTab";
+export { TradesTab } from "@/components/moderation/TradesTab";
 export { UserGrid } from "@/components/moderation/UserGrid";
 
 export { ReportsTab } from "@/components/reports/ReportsTab";

@@ -850,6 +850,40 @@ object Moderation {
     suspend fun account(id: String): ModAccount = wireJson.decodeFromJsonElement(ModAccount.serializer(), Nexa.api.get("/moderation/users/$id/account"))
 
     /** The owner's look at a server's layout without joining it; logged. */
+    /** The people a page names, as a list (`users`), into the names the panel draws with. */
+    private fun peopleList(el: JsonElement?) = NexaInbox.mergePeople(
+        (el as? JsonArray)?.mapNotNull { runCatching { wireJson.decodeFromJsonElement(NexaPerson.serializer(), it) }.getOrNull() }?.associateBy { it.id }.orEmpty(),
+    )
+
+    /** Someone holding copies of a badge now (store.BadgeOwner): each level or material held, with how many. */
+    data class BadgeOwner(val userId: String, val lines: List<Trades.Line>, val total: Int, val traded: Boolean)
+    data class BadgeOwners(val owners: List<BadgeOwner>, val total: Int, val copies: Int)
+
+    /** The owner's view of a badge: who holds copies of it now, most first, trades counted. */
+    suspend fun badgeOwners(badge: String, offset: Int, limit: Int): BadgeOwners {
+        val o = obj(Nexa.api.get("/moderation/badges/${java.net.URLEncoder.encode(badge, "UTF-8")}/owners" + q("offset" to offset, "limit" to limit)))
+        peopleList(o["users"])
+        val owners = (o["owners"] as? JsonArray)?.mapNotNull { e ->
+            val x = e as? JsonObject ?: return@mapNotNull null
+            BadgeOwner(
+                (x["user_id"] as? JsonPrimitive)?.contentOrNull ?: return@mapNotNull null,
+                Trades.lines(x["lines"]),
+                (x["total"] as? JsonPrimitive)?.contentOrNull?.toIntOrNull() ?: 0,
+                (x["traded"] as? JsonPrimitive)?.contentOrNull == "true",
+            )
+        }.orEmpty()
+        fun n(k: String) = (o[k] as? JsonPrimitive)?.contentOrNull?.toIntOrNull() ?: 0
+        return BadgeOwners(owners, n("total"), n("copies"))
+    }
+
+    /** The owner's Trade Log: every trade newest first, of one status or any, with someone whose username starts with [who]. */
+    suspend fun tradeLog(status: String, who: String, before: String?, limit: Int): Pair<List<Trades.Trade>, Boolean> {
+        val o = obj(Nexa.api.get("/moderation/trades" + q("status" to status, "q" to who.trim(), "before" to before, "limit" to limit)))
+        peopleList(o["users"])
+        val trades = (o["trades"] as? JsonArray)?.mapNotNull { Trades.parse(it) }.orEmpty()
+        return trades to ((o["more"] as? JsonPrimitive)?.contentOrNull == "true")
+    }
+
     suspend fun serverPreview(id: String): ModServerPreview = wireJson.decodeFromJsonElement(ModServerPreview.serializer(), Nexa.api.get("/moderation/servers/$id/preview"))
 
     /** The owner's Manage Server sheet; asking for it writes a line in the log, so it is asked for only when the sheet opens. */

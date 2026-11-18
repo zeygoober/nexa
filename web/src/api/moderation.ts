@@ -11,7 +11,7 @@ import type { ReportReceipt } from "./reports";
 import { api, type UploadOptions } from "./client";
 import type { GiftLink, Invite, Overwrite, Role } from "./types";
 import type { BugCounts, BugMessage, MemberBug } from "./bugs";
-import type { Activity, Badge, BadgeArrangement, BadgeDef, BadgeHolder, BadgeIndexKind, BadgeShape, Emoji, PublicUser, ServerTag, Snowflake, StickerPack } from "./types";
+import type { Activity, Badge, BadgeArrangement, BadgeDef, BadgeHolder, BadgeIndexKind, BadgeShape, Emoji, PublicUser, ServerTag, Snowflake, StickerPack, Trade, TradeLine, TradeStatus } from "./types";
 
 /** What staff set on an event badge they make or change. */
 export interface BadgeDefBody {
@@ -845,6 +845,19 @@ export const moderation = {
   badgeHolders(badge: string, offset = 0, limit = 50): Promise<{ holders: BadgeHolder[]; taken: BadgeHolder[]; total: number }> {
     return api.request("GET", `/moderation/badges/${encodeURIComponent(badge)}/holders?offset=${offset}&limit=${limit}`);
   },
+  /** The owner's: who holds copies of a badge now, most first, each level or material its own line. */
+  badgeOwners(badge: string, offset = 0, limit = 50): Promise<{ owners: BadgeOwner[]; users: PublicUser[]; total: number; copies: number }> {
+    return api.request("GET", `/moderation/badges/${encodeURIComponent(badge)}/owners?offset=${offset}&limit=${limit}`);
+  },
+  /** The owner's Trade Log: every trade newest first, of one status or any, with someone whose username starts with q. */
+  tradeLog(o: { status?: TradeStatus | ""; q?: string; before?: Snowflake; limit?: number } = {}): Promise<{ trades: Trade[]; users: PublicUser[]; more: boolean }> {
+    const p = new URLSearchParams();
+    if (o.status) p.set("status", o.status);
+    if (o.q) p.set("q", o.q);
+    if (o.before) p.set("before", o.before);
+    p.set("limit", String(o.limit ?? 30));
+    return api.request("GET", `/moderation/trades?${p}`);
+  },
   /** Gives a badge (at a level, for tiered ones), takes it, or lets an earned one follow the account again. */
   setBadgeHolder(badge: string, userId: Snowflake, state: "give" | "take" | "auto", level = 1): Promise<void> {
     return api.request("PUT", `/moderation/badges/${encodeURIComponent(badge)}/holders/${userId}`, { state, level });
@@ -861,3 +874,11 @@ export const moderation = {
     return api.request("PATCH", `/admin/users/${id}`, body);
   },
 };
+
+/** Someone holding copies of a badge now (store.BadgeOwner): Traded when trades changed what they hold. */
+export interface BadgeOwner {
+  user_id: Snowflake;
+  lines: TradeLine[];
+  total: number;
+  traded?: boolean;
+}

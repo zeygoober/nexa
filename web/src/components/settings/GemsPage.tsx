@@ -264,7 +264,11 @@ export default function GemsPage() {
               {m ? (
                 <>
                   <span className={s.tile}><BadgePill badge={m.badge} user={me} size={40} /></span>
-                  <span className={s.power} data-none={m.power === 0 || undefined}>{t("gems.team.power", { value: fmt(m.power) })}</span>
+                  {m.badge.id === "plan" && (view.plan_boost ?? 100) > 100 ? (
+                    <span className={s.power} data-plan={me.plan || undefined} title={t("gems.planBoostTip")}>{t("support.gems.times", { value: fmt((view.plan_boost ?? 100) / 100, 2) })}</span>
+                  ) : (
+                    <span className={s.power} data-none={m.power === 0 || undefined}>{t("gems.team.power", { value: fmt(m.power) })}</span>
+                  )}
                 </>
               ) : (
                 <>

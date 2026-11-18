@@ -53,6 +53,7 @@ val STAFF_GROUPS: List<Pair<String, List<StaffPlace>>> = listOf(
     ),
     "moderation.nav.records" to listOf(
         StaffPlace("logs", "moderation.tabs.logs", "ScrollText", StaffRank.HELPER),
+        StaffPlace("trades", "moderation.tabs.trades", "ArrowLeftRight", StaffRank.OWNER),
     ),
     "moderation.nav.running" to listOf(
         StaffPlace("announcements", "moderation.tabs.announcements", "Megaphone", StaffRank.ADMIN),

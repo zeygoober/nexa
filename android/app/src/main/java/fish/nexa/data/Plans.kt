@@ -19,6 +19,9 @@ object Plans {
     /** The name effects only plans have (store.PaidNameEffects). */
     val PAID_EFFECTS = setOf("holo", "neon", "flame")
 
+    /** What each plan multiplies the Gems a message earns by, on top of the badge team (store.GemPlanBoost; web GEM_BOOST). */
+    val GEM_BOOST = mapOf("" to 1.0, "supporter" to 1.5, "pro" to 2.0)
+
     /** The table the instance answered with, or the built-in one before it has. */
     fun info(): PlansInfo {
         val inst = Nexa.auth.instance.value

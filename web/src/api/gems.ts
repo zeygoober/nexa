@@ -37,6 +37,8 @@ export interface GemsView {
   team: GemTeamMember[];
   /** Earning in percent: 100 is one Gem a message. */
   multiplier: number;
+  /** What the plan alone multiplies earning by, in percent (100 without one); older servers leave it out. */
+  plan_boost?: number;
   capsule_price: number;
   fuse_cost: number;
   /** The chance of each rarity, in hundredths of a percent (10000 is certain), as the server draws it. */

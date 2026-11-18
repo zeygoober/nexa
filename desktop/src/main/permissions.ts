@@ -29,11 +29,24 @@ type Log = (msg: string, extra?: Record<string, unknown>) => void;
  */
 const ALLOWED = new Set(["media", "notifications", "clipboard-sanitized-write", "fullscreen", "display-capture", "speaker-selection", "pointerLock"]);
 
+/**
+ * Players the app frames from another site, and the one thing each may ask:
+ * YouTube's player plays straight from YouTube (from 1.2.13, since the web app
+ * stopped playing it through Nexa's server) and needs fullscreen for its own
+ * button. Only inside Nexa's own page.
+ */
+const FRAMED: Record<string, Set<string>> = { "https://www.youtube-nocookie.com": new Set(["fullscreen"]) };
+
+function allowed(origin: string, permission: string, appPage: boolean): boolean {
+  if (origin === ORIGIN) return ALLOWED.has(permission);
+  return appPage && !!FRAMED[origin]?.has(permission);
+}
+
 export function lockPermissions(): void {
   const ses = session.defaultSession;
   ses.setPermissionRequestHandler((wc, permission, callback, details) => {
     const origin = originOf((details as { requestingUrl?: string }).requestingUrl ?? wc.getURL());
-    if (origin !== ORIGIN || !ALLOWED.has(permission)) {
+    if (!allowed(origin, permission, isAppUrl(wc.getURL()))) {
       callback(false);
       return;
     }
@@ -52,7 +65,7 @@ export function lockPermissions(): void {
     // Electron hands the origin over as a URL with a trailing slash ("https://host/"), and
     // empty for some checks; compared as it came, every check failed and notifications stayed off
     const origin = originOf(requestingOrigin) || originOf(details.requestingUrl) || originOf(details.embeddingOrigin) || originOf(wc?.getURL());
-    return origin === ORIGIN && ALLOWED.has(permission);
+    return allowed(origin, permission, originOf(details.embeddingOrigin) === ORIGIN || (!!wc && isAppUrl(wc.getURL())));
   });
   // nothing is ever loaded from anywhere else as a page, and downloads keep the system's own save flow
   ses.on("will-download", (_e, item) => {

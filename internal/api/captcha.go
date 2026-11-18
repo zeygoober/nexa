@@ -1,7 +1,10 @@
 package api
 
 import (
+	"crypto/rand"
+	"encoding/hex"
 	"encoding/json"
+	"fmt"
 	"io"
 	"net/http"
 	"net/url"
@@ -44,7 +47,7 @@ const CaptchaProviderHeader = "X-Captcha-Provider"
 // token has to be solved for.
 const CaptchaActionHeader = "X-Captcha-Action"
 
-var captchaClient = &http.Client{Timeout: 8 * time.Second}
+var captchaClient = &http.Client{Timeout: 5 * time.Second}
 
 // captchaVerifyURL is where tokens are checked; tests point it at a stand-in.
 var captchaVerifyURL = "https://challenges.cloudflare.com/turnstile/v0/siteverify"
@@ -99,17 +102,16 @@ func (s *Server) requireCaptcha(w http.ResponseWriter, r *http.Request, action s
 	}
 	verifyURL := captchaVerifyURL
 	form := url.Values{"secret": {s.Cfg.TurnstileSecretKey}, "response": {token}, "remoteip": {auth.ClientIP(r)}}
-	if !turnstile {
+	if turnstile {
+		// lets the same token be checked again when an answer is lost
+		form.Set("idempotency_key", captchaIdempotencyKey())
+	} else {
 		verifyURL = hcaptchaVerifyURL
 		form = url.Values{"secret": {s.Cfg.HCaptchaSecretKey}, "response": {token}, "remoteip": {auth.ClientIP(r)}, "sitekey": {s.Cfg.HCaptchaSiteKey}}
 	}
-	req, err := http.NewRequestWithContext(r.Context(), http.MethodPost, verifyURL, strings.NewReader(form.Encode()))
+	res, err := verifyCaptcha(r, verifyURL, form, turnstile)
 	if err != nil {
-		return unavailable()
-	}
-	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-	res, err := captchaClient.Do(req)
-	if err != nil {
+		s.Log.Warn("captcha: check failed", "action", action, "err", err)
 		return unavailable()
 	}
 	defer res.Body.Close()
@@ -124,6 +126,7 @@ func (s *Server) requireCaptcha(w http.ResponseWriter, r *http.Request, action s
 		} `json:"metadata"`
 	}
 	if res.StatusCode != http.StatusOK || json.NewDecoder(io.LimitReader(res.Body, 64<<10)).Decode(&out) != nil {
+		s.Log.Warn("captcha: unreadable answer", "action", action, "status", res.StatusCode)
 		return unavailable()
 	}
 	// A token counts only for the action it was solved for, and only when it
@@ -152,4 +155,53 @@ func (s *Server) captchaSite(hostname string) bool {
 		}
 	}
 	return false
+}
+
+// captchaIdempotencyKey names one check, so Turnstile answers a repeat of it
+// as it answered the first instead of calling the token spent.
+func captchaIdempotencyKey() string {
+	var b [16]byte
+	_, _ = rand.Read(b[:])
+	h := hex.EncodeToString(b[:])
+	return h[:8] + "-" + h[8:12] + "-" + h[12:16] + "-" + h[16:20] + "-" + h[20:]
+}
+
+// verifyCaptcha sends one check, and once more when the first never got an
+// answer or got a server error. Captchas are rare, so the pooled connection to
+// Cloudflare is often one it has already closed, and a POST sent on it failed
+// at once: most of the "could not be checked just now" answers people saw.
+// Only Turnstile's checks are repeated, since they carry an idempotency key
+// that keeps the token from counting as spent the second time. The header lets
+// Go's transport itself resend on a connection that turns out to be dead.
+func verifyCaptcha(r *http.Request, verifyURL string, form url.Values, again bool) (*http.Response, error) {
+	body := form.Encode()
+	tries := 1
+	if again {
+		tries = 2
+	}
+	var last error
+	for i := 0; i < tries; i++ {
+		req, err := http.NewRequestWithContext(r.Context(), http.MethodPost, verifyURL, strings.NewReader(body))
+		if err != nil {
+			return nil, err
+		}
+		req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+		if again {
+			req.Header.Set("Idempotency-Key", form.Get("idempotency_key"))
+		}
+		res, err := captchaClient.Do(req)
+		switch {
+		case err != nil:
+			last = err
+		case res.StatusCode >= 500:
+			res.Body.Close()
+			last = fmt.Errorf("status %d", res.StatusCode)
+		default:
+			return res, nil
+		}
+		if r.Context().Err() != nil {
+			break
+		}
+	}
+	return nil, last
 }

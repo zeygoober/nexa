@@ -1,40 +1,30 @@
 import { Play, Radio } from "lucide-react";
-import { useEffect, useState } from "react";
-import { api } from "@/api/client";
+import { useState } from "react";
 import { t } from "@/i18n";
+import { isDemo } from "@/lib/demoMode";
 import { formatDuration } from "@/lib/time";
 import s from "./YouTubePlayer.module.css";
 
 /**
- * A YouTube video, played through this server (internal/api/youtube_proxy.go):
- * YouTube never sees who is watching. The frame is sandboxed without its own
- * origin, so the player's code cannot reach anything of the app's, and its
- * policy lets it talk to this server's /yt/ path and nothing else.
+ * A YouTube video, played straight from YouTube's privacy-enhanced host. It
+ * went through this server until 2026-11-18, when YouTube's bot check on the
+ * proxy's address stopped every video, so YouTube now sees the viewer's
+ * address while they watch (and only once they press play). The frame keeps
+ * its own origin, which the player needs to run, and is sandboxed so it cannot
+ * navigate the app; the referrer is only Nexa's origin, which YouTube asks of
+ * an embedder.
  */
 export function YouTubeFrame({ id, title, start }: { id: string; title: string; start?: number | undefined }) {
-  const [src, setSrc] = useState<string | null>(null);
-  const [failed, setFailed] = useState(false);
-  useEffect(() => {
-    let alive = true;
-    const at = start && start > 0 ? `?start=${Math.floor(start)}` : "";
-    api
-      .request<{ url: string }>("GET", `/youtube/${encodeURIComponent(id)}${at}`)
-      .then((r) => alive && r?.url.startsWith("/yt/") && setSrc(api.baseUrl + r.url))
-      .catch(() => alive && setFailed(true));
-    return () => {
-      alive = false;
-    };
-  }, [id, start]);
-  if (failed) return <div className={s.note}>{t("chat.embeds.playerFailed")}</div>;
-  if (!src) return <div className={s.note} aria-busy="true" />;
+  const at = start && start > 0 ? `&start=${Math.floor(start)}` : "";
   return (
     <iframe
       className={s.frame}
-      src={src}
+      src={`https://www.youtube-nocookie.com/embed/${encodeURIComponent(id)}?autoplay=1&rel=0&playsinline=1${at}`}
       title={title}
       allow="autoplay; encrypted-media; picture-in-picture; fullscreen"
-      sandbox="allow-scripts allow-presentation"
-      referrerPolicy="no-referrer"
+      allowFullScreen
+      sandbox="allow-scripts allow-same-origin allow-presentation allow-popups allow-popups-to-escape-sandbox"
+      referrerPolicy="strict-origin-when-cross-origin"
       data-testid="youtube-frame"
     />
   );
@@ -61,6 +51,7 @@ interface VideoProps {
  * A YouTube video's picture, with how long it runs and whether it is live,
  * that becomes the player when pressed. Nothing of YouTube's loads before
  * then; the picture comes through this server's proxy like every other.
+ * The homepage demo plays nothing and asks for an account instead.
  */
 export function YouTubeVideo({ id, title, poster, start, duration, live, w, h }: VideoProps) {
   const [play, setPlay] = useState(false);
@@ -71,7 +62,7 @@ export function YouTubeVideo({ id, title, poster, start, duration, live, w, h }:
       {play ? (
         <YouTubeFrame id={id} title={title} start={start} />
       ) : (
-        <button type="button" className={s.poster} onClick={() => setPlay(true)} aria-label={t("chat.embeds.playVideoNamed", { name: title })}>
+        <button type="button" className={s.poster} onClick={() => (isDemo ? window.dispatchEvent(new Event("nexa-demo-account")) : setPlay(true))} aria-label={t("chat.embeds.playVideoNamed", { name: title })}>
           {poster ? <img src={poster} alt="" loading="lazy" referrerPolicy="no-referrer" draggable={false} onError={(ev) => (ev.currentTarget.style.visibility = "hidden")} /> : null}
           <span className={s.play} aria-hidden="true">
             <Play size={26} fill="currentColor" />
