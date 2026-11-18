@@ -419,6 +419,20 @@ fun BadgesTab() {
                         }
                     }
                 }
+                if (mayOwners) item("secret") {
+                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Column(verticalArrangement = Arrangement.spacedBy(4.dp), modifier = Modifier.padding(bottom = 2.dp)) {
+                            PartTitle(t("badges.index.special"))
+                            Txt(t("badges.staff.secretHint"), style = Nx.type.bodySmall.copy(fontSize = Nx.type.sp(13f)), color = c.textMuted, modifier = Modifier.padding(start = 2.dp))
+                        }
+                        for (id in Badges.SECRET_BADGES) {
+                            val badge = Badges.Badge(id)
+                            BadgeRow(pill = { BadgePill(badge, "0", 0L, "", still = true, named = true) }, note = t("badges.staff.${id}Note", "word" to t("badges.secretWord"))) {
+                                OwnersButton { openOwnersSheet(badge, t("badges.secret.$id")) }
+                            }
+                        }
+                    }
+                }
                 item("earned") {
                     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         Column(verticalArrangement = Arrangement.spacedBy(4.dp), modifier = Modifier.padding(bottom = 2.dp)) {
@@ -504,7 +518,7 @@ private val collectibleArt: List<String> by lazy {
 
 /** Staff pick a collectible's drawing, each shown at bronze, in one well as the web's (.arts): as many 52 dp cells a row as fit. */
 /** A drawing's line for a new collectable's description, or "" when it has none. */
-private fun artLine(n: String): String = if (n.isNotEmpty() && fish.nexa.ui.I18n.has("gems.artDesc.$n")) t("gems.artDesc.$n") else ""
+private fun artLine(n: String): String = Badges.artLine(n)
 
 @Composable
 private fun ArtPicker(rarity: String, value: String, onPick: (String) -> Unit) {

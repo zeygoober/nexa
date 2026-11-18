@@ -15,6 +15,8 @@ export const CONTRIBUTOR = "contributor";
 export const EXCLUSIVE_HAND = ["legend", "mentor", "patron", "influencer", "artist"] as const;
 /** Every built-in badge staff give by hand (store.HandBadges). */
 export const HAND_BADGES: readonly string[] = [CONTRIBUTOR, ...EXCLUSIVE_HAND];
+/** The Secret badges people find by themselves (store.SecretBadges); staff never give them. */
+export const SECRET_BADGES: readonly string[] = ["hopeful", "curious", "nosy", "lucky"];
 export const EVENT_PREFIX = "event:";
 
 /** Whether a badge is an event badge staff made. */
@@ -108,6 +110,13 @@ function joinPlace(n: number): string {
   return `${n}${end}`;
 }
 
+/** The line a collectible's drawing brings, in the reader's language, for one whose description staff left empty. */
+export function artLine(art: string): string {
+  const key = `gems.artDesc.${art}`;
+  const line = art ? t(key) : "";
+  return line === key ? "" : line;
+}
+
 /** A badge's description ends without a full stop (the owner's rule), whoever wrote it. */
 export function bareTip(tip: string): string {
   return tip.replace(/(?<![.。])[.。]\s*$/u, "").trimEnd();
@@ -189,7 +198,7 @@ function builtInLook(b: Badge, user: Who): BadgeLook | null {
       // a collectible is drawn at its material; a badge staff made says what they wrote for it
       if (isEventBadge(b.id) && b.name && b.rarity && b.art) {
         const drawn = collectibleArt(b.art, b.level ?? 1);
-        if (drawn) return { art: drawn, label: b.name, tip: b.description ?? "" };
+        if (drawn) return { art: drawn, label: b.name, tip: b.description || artLine(b.art) };
       }
       if (isEventBadge(b.id) && b.name) return { iconName: b.icon, color: b.color, color2: b.color2, image: b.image, label: b.name, tip: b.description ?? "" };
       return null;

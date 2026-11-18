@@ -26,6 +26,8 @@ object Badges {
     val EXCLUSIVE_HAND = listOf("legend", "mentor", "patron", "influencer", "artist")
     /** Every built-in badge staff give by hand (store.HandBadges). */
     val HAND_BADGES = listOf(CONTRIBUTOR) + EXCLUSIVE_HAND
+    /** The Secret badges people find by themselves (store.SecretBadges); staff never give them. */
+    val SECRET_BADGES = listOf("hopeful", "curious", "nosy", "lucky")
     const val EVENT_PREFIX = "event:"
 
     /**
@@ -145,6 +147,9 @@ object Badges {
 
     private val FINAL_STOP = Regex("(?<![.。])[.。]\\s*$")
 
+    /** The line a collectible's drawing brings, in the reader's language, for one whose description staff left empty (web artLine). */
+    fun artLine(art: String): String = if (art.isNotEmpty() && fish.nexa.ui.I18n.has("gems.artDesc.$art")) t("gems.artDesc.$art") else ""
+
     /** A badge's description ends without a full stop (the owner's rule), whoever wrote it (web bareTip). */
     fun bareTip(tip: String): String = tip.replace(FINAL_STOP, "").trimEnd()
 
@@ -173,7 +178,7 @@ object Badges {
         "hopeful", "curious", "nosy", "lucky" -> Look(b.id, t("badges.secret.${b.id}"), t("badges.secret.${b.id}Tip"))
         // a badge staff made says what they wrote for it
         // a collectible is drawn at its material; a badge staff made says what they wrote for it
-        else -> if (b.isEvent && b.name != null && b.rarity != null && b.art != null) Look("col-${b.art}-${b.level.coerceIn(1, 5)}", b.name, b.description ?: "")
+        else -> if (b.isEvent && b.name != null && b.rarity != null && b.art != null) Look("col-${b.art}-${b.level.coerceIn(1, 5)}", b.name, b.description?.takeIf { it.isNotEmpty() } ?: artLine(b.art))
         else if (b.isEvent && b.name != null) Look(null, b.name, b.description ?: "", b.icon ?: "award", b.color, b.color2, b.dark, b.shape, b.image) else null
     }
 
