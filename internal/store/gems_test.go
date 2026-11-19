@@ -215,3 +215,23 @@ func TestCollectiblesShowAndStaySecretLocked(t *testing.T) {
 		t.Fatalf("%d locked, %d held, name sent: %v", locked, held, strings.Contains(string(raw), "Paper Lantern"))
 	}
 }
+
+// Scripts that sent a little slower than once a minute scored 45 and were
+// never flagged (2026-11-19, these rows from the live server); a person
+// chatting nonstop in a busy place, or alone in their own words, is not.
+func TestGemScoreCatchesSlowScripts(t *testing.T) {
+	for _, c := range []struct {
+		name string
+		d    gemDay
+		flag bool
+	}{
+		{"666", gemDay{earns: 597, quick: 272, alone: 593, hours: 36863, sizes: 1064960}, true},
+		{"mm", gemDay{earns: 593, quick: 275, alone: 593, hours: 4095, sizes: 16384}, true},
+		{"busy person", gemDay{earns: 400, quick: 390, alone: 20, hours: 0xffff, sizes: 0xfff0}, false},
+		{"talking to themselves", gemDay{earns: 60, quick: 58, alone: 60, hours: 0x7, sizes: 0xff00}, false},
+	} {
+		if got := gemScore(c.d) >= gemFlagScore; got != c.flag {
+			t.Errorf("%s: score %d, flagged %v", c.name, gemScore(c.d), got)
+		}
+	}
+}

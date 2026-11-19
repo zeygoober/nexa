@@ -217,25 +217,30 @@ type gemDay struct {
 	hours, sizes        int64
 }
 
-// gemScore is how much a day looks like a script, from 0 to 100: earning at
-// nearly every minute it could, where nobody else was talking, through most
-// hours of the day, with messages all of one or two sizes. A busy person in a
-// busy place earns at most a third of it.
+// gemScore is how much a day looks like a script, from 0 to 100: earning
+// where nobody else was talking, with messages all of one or two sizes, at
+// nearly every minute it could, through most hours of the day. Talking to
+// nobody in messages of one size is enough alone; a busy person in a busy
+// place earns at most 40.
+//
+// Until 2026-11-19 earning on the minute weighed most, and scripts that sent
+// a little slower than once a minute scored 45 with 600 earns a day, all alone
+// and all one size.
 func gemScore(d gemDay) int {
 	if d.earns < gemWatchMin {
 		return 0
 	}
 	score := 0
-	if d.quick*10 >= d.earns*9 {
-		score += 30
-	}
 	if d.alone*10 >= d.earns*8 {
-		score += 25
-	}
-	if bits.OnesCount64(uint64(d.hours)) >= 16 {
-		score += 25
+		score += 35
 	}
 	if bits.OnesCount64(uint64(d.sizes)) <= 2 {
+		score += 30
+	}
+	if d.quick*10 >= d.earns*9 {
+		score += 20
+	}
+	if bits.OnesCount64(uint64(d.hours)) >= 16 {
 		score += 20
 	}
 	return score
