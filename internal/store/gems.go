@@ -53,8 +53,10 @@ const (
 	GemOffFor = 30 * gemDayMs
 )
 
-// gemWatchMin is how many earns a day takes before its pattern counts. Tests lower it.
-var gemWatchMin = 240
+// gemWatchMin is how many earns a day takes before its pattern counts, about
+// half an hour of earning every minute. It was 240 until 2026-11-19, which let a
+// script run four hours before anything happened. Tests lower it.
+var gemWatchMin = 30
 
 // The states of a wallet.
 const (

@@ -1210,7 +1210,7 @@ A currency earned by chatting, spent on capsules of collectibles, fused and trad
   `gem_ledger` (`owner_given`, `owner_taken`) and `mod_log` (`gems_give`, `gems_take` with the amount and the balance after) in one
   transaction. Taking stops at what the person can spend (`gems_short`); held Gems and the farming check are left alone. People only.
 - Farming (`gem_watch`, kept `gemWatchDays`, 14): per UTC day, earns, earns right after the cooldown, earns where nobody else spoke for half an
-  hour, which hours and which message sizes earned. A day scoring past `gemFlagScore` puts the wallet in `check`: new Gems are held and the
+  hour, which hours and which message sizes earned. A day scoring past `gemFlagScore`, judged once it has `gemWatchMin` (30) earns, puts the wallet in `check`: new Gems are held and the
   apps show the hold banner until `POST /gems/confirm` (captcha action `gems`) releases them. Still scoring after that files a Gem Farming
   report (reason `gem_farming`, held in `report`) whose staff page shows the days, never messages. Take Action (Mod and up) opens a case
   `gem_farming` that turns earning off for 30 days (`GemOffFor`) and takes what was held; lifting the case gives both back. Staff are never
