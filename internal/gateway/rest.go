@@ -61,7 +61,7 @@ var canWait = map[string]bool{
 	EvUserUpdate: true, EvVoiceState: true, EvSettingsUpdate: true,
 	EvNoteUpdate: true, EvNoteCRDT: true, EvAuditLogEntry: true, EvAutomodEvent: true, EvAutomodRulesUpdate: true,
 	EvInviteCreate: true, EvInviteDelete: true, EvWebhooksUpdate: true, EvFollowsUpdate: true,
-	EvAppCommandsUpdate: true, EvIntegrationsUpdate: true,
+	EvAppCommandsUpdate: true, EvIntegrationsUpdate: true, EvQuestsUpdate: true,
 }
 
 // outOfDate lists what is only worth anything live; it is not sent at all.

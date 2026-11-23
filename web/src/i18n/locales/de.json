@@ -8108,6 +8108,95 @@
   "profile.profileCard.tradeBadges": "Abzeichen tauschen",
   "profile.profileCard.viewBanner": "Banner anzeigen",
   "profile.profileCard.viewProfilePicture": "Profilbild anzeigen",
+  "quests.actionFailed": "Das hat nicht geklappt. Versuche es gleich noch einmal.",
+  "quests.bonus": {
+    "one": "Schließe alle drei ab für {count} weiteren Edelstein",
+    "other": "Schließe alle drei ab für {count} weitere Edelsteine"
+  },
+  "quests.daily.title": "Tägliche Quests",
+  "quests.done": "Erledigt",
+  "quests.failed": "Deine Quests konnten nicht geladen werden.",
+  "quests.finished": {
+    "one": "Quest abgeschlossen. Du hast {count} Edelstein verdient.",
+    "other": "Quest abgeschlossen. Du hast {count} Edelsteine verdient."
+  },
+  "quests.hint": "Schließe Quests ab, um Edelsteine zu verdienen. Tägliche Quests wechseln jeden Tag um Mitternacht UTC.",
+  "quests.kind.bugs": {
+    "one": "Lass {count} Fehlerbericht annehmen",
+    "other": "Lass {count} Fehlerberichte annehmen"
+  },
+  "quests.kind.call_minutes": {
+    "one": "Verbringe {count} Minute in einem Anruf mit jemandem",
+    "other": "Verbringe {count} Minuten in einem Anruf mit jemandem"
+  },
+  "quests.kind.call_size": {
+    "one": "Sei in einem Anruf mit {count} Person",
+    "other": "Sei in einem Anruf mit {count} Personen"
+  },
+  "quests.kind.capsules": {
+    "one": "Öffne {count} Kapsel",
+    "other": "Öffne {count} Kapseln"
+  },
+  "quests.kind.dailies": {
+    "one": "Schließe {count} tägliche Quest ab",
+    "other": "Schließe {count} tägliche Quests ab"
+  },
+  "quests.kind.friends": {
+    "one": "Finde {count} neuen Freund",
+    "other": "Finde {count} neue Freunde"
+  },
+  "quests.kind.fuses": {
+    "one": "Verschmelze {count}-mal Abzeichen",
+    "other": "Verschmelze {count}-mal Abzeichen"
+  },
+  "quests.kind.gems": {
+    "one": "Verdiene {count} Edelstein durch Chatten",
+    "other": "Verdiene {count} Edelsteine durch Chatten"
+  },
+  "quests.kind.ideas": {
+    "one": "Lass {count} Vorschlag annehmen",
+    "other": "Lass {count} Vorschläge annehmen"
+  },
+  "quests.kind.joins": {
+    "one": "Tritt {count} Server bei, auf dem du noch nie warst",
+    "other": "Tritt {count} Servern bei, auf denen du noch nie warst"
+  },
+  "quests.kind.materials": {
+    "one": "Gewinne {count} Verschmelzung",
+    "other": "Gewinne {count} Verschmelzungen"
+  },
+  "quests.kind.messages": {
+    "one": "Sende {count} Nachricht, wo andere gerade schreiben",
+    "other": "Sende {count} Nachrichten, wo andere gerade schreiben"
+  },
+  "quests.kind.servers": {
+    "one": "Schreibe auf {count} Server eine Nachricht",
+    "other": "Schreibe auf {count} verschiedenen Servern eine Nachricht"
+  },
+  "quests.kind.trades": {
+    "one": "Handle mit {count} Person",
+    "other": "Handle mit {count} verschiedenen Personen"
+  },
+  "quests.level.1": "Leicht",
+  "quests.level.2": "Mittel",
+  "quests.level.3": "Schwer",
+  "quests.progress": "{progress} von {target}",
+  "quests.resetsIn": "Neue tägliche Quests in {time}",
+  "quests.swap": "Quest Tauschen",
+  "quests.swapHint": "Du kannst einmal am Tag eine tägliche Quest gegen eine gleich schwere tauschen.",
+  "quests.time.hm": "{h} Std. {m} Min.",
+  "quests.time.m": "{m} Min.",
+  "quests.title": "Quests",
+  "quests.trial.cleared": {
+    "one": "{count} Stufe geschafft",
+    "other": "{count} Stufen geschafft"
+  },
+  "quests.trial.first": "Deine erste Stufe",
+  "quests.trial.hint": "Eine Quest nach der anderen. Jede Stufe verlangt etwas mehr und zahlt etwas mehr.",
+  "quests.trial.skip": "Quest Überspringen",
+  "quests.trial.skipHint": "Du kannst einmal am Tag eine Quest der Prüfung gegen eine andere auf derselben Stufe tauschen.",
+  "quests.trial.step": "Stufe {step}",
+  "quests.trial.title": "Endlose Prüfung",
   "render.jumpToChannel": "Zu {name} wechseln",
   "render.jumpToMessage": "Zur Nachricht in {name} springen",
   "reports.aboutAccount": {
@@ -8968,6 +9057,8 @@
   "whatsNew.r20261118.planGemsTitle": "Pläne bringen mehr Edelsteine",
   "whatsNew.r20261118.youtubeDirectBody": "Videos laden jetzt direkt von YouTube, wenn du auf Abspielen drückst, und verlangen keine Anmeldung mehr. Während ein Video läuft, kann YouTube deine Adresse sehen.",
   "whatsNew.r20261118.youtubeDirectTitle": "YouTube-Videos laufen wieder",
+  "whatsNew.r20261123.questsBody": "Schließe drei tägliche Quests ab und steig in der Endlosen Prüfung auf, um Edelsteine zu verdienen. Du findest sie unter Einstellungen, Quests.",
+  "whatsNew.r20261123.questsTitle": "Quests",
   "widgets.about.books": "Die Bücher, die du am meisten liebst, bis zu zwölf.",
   "widgets.about.countdown": "Zähle die Tage bis zu einem Tag, der dir wichtig ist.",
   "widgets.about.localtime": "Zeige die Uhrzeit dort, wo du bist.",

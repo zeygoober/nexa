@@ -255,6 +255,7 @@ func (s *Server) handleTradeReady(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	s.changed(w, t)
+	s.questTraded(r.Context(), t)
 }
 
 // handleTradeEnd closes a trade that has not happened: declining it when it was

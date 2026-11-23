@@ -2794,6 +2794,7 @@ func (s *Server) handleInviteJoin(w http.ResponseWriter, r *http.Request) {
 func (s *Server) joined(r *http.Request, srv *store.Server, me *store.User, member *store.Member) {
 	ctx := r.Context()
 	s.emitServer(ctx, srv.ID, "member_add", map[string]any{"server_id": srv.ID, "member": member, "user": me.Public()})
+	s.questJoined(ctx, me, srv)
 	// the people already here have never seen this user's presence
 	s.Bcast.PresenceChanged(me.ID)
 	if srv.SystemChannelID != nil {

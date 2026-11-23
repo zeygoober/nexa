@@ -233,6 +233,13 @@ class Session(private val nx: Nexa) {
                 val state = w.state.ifEmpty { null }
                 nx.users.me.value?.let { me -> if (me.gemState != state) nx.users.setMe(me.copy(gemState = state)) }
             }
+            "quests_update" -> {
+                val b = Quests.parse(d) ?: return
+                Quests.set(b)
+                for (q in Quests.completed(d)) {
+                    if (q.track != "bonus") Nexa.ui.toast(fish.nexa.ui.t("quests.finished", "count" to (if (q.paid > 0) q.paid else q.reward)), "success")
+                }
+            }
             "trade_update" -> {
                 val t = Trades.parse(d) ?: return
                 Trades.set(t)
@@ -631,6 +638,7 @@ class Session(private val nx: Nexa) {
         fish.nexa.ui.markdown.LinkedChannels.clear()
         Games.reset()
         Gems.reset()
+        Quests.reset()
         Invites.clear()
         GiftPreviews.clear()
         nx.messages.clear()

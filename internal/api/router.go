@@ -134,6 +134,7 @@ type Server struct {
 	limGem      *ratelimit.Limiter
 	limGemSpend *ratelimit.Limiter
 	gemTeams    gemTeamCache
+	quests      questBook
 	limExpr     *ratelimit.Limiter
 	limImport   *ratelimit.Limiter
 	limCrash    *ratelimit.Limiter

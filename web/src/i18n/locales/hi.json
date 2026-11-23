@@ -8108,6 +8108,95 @@
   "profile.profileCard.tradeBadges": "बैज की अदला-बदली",
   "profile.profileCard.viewBanner": "बैनर देखें",
   "profile.profileCard.viewProfilePicture": "प्रोफ़ाइल चित्र देखें",
+  "quests.actionFailed": "यह नहीं हो सका। थोड़ी देर में फिर कोशिश करें।",
+  "quests.bonus": {
+    "one": "तीनों पूरे करें और {count} रत्न और पाएँ",
+    "other": "तीनों पूरे करें और {count} रत्न और पाएँ"
+  },
+  "quests.daily.title": "दैनिक क्वेस्ट",
+  "quests.done": "पूरा",
+  "quests.failed": "आपके क्वेस्ट लोड नहीं हो सके।",
+  "quests.finished": {
+    "one": "क्वेस्ट पूरा हुआ। आपने {count} रत्न कमाया।",
+    "other": "क्वेस्ट पूरा हुआ। आपने {count} रत्न कमाए।"
+  },
+  "quests.hint": "रत्न कमाने के लिए क्वेस्ट पूरे करें। दैनिक क्वेस्ट हर दिन आधी रात UTC पर बदलते हैं।",
+  "quests.kind.bugs": {
+    "one": "{count} बग रिपोर्ट स्वीकार करवाएँ",
+    "other": "{count} बग रिपोर्ट स्वीकार करवाएँ"
+  },
+  "quests.kind.call_minutes": {
+    "one": "किसी के साथ कॉल में {count} मिनट बिताएँ",
+    "other": "किसी के साथ कॉल में {count} मिनट बिताएँ"
+  },
+  "quests.kind.call_size": {
+    "one": "{count} व्यक्ति वाली कॉल में रहें",
+    "other": "{count} लोगों वाली कॉल में रहें"
+  },
+  "quests.kind.capsules": {
+    "one": "{count} कैप्सूल खोलें",
+    "other": "{count} कैप्सूल खोलें"
+  },
+  "quests.kind.dailies": {
+    "one": "{count} दैनिक क्वेस्ट पूरा करें",
+    "other": "{count} दैनिक क्वेस्ट पूरे करें"
+  },
+  "quests.kind.friends": {
+    "one": "{count} नया दोस्त बनाएँ",
+    "other": "{count} नए दोस्त बनाएँ"
+  },
+  "quests.kind.fuses": {
+    "one": "बैज {count} बार मिलाएँ",
+    "other": "बैज {count} बार मिलाएँ"
+  },
+  "quests.kind.gems": {
+    "one": "चैट करके {count} रत्न कमाएँ",
+    "other": "चैट करके {count} रत्न कमाएँ"
+  },
+  "quests.kind.ideas": {
+    "one": "{count} सुझाव स्वीकार करवाएँ",
+    "other": "{count} सुझाव स्वीकार करवाएँ"
+  },
+  "quests.kind.joins": {
+    "one": "{count} ऐसे सर्वर से जुड़ें जिसमें आप पहले नहीं थे",
+    "other": "{count} ऐसे सर्वर से जुड़ें जिनमें आप पहले नहीं थे"
+  },
+  "quests.kind.materials": {
+    "one": "{count} बार मिलाना सफल करें",
+    "other": "{count} बार मिलाना सफल करें"
+  },
+  "quests.kind.messages": {
+    "one": "जहाँ दूसरे बात कर रहे हों वहाँ {count} संदेश भेजें",
+    "other": "जहाँ दूसरे बात कर रहे हों वहाँ {count} संदेश भेजें"
+  },
+  "quests.kind.servers": {
+    "one": "{count} सर्वर में संदेश भेजें",
+    "other": "{count} अलग-अलग सर्वर में संदेश भेजें"
+  },
+  "quests.kind.trades": {
+    "one": "{count} व्यक्ति के साथ व्यापार करें",
+    "other": "{count} अलग-अलग लोगों के साथ व्यापार करें"
+  },
+  "quests.level.1": "आसान",
+  "quests.level.2": "मध्यम",
+  "quests.level.3": "कठिन",
+  "quests.progress": "{target} में से {progress}",
+  "quests.resetsIn": "नए दैनिक क्वेस्ट {time} में",
+  "quests.swap": "क्वेस्ट बदलें",
+  "quests.swapHint": "आप दिन में एक दैनिक क्वेस्ट को उतने ही कठिन दूसरे क्वेस्ट से बदल सकते हैं।",
+  "quests.time.hm": "{h} घं {m} मि",
+  "quests.time.m": "{m} मि",
+  "quests.title": "क्वेस्ट",
+  "quests.trial.cleared": {
+    "one": "{count} कदम पार",
+    "other": "{count} कदम पार"
+  },
+  "quests.trial.first": "आपका पहला कदम",
+  "quests.trial.hint": "एक बार में एक क्वेस्ट। हर कदम थोड़ा ज़्यादा माँगता है और थोड़ा ज़्यादा देता है।",
+  "quests.trial.skip": "क्वेस्ट छोड़ें",
+  "quests.trial.skipHint": "आप दिन में चुनौती का एक क्वेस्ट छोड़कर उसी कदम पर दूसरा ले सकते हैं।",
+  "quests.trial.step": "कदम {step}",
+  "quests.trial.title": "अनंत चुनौती",
   "render.jumpToChannel": "{name} पर जाएँ",
   "render.jumpToMessage": "{name} में संदेश पर जाएँ",
   "reports.aboutAccount": {
@@ -8968,6 +9057,8 @@
   "whatsNew.r20261118.planGemsTitle": "प्लान से ज़्यादा रत्न मिलते हैं",
   "whatsNew.r20261118.youtubeDirectBody": "अब प्ले दबाने पर वीडियो सीधे YouTube से लोड होते हैं, इसलिए वे अब साइन इन करने को नहीं कहते। वीडियो चलते समय YouTube आपका पता देख सकता है।",
   "whatsNew.r20261118.youtubeDirectTitle": "YouTube वीडियो फिर से चलते हैं",
+  "whatsNew.r20261123.questsBody": "रत्नों के लिए तीन दैनिक क्वेस्ट पूरे करें और अनंत चुनौती में आगे बढ़ें। ये सेटिंग्स, क्वेस्ट में हैं।",
+  "whatsNew.r20261123.questsTitle": "क्वेस्ट",
   "widgets.about.books": "आपकी सबसे पसंदीदा किताबें, बारह तक।",
   "widgets.about.countdown": "अपने लिए खास किसी दिन तक उलटी गिनती करें।",
   "widgets.about.localtime": "दिखाएँ कि आप जहाँ हैं वहाँ क्या समय है।",

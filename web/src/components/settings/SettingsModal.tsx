@@ -23,6 +23,7 @@ const AccountPage = lazyPage(() => import("./AccountPage"));
 const ProfilePage = lazyPage(() => import("./ProfilePage"));
 const BadgeIndexPage = lazyPage(() => import("./BadgeIndexPage"));
 const GemsPage = lazyPage(() => import("./GemsPage"));
+const QuestsPage = lazyPage(() => import("./QuestsPage"));
 const PrivacyPage = lazyPage(() => import("./PrivacyPage"));
 const ActivityPage = lazyPage(() => import("./ActivityPage"));
 const BlockedPage = lazyPage(() => import("./BlockedPage"));
@@ -65,6 +66,7 @@ function navGroups(opts: { inApp: boolean; admin: boolean }): NavGroup[] {
         { id: "profiles", label: t("settings.profile.profiles") },
         { id: "badgeIndex", label: t("badges.index.title") },
         { id: "gems", label: t("gems.title") },
+        { id: "quests", label: t("quests.title") },
         { id: "security", label: t("settings.security.security") },
         { id: "devices", label: t("settings.devices.devices") },
         { id: "subscription", label: t("support.settingsLabel") },
@@ -195,6 +197,7 @@ export default function SettingsModal({ onClose, page: initial, packId, modalId,
     page === "profiles" ? <ProfilePage anchor={anchor} serverId={serverId} /> :
     page === "badgeIndex" ? <BadgeIndexPage /> :
     page === "gems" ? <GemsPage /> :
+    page === "quests" ? <QuestsPage /> :
     page === "privacy" ? <PrivacyPage /> :
     page === "data" ? <DataPage onDeleteAccount={() => go({ page: "account", label: "", anchor: "deleteAccount" })} /> :
     page === "activity" ? <ActivityPage /> :

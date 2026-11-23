@@ -96,6 +96,7 @@ type AccountRecord struct {
 	Gems      *GemWallet       // gem_wallets, user_id = them
 	GemLedger []GemLedgerEntry // gem_ledger, user_id = them, newest first
 	GemWatch  []GemWatchDay    // gem_watch, user_id = them, newest first
+	Quests    []Quest          // quests, user_id = them, newest first
 
 	Discord *LegalDiscord // discord_links, user_id = them
 
@@ -1042,6 +1043,9 @@ func (s *Store) legalBugReports(ctx context.Context, rec *AccountRecord, uid int
 		return err
 	}
 	if rec.GemWatch, err = s.GemWatch(ctx, ids.ID(uid)); err != nil {
+		return err
+	}
+	if rec.Quests, err = s.QuestRecord(ctx, ids.ID(uid)); err != nil {
 		return err
 	}
 	rows, err := s.db.R.QueryContext(ctx, `SELECT id, number, subject, status, attachment_count, created_at FROM bug_reports WHERE user_id = ? ORDER BY id DESC LIMIT ?`, uid, LegalListCap)

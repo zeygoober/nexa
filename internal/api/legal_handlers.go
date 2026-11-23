@@ -313,6 +313,7 @@ func (s *Server) renderLegalReport(rec *store.AccountRecord, by *store.User) str
 	legalSharedGames(d, rec)
 	legalBadgeProgress(d, rec)
 	legalGems(d, rec)
+	legalQuests(d, rec)
 	legalUnavailable(d)
 	legalNotCollected(d)
 	s.legalProvenance(d, rec, by)
@@ -983,6 +984,25 @@ func legalGems(d *legalDoc, rec *store.AccountRecord) {
 	d.note("A wallet of Gems earned by sending messages, and a ledger of what was spent,")
 	d.note("traded, held or taken. The daily timing summary, kept two weeks, counts")
 	d.note("earns, not messages, and holds no text or conversation.")
+}
+
+func legalQuests(d *legalDoc, rec *store.AccountRecord) {
+	d.head("QUESTS", "quests, quest_players, quest_seen")
+	if len(rec.Quests) == 0 {
+		d.empty("No quests are recorded for this account.")
+		return
+	}
+	for _, q := range rec.Quests {
+		state := "open"
+		if q.DoneAt > 0 {
+			state = fmt.Sprintf("finished %s, paid %d Gems", legalTime(q.DoneAt), q.Paid)
+		}
+		d.item(fmt.Sprintf("%s %s (level %d) from %s: %d of %d, %s", q.Track, q.Kind, q.Level, legalTime(q.Started), q.Progress, q.Target, state))
+	}
+	d.capped(len(rec.Quests))
+	d.note("Daily quests and Infinite Trial steps, kept two weeks once a day is over or a")
+	d.note("step finished. The account also keeps which people it has befriended and which")
+	d.note("servers it has joined, so only new ones count towards a quest.")
 }
 
 func legalBugReports(d *legalDoc, rec *store.AccountRecord) {

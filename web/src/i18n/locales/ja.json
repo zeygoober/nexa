@@ -7846,6 +7846,78 @@
   "profile.profileCard.tradeBadges": "バッジを交換",
   "profile.profileCard.viewBanner": "バナーを表示",
   "profile.profileCard.viewProfilePicture": "プロフィール画像を表示",
+  "quests.actionFailed": "実行できませんでした。少し待ってからもう一度お試しください。",
+  "quests.bonus": {
+    "other": "3つすべてクリアでさらに {count} ジェム"
+  },
+  "quests.daily.title": "デイリークエスト",
+  "quests.done": "達成",
+  "quests.failed": "クエストを読み込めませんでした。",
+  "quests.finished": {
+    "other": "クエスト達成。{count} ジェムを獲得しました。"
+  },
+  "quests.hint": "クエストをクリアしてジェムを獲得しましょう。デイリークエストは毎日 UTC の午前0時に変わります。",
+  "quests.kind.bugs": {
+    "other": "バグ報告を {count} 件採用してもらう"
+  },
+  "quests.kind.call_minutes": {
+    "other": "誰かと通話で {count} 分過ごす"
+  },
+  "quests.kind.call_size": {
+    "other": "{count} 人の通話に参加する"
+  },
+  "quests.kind.capsules": {
+    "other": "カプセルを {count} 個開ける"
+  },
+  "quests.kind.dailies": {
+    "other": "デイリークエストを {count} 個クリアする"
+  },
+  "quests.kind.friends": {
+    "other": "新しいフレンドを {count} 人作る"
+  },
+  "quests.kind.fuses": {
+    "other": "バッジを {count} 回合成する"
+  },
+  "quests.kind.gems": {
+    "other": "チャットで {count} ジェムを獲得する"
+  },
+  "quests.kind.ideas": {
+    "other": "提案を {count} 件採用してもらう"
+  },
+  "quests.kind.joins": {
+    "other": "まだ参加したことのないサーバーに {count} つ参加する"
+  },
+  "quests.kind.materials": {
+    "other": "合成を {count} 回成功させる"
+  },
+  "quests.kind.messages": {
+    "other": "ほかの人が話している場所でメッセージを {count} 件送る"
+  },
+  "quests.kind.servers": {
+    "other": "{count} つのサーバーでメッセージを送る"
+  },
+  "quests.kind.trades": {
+    "other": "{count} 人の別々の人とトレードする"
+  },
+  "quests.level.1": "かんたん",
+  "quests.level.2": "ふつう",
+  "quests.level.3": "むずかしい",
+  "quests.progress": "{progress} / {target}",
+  "quests.resetsIn": "新しいデイリークエストまで {time}",
+  "quests.swap": "クエストを入れ替える",
+  "quests.swapHint": "1日に1回、デイリークエストを同じ難しさの別のクエストに入れ替えられます。",
+  "quests.time.hm": "{h}時間{m}分",
+  "quests.time.m": "{m}分",
+  "quests.title": "クエスト",
+  "quests.trial.cleared": {
+    "other": "{count} 段階クリア"
+  },
+  "quests.trial.first": "最初の段階",
+  "quests.trial.hint": "クエストは1つずつ。段階ごとに少しずつ難しくなり、報酬も少しずつ増えます。",
+  "quests.trial.skip": "クエストをスキップ",
+  "quests.trial.skipHint": "1日に1回、試練のクエストを同じ段階の別のクエストにスキップできます。",
+  "quests.trial.step": "第{step}段階",
+  "quests.trial.title": "無限の試練",
   "render.jumpToChannel": "{name} へ移動",
   "render.jumpToMessage": "{name} のメッセージへ移動",
   "reports.aboutAccount": {
@@ -8691,6 +8763,8 @@
   "whatsNew.r20261118.planGemsTitle": "プランでジェムがもっと貯まる",
   "whatsNew.r20261118.youtubeDirectBody": "再生を押すと動画が YouTube から直接読み込まれるようになり、サインインを求められなくなりました。動画の再生中は、YouTube にあなたのアドレスが見えます。",
   "whatsNew.r20261118.youtubeDirectTitle": "YouTube の動画が再び再生できるように",
+  "whatsNew.r20261123.questsBody": "3つのデイリークエストをクリアし、無限の試練を進んでジェムを獲得しましょう。設定の「クエスト」にあります。",
+  "whatsNew.r20261123.questsTitle": "クエスト",
   "widgets.about.books": "いちばん好きな本を12冊まで。",
   "widgets.about.countdown": "大切な日までをカウントダウンします。",
   "widgets.about.localtime": "あなたのいる場所の時刻を表示します。",

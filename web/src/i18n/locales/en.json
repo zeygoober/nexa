@@ -8108,6 +8108,95 @@
   "profile.profileCard.tradeBadges": "Trade Badges",
   "profile.profileCard.viewBanner": "View Banner",
   "profile.profileCard.viewProfilePicture": "View Profile Picture",
+  "quests.actionFailed": "That could not be done. Try again in a moment.",
+  "quests.bonus": {
+    "one": "Finish all three for {count} more Gem",
+    "other": "Finish all three for {count} more Gems"
+  },
+  "quests.daily.title": "Daily Quests",
+  "quests.done": "Done",
+  "quests.failed": "Your quests could not be loaded.",
+  "quests.finished": {
+    "one": "Quest finished. You earned {count} Gem.",
+    "other": "Quest finished. You earned {count} Gems."
+  },
+  "quests.hint": "Finish quests to earn Gems. Daily quests change every day at midnight UTC.",
+  "quests.kind.bugs": {
+    "one": "Have {count} bug report accepted",
+    "other": "Have {count} bug reports accepted"
+  },
+  "quests.kind.call_minutes": {
+    "one": "Spend {count} minute in a call with someone",
+    "other": "Spend {count} minutes in a call with someone"
+  },
+  "quests.kind.call_size": {
+    "one": "Be in a call of {count} person",
+    "other": "Be in a call of {count} people"
+  },
+  "quests.kind.capsules": {
+    "one": "Open {count} capsule",
+    "other": "Open {count} capsules"
+  },
+  "quests.kind.dailies": {
+    "one": "Finish {count} daily quest",
+    "other": "Finish {count} daily quests"
+  },
+  "quests.kind.friends": {
+    "one": "Make {count} new friend",
+    "other": "Make {count} new friends"
+  },
+  "quests.kind.fuses": {
+    "one": "Fuse badges {count} time",
+    "other": "Fuse badges {count} times"
+  },
+  "quests.kind.gems": {
+    "one": "Earn {count} Gem by chatting",
+    "other": "Earn {count} Gems by chatting"
+  },
+  "quests.kind.ideas": {
+    "one": "Have {count} suggestion accepted",
+    "other": "Have {count} suggestions accepted"
+  },
+  "quests.kind.joins": {
+    "one": "Join {count} server you have not joined before",
+    "other": "Join {count} servers you have not joined before"
+  },
+  "quests.kind.materials": {
+    "one": "Win {count} fuse",
+    "other": "Win {count} fuses"
+  },
+  "quests.kind.messages": {
+    "one": "Send {count} message where others are talking",
+    "other": "Send {count} messages where others are talking"
+  },
+  "quests.kind.servers": {
+    "one": "Send a message in {count} server",
+    "other": "Send a message in {count} different servers"
+  },
+  "quests.kind.trades": {
+    "one": "Trade with {count} person",
+    "other": "Trade with {count} different people"
+  },
+  "quests.level.1": "Easy",
+  "quests.level.2": "Medium",
+  "quests.level.3": "Hard",
+  "quests.progress": "{progress} of {target}",
+  "quests.resetsIn": "New daily quests in {time}",
+  "quests.swap": "Swap Quest",
+  "quests.swapHint": "You can swap one daily quest a day for another just as hard.",
+  "quests.time.hm": "{h} h {m} min",
+  "quests.time.m": "{m} min",
+  "quests.title": "Quests",
+  "quests.trial.cleared": {
+    "one": "{count} step cleared",
+    "other": "{count} steps cleared"
+  },
+  "quests.trial.first": "Your first step",
+  "quests.trial.hint": "One quest at a time. Each step asks a little more and pays a little more.",
+  "quests.trial.skip": "Skip Quest",
+  "quests.trial.skipHint": "You can skip one Trial quest a day for a different one at the same step.",
+  "quests.trial.step": "Step {step}",
+  "quests.trial.title": "Infinite Trial",
   "render.jumpToChannel": "Go to {name}",
   "render.jumpToMessage": "Jump to the message in {name}",
   "reports.aboutAccount": {
@@ -8968,6 +9057,8 @@
   "whatsNew.r20261118.planGemsTitle": "Plans Earn More Gems",
   "whatsNew.r20261118.youtubeDirectBody": "Videos now load straight from YouTube when you press play, so they no longer ask you to sign in. While a video plays, YouTube can see your address.",
   "whatsNew.r20261118.youtubeDirectTitle": "YouTube Videos Play Again",
+  "whatsNew.r20261123.questsBody": "Finish three daily quests and climb the Infinite Trial for Gems. Find them in Settings, Quests.",
+  "whatsNew.r20261123.questsTitle": "Quests",
   "widgets.about.books": "The books you love most, up to twelve.",
   "widgets.about.countdown": "Count down to a day that matters to you.",
   "widgets.about.localtime": "Show the time where you are.",

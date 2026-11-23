@@ -28,8 +28,8 @@ func (s *Server) gemRoutes(mux *http.ServeMux) {
 	mux.Handle("GET /api/v1/gems/record", s.authed(s.handleGemRecord))
 }
 
-// handleGemRecord is what the data export reads: the wallet, the ledger and
-// the timing the farming check keeps.
+// handleGemRecord is what the data export reads: the wallet, the ledger, the
+// timing the farming check keeps and the quests kept.
 func (s *Server) handleGemRecord(w http.ResponseWriter, r *http.Request) {
 	me := auth.UserFrom(r.Context())
 	wallet, err := s.Store.GemWallet(r.Context(), me.ID)
@@ -47,7 +47,12 @@ func (s *Server) handleGemRecord(w http.ResponseWriter, r *http.Request) {
 		WriteError(w, err)
 		return
 	}
-	WriteJSON(w, http.StatusOK, map[string]any{"wallet": wallet, "ledger": ledger, "watch": watch})
+	quests, err := s.Store.QuestRecord(r.Context(), me.ID)
+	if err != nil {
+		WriteError(w, err)
+		return
+	}
+	WriteJSON(w, http.StatusOK, map[string]any{"wallet": wallet, "ledger": ledger, "watch": watch, "quests": quests})
 }
 
 // gemFarmingReason is the reason of the reports a farming flag files. It is
@@ -113,6 +118,7 @@ func (s *Server) gemMultiplier(ctx context.Context, me *store.User) int {
 // earnGem gives the sender of a message just stored what it earns. A failure
 // costs them the Gem, never the message.
 func (s *Server) earnGem(ctx context.Context, me *store.User, m *store.Message) {
+	s.questMessage(ctx, me, m)
 	if me == nil || m == nil || me.Flags&(store.NotPeople|store.FlagBot|store.FlagDeleted) != 0 {
 		return
 	}
@@ -131,6 +137,9 @@ func (s *Server) earnGem(ctx context.Context, me *store.User, m *store.Message) 
 	}
 	if got == nil {
 		return
+	}
+	if got.Gained > 0 && s.questWants(ctx, me.ID, store.QuestGems) {
+		s.questQueue(me.ID, func(p *questPending) { p.counts[store.QuestGems] += got.Gained })
 	}
 	switch got.Flag {
 	case store.GemStateCheck:
@@ -344,6 +353,7 @@ func (s *Server) handleGemCapsule(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	s.gemTeams.forget(me.ID)
+	s.questNow(r.Context(), me, store.QuestCapsules, 1, 0)
 	v, err := s.gemsFor(r.Context(), me)
 	if err != nil {
 		WriteError(w, err)
@@ -372,6 +382,10 @@ func (s *Server) handleGemFuse(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	s.gemTeams.forget(me.ID)
+	s.questNow(r.Context(), me, store.QuestFuses, 1, 0)
+	if won {
+		s.questNow(r.Context(), me, store.QuestMaterials, 1, 0)
+	}
 	v, err := s.gemsFor(r.Context(), me)
 	if err != nil {
 		WriteError(w, err)

@@ -8,6 +8,7 @@ import { useChannels } from "@/stores/channels";
 import { keysGoneHooks, useKeys } from "@/stores/keys";
 import { useTrades } from "@/stores/trades";
 import { useGems } from "@/stores/gems";
+import { useQuests } from "@/stores/quests";
 import { useMessages } from "@/stores/messages";
 import { isThread, useThreads } from "@/stores/threads";
 import { noteThreadMessage, useThreadLast } from "@/stores/threadLast";
@@ -23,6 +24,7 @@ import { useNotes } from "@/stores/notes";
 import { useSettings } from "@/stores/settings";
 import { useTyping } from "@/stores/typing";
 import { useUI } from "@/stores/ui";
+import { t } from "@/i18n";
 import { applyLockPolicy } from "./session";
 import { fetchMissingUsers, useUsers } from "@/stores/users";
 import { decryptForStore, type DecryptedMessage } from "@/lib/decrypt";
@@ -824,6 +826,14 @@ export async function applyEvent(e: GatewayEvent): Promise<void> {
       const me = useAuth.getState().me;
       const state = e.d.state || undefined;
       if (me && me.gem_state !== state) useAuth.getState().setMe({ ...me, gem_state: state });
+      return;
+    }
+    case "quests_update": {
+      const { completed, ...board } = e.d;
+      useQuests.getState().set(board);
+      for (const q of completed ?? []) {
+        if (q.track !== "bonus") useUI.getState().toast(t("quests.finished", { count: q.paid || q.reward }), "success");
+      }
       return;
     }
     case "poll_vote_add":

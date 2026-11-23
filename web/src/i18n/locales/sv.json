@@ -8108,6 +8108,95 @@
   "profile.profileCard.tradeBadges": "Byt Märken",
   "profile.profileCard.viewBanner": "Visa banner",
   "profile.profileCard.viewProfilePicture": "Visa profilbild",
+  "quests.actionFailed": "Det gick inte. Försök igen om en stund.",
+  "quests.bonus": {
+    "one": "Slutför alla tre för {count} ädelsten till",
+    "other": "Slutför alla tre för {count} ädelstenar till"
+  },
+  "quests.daily.title": "Dagliga Uppdrag",
+  "quests.done": "Klart",
+  "quests.failed": "Dina uppdrag kunde inte läsas in.",
+  "quests.finished": {
+    "one": "Uppdraget är klart. Du tjänade {count} ädelsten.",
+    "other": "Uppdraget är klart. Du tjänade {count} ädelstenar."
+  },
+  "quests.hint": "Slutför uppdrag för att tjäna ädelstenar. Dagliga uppdrag byts varje dag vid midnatt UTC.",
+  "quests.kind.bugs": {
+    "one": "Få {count} felrapport godkänd",
+    "other": "Få {count} felrapporter godkända"
+  },
+  "quests.kind.call_minutes": {
+    "one": "Var i ett samtal med någon i {count} minut",
+    "other": "Var i ett samtal med någon i {count} minuter"
+  },
+  "quests.kind.call_size": {
+    "one": "Var med i ett samtal med {count} person",
+    "other": "Var med i ett samtal med {count} personer"
+  },
+  "quests.kind.capsules": {
+    "one": "Öppna {count} kapsel",
+    "other": "Öppna {count} kapslar"
+  },
+  "quests.kind.dailies": {
+    "one": "Slutför {count} dagligt uppdrag",
+    "other": "Slutför {count} dagliga uppdrag"
+  },
+  "quests.kind.friends": {
+    "one": "Skaffa {count} ny vän",
+    "other": "Skaffa {count} nya vänner"
+  },
+  "quests.kind.fuses": {
+    "one": "Smält märken {count} gång",
+    "other": "Smält märken {count} gånger"
+  },
+  "quests.kind.gems": {
+    "one": "Tjäna {count} ädelsten genom att chatta",
+    "other": "Tjäna {count} ädelstenar genom att chatta"
+  },
+  "quests.kind.ideas": {
+    "one": "Få {count} förslag godkänt",
+    "other": "Få {count} förslag godkända"
+  },
+  "quests.kind.joins": {
+    "one": "Gå med i {count} server du inte varit med i förut",
+    "other": "Gå med i {count} servrar du inte varit med i förut"
+  },
+  "quests.kind.materials": {
+    "one": "Lyckas med {count} smältning",
+    "other": "Lyckas med {count} smältningar"
+  },
+  "quests.kind.messages": {
+    "one": "Skicka {count} meddelande där andra pratar",
+    "other": "Skicka {count} meddelanden där andra pratar"
+  },
+  "quests.kind.servers": {
+    "one": "Skicka ett meddelande i {count} server",
+    "other": "Skicka ett meddelande i {count} olika servrar"
+  },
+  "quests.kind.trades": {
+    "one": "Byt med {count} person",
+    "other": "Byt med {count} olika personer"
+  },
+  "quests.level.1": "Lätt",
+  "quests.level.2": "Medel",
+  "quests.level.3": "Svår",
+  "quests.progress": "{progress} av {target}",
+  "quests.resetsIn": "Nya dagliga uppdrag om {time}",
+  "quests.swap": "Byt Uppdrag",
+  "quests.swapHint": "Du kan byta ett dagligt uppdrag om dagen mot ett annat som är lika svårt.",
+  "quests.time.hm": "{h} h {m} min",
+  "quests.time.m": "{m} min",
+  "quests.title": "Uppdrag",
+  "quests.trial.cleared": {
+    "one": "{count} steg klarat",
+    "other": "{count} steg klarade"
+  },
+  "quests.trial.first": "Ditt första steg",
+  "quests.trial.hint": "Ett uppdrag i taget. Varje steg kräver lite mer och ger lite mer.",
+  "quests.trial.skip": "Hoppa Över Uppdrag",
+  "quests.trial.skipHint": "Du kan hoppa över ett uppdrag i prövningen om dagen och få ett annat på samma steg.",
+  "quests.trial.step": "Steg {step}",
+  "quests.trial.title": "Oändliga Prövningen",
   "render.jumpToChannel": "Gå till {name}",
   "render.jumpToMessage": "Gå till meddelandet i {name}",
   "reports.aboutAccount": {
@@ -8968,6 +9057,8 @@
   "whatsNew.r20261118.planGemsTitle": "Planer ger fler ädelstenar",
   "whatsNew.r20261118.youtubeDirectBody": "Videor laddas nu direkt från YouTube när du trycker på spela, så de ber dig inte längre logga in. Medan en video spelas kan YouTube se din adress.",
   "whatsNew.r20261118.youtubeDirectTitle": "YouTube-videor spelas igen",
+  "whatsNew.r20261123.questsBody": "Slutför tre dagliga uppdrag och klättra i Oändliga Prövningen för ädelstenar. Du hittar dem i Inställningar, Uppdrag.",
+  "whatsNew.r20261123.questsTitle": "Uppdrag",
   "widgets.about.books": "Böckerna du älskar mest, upp till tolv.",
   "widgets.about.countdown": "Räkna ner till en dag som betyder något för dig.",
   "widgets.about.localtime": "Visa vad klockan är där du är.",

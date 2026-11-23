@@ -137,7 +137,9 @@ const (
 	EvTradeUpdate        = "trade_update"
 	// EvGemsUpdate tells a person their Gems changed in a way they did not
 	// just ask for: a check, a report and its outcome, a trade.
-	EvGemsUpdate     = "gems_update"
+	EvGemsUpdate = "gems_update"
+	// EvQuestsUpdate tells a person a quest of theirs finished, with their quests as they are now.
+	EvQuestsUpdate   = "quests_update"
 	EvPollVoteAdd    = "poll_vote_add"
 	EvPollVoteRemove = "poll_vote_remove"
 	EvSettingsUpdate = "settings_update"

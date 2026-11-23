@@ -46,6 +46,8 @@ export function settingsIndex(opts: { pageLabels: Record<string, string> }): Set
     e("gems", t("gems.team.title")),
     e("gems", t("gems.capsule.title")),
     e("gems", t("gems.collection.title")),
+    e("quests", t("quests.daily.title")),
+    e("quests", t("quests.trial.title")),
     e("security", t("settings.security.twoFactorAuthentication"), "twoFactor"),
     e("security", t("settings.security.backupCodes"), "twoFactor"),
     e("security", t("settings.security.appLock"), "appLock"),

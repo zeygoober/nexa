@@ -7846,6 +7846,78 @@
   "profile.profileCard.tradeBadges": "배지 교환",
   "profile.profileCard.viewBanner": "배너 보기",
   "profile.profileCard.viewProfilePicture": "프로필 사진 보기",
+  "quests.actionFailed": "처리하지 못했어요. 잠시 후 다시 시도하세요.",
+  "quests.bonus": {
+    "other": "세 개를 모두 완료하면 젬 {count}개 추가"
+  },
+  "quests.daily.title": "일일 퀘스트",
+  "quests.done": "완료",
+  "quests.failed": "퀘스트를 불러오지 못했어요.",
+  "quests.finished": {
+    "other": "퀘스트 완료. 젬 {count}개를 받았어요."
+  },
+  "quests.hint": "퀘스트를 완료하고 젬을 받으세요. 일일 퀘스트는 매일 UTC 자정에 바뀝니다.",
+  "quests.kind.bugs": {
+    "other": "버그 제보 {count}개 채택받기"
+  },
+  "quests.kind.call_minutes": {
+    "other": "다른 사람과 통화로 {count}분 보내기"
+  },
+  "quests.kind.call_size": {
+    "other": "{count}명이 함께하는 통화에 참여하기"
+  },
+  "quests.kind.capsules": {
+    "other": "캡슐 {count}개 열기"
+  },
+  "quests.kind.dailies": {
+    "other": "일일 퀘스트 {count}개 완료하기"
+  },
+  "quests.kind.friends": {
+    "other": "새 친구 {count}명 사귀기"
+  },
+  "quests.kind.fuses": {
+    "other": "배지 {count}번 합성하기"
+  },
+  "quests.kind.gems": {
+    "other": "채팅으로 젬 {count}개 모으기"
+  },
+  "quests.kind.ideas": {
+    "other": "제안 {count}개 채택받기"
+  },
+  "quests.kind.joins": {
+    "other": "처음 가는 서버 {count}곳에 참여하기"
+  },
+  "quests.kind.materials": {
+    "other": "합성 {count}번 성공하기"
+  },
+  "quests.kind.messages": {
+    "other": "다른 사람들이 대화 중인 곳에 메시지 {count}개 보내기"
+  },
+  "quests.kind.servers": {
+    "other": "서로 다른 서버 {count}곳에서 메시지 보내기"
+  },
+  "quests.kind.trades": {
+    "other": "서로 다른 {count}명과 교환하기"
+  },
+  "quests.level.1": "쉬움",
+  "quests.level.2": "보통",
+  "quests.level.3": "어려움",
+  "quests.progress": "{progress} / {target}",
+  "quests.resetsIn": "새 일일 퀘스트까지 {time}",
+  "quests.swap": "퀘스트 바꾸기",
+  "quests.swapHint": "하루에 한 번, 일일 퀘스트 하나를 같은 난이도의 다른 퀘스트로 바꿀 수 있어요.",
+  "quests.time.hm": "{h}시간 {m}분",
+  "quests.time.m": "{m}분",
+  "quests.title": "퀘스트",
+  "quests.trial.cleared": {
+    "other": "{count}단계 통과"
+  },
+  "quests.trial.first": "첫 번째 단계",
+  "quests.trial.hint": "한 번에 하나의 퀘스트. 단계마다 조금 더 어렵고 보상도 조금 더 커집니다.",
+  "quests.trial.skip": "퀘스트 건너뛰기",
+  "quests.trial.skipHint": "하루에 한 번, 시련 퀘스트를 같은 단계의 다른 퀘스트로 건너뛸 수 있어요.",
+  "quests.trial.step": "{step}단계",
+  "quests.trial.title": "무한의 시련",
   "render.jumpToChannel": "{name}(으)로 이동",
   "render.jumpToMessage": "{name}의 메시지로 이동",
   "reports.aboutAccount": {
@@ -8691,6 +8763,8 @@
   "whatsNew.r20261118.planGemsTitle": "플랜으로 젬을 더 모아요",
   "whatsNew.r20261118.youtubeDirectBody": "이제 재생을 누르면 동영상이 YouTube에서 바로 불러와져서 더 이상 로그인을 요구하지 않아요. 동영상이 재생되는 동안 YouTube는 내 주소를 볼 수 있어요.",
   "whatsNew.r20261118.youtubeDirectTitle": "YouTube 동영상이 다시 재생돼요",
+  "whatsNew.r20261123.questsBody": "일일 퀘스트 세 개를 완료하고 무한의 시련을 올라 젬을 받으세요. 설정, 퀘스트에 있어요.",
+  "whatsNew.r20261123.questsTitle": "퀘스트",
   "widgets.about.books": "가장 좋아하는 책을 열두 권까지.",
   "widgets.about.countdown": "중요한 날까지 남은 시간을 세어 보세요.",
   "widgets.about.localtime": "내가 있는 곳의 시간을 보여 줘요.",

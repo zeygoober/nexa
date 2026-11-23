@@ -751,6 +751,7 @@ func (s *Server) handleModBugStatus(w http.ResponseWriter, r *http.Request) {
 		WriteError(w, err)
 		return
 	}
+	s.questBugResolved(ctx, b.Status, updated)
 	lines := []*store.BugMessage{}
 	if line != nil {
 		lines = append(lines, line)

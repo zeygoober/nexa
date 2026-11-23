@@ -183,6 +183,31 @@ func (r *Registry) SFUUsers() []ids.ID {
 	return out
 }
 
+// CallSizes is, for everyone with an account in a call that has someone else
+// in it too, how many accounts that call holds. Guests are counted in nothing.
+func (r *Registry) CallSizes() map[ids.ID]int {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+	out := map[ids.ID]int{}
+	for _, people := range r.byChannel {
+		if len(people) < 2 {
+			continue
+		}
+		n := 0
+		for _, st := range people {
+			if !st.Guest {
+				n++
+			}
+		}
+		for uid, st := range people {
+			if !st.Guest {
+				out[uid] = n
+			}
+		}
+	}
+	return out
+}
+
 // Count returns how many users are in a channel.
 func (r *Registry) Count(ch ids.ID) int {
 	r.mu.RLock()

@@ -8222,6 +8222,95 @@
   "profile.profileCard.tradeBadges": "Échanger des Badges",
   "profile.profileCard.viewBanner": "Voir la bannière",
   "profile.profileCard.viewProfilePicture": "Voir la photo de profil",
+  "quests.actionFailed": "Cela n'a pas pu être fait. Réessayez dans un instant.",
+  "quests.bonus": {
+    "one": "Terminez les trois pour {count} gemme de plus",
+    "other": "Terminez les trois pour {count} gemmes de plus"
+  },
+  "quests.daily.title": "Quêtes du Jour",
+  "quests.done": "Terminée",
+  "quests.failed": "Vos quêtes n'ont pas pu être chargées.",
+  "quests.finished": {
+    "one": "Quête terminée. Vous avez gagné {count} gemme.",
+    "other": "Quête terminée. Vous avez gagné {count} gemmes."
+  },
+  "quests.hint": "Terminez des quêtes pour gagner des gemmes. Les quêtes du jour changent chaque jour à minuit UTC.",
+  "quests.kind.bugs": {
+    "one": "Faites accepter {count} signalement de bug",
+    "other": "Faites accepter {count} signalements de bug"
+  },
+  "quests.kind.call_minutes": {
+    "one": "Passez {count} minute en appel avec quelqu'un",
+    "other": "Passez {count} minutes en appel avec quelqu'un"
+  },
+  "quests.kind.call_size": {
+    "one": "Participez à un appel de {count} personne",
+    "other": "Participez à un appel de {count} personnes"
+  },
+  "quests.kind.capsules": {
+    "one": "Ouvrez {count} capsule",
+    "other": "Ouvrez {count} capsules"
+  },
+  "quests.kind.dailies": {
+    "one": "Terminez {count} quête du jour",
+    "other": "Terminez {count} quêtes du jour"
+  },
+  "quests.kind.friends": {
+    "one": "Ajoutez {count} nouvel ami",
+    "other": "Ajoutez {count} nouveaux amis"
+  },
+  "quests.kind.fuses": {
+    "one": "Fusionnez des badges {count} fois",
+    "other": "Fusionnez des badges {count} fois"
+  },
+  "quests.kind.gems": {
+    "one": "Gagnez {count} gemme en discutant",
+    "other": "Gagnez {count} gemmes en discutant"
+  },
+  "quests.kind.ideas": {
+    "one": "Faites accepter {count} suggestion",
+    "other": "Faites accepter {count} suggestions"
+  },
+  "quests.kind.joins": {
+    "one": "Rejoignez {count} serveur que vous n'avez jamais rejoint",
+    "other": "Rejoignez {count} serveurs que vous n'avez jamais rejoints"
+  },
+  "quests.kind.materials": {
+    "one": "Réussissez {count} fusion",
+    "other": "Réussissez {count} fusions"
+  },
+  "quests.kind.messages": {
+    "one": "Envoyez {count} message là où d'autres discutent",
+    "other": "Envoyez {count} messages là où d'autres discutent"
+  },
+  "quests.kind.servers": {
+    "one": "Envoyez un message sur {count} serveur",
+    "other": "Envoyez un message sur {count} serveurs différents"
+  },
+  "quests.kind.trades": {
+    "one": "Échangez avec {count} personne",
+    "other": "Échangez avec {count} personnes différentes"
+  },
+  "quests.level.1": "Facile",
+  "quests.level.2": "Moyenne",
+  "quests.level.3": "Difficile",
+  "quests.progress": "{progress} sur {target}",
+  "quests.resetsIn": "Nouvelles quêtes du jour dans {time}",
+  "quests.swap": "Changer de Quête",
+  "quests.swapHint": "Vous pouvez changer une quête du jour par jour contre une autre aussi difficile.",
+  "quests.time.hm": "{h} h {m} min",
+  "quests.time.m": "{m} min",
+  "quests.title": "Quêtes",
+  "quests.trial.cleared": {
+    "one": "{count} étape franchie",
+    "other": "{count} étapes franchies"
+  },
+  "quests.trial.first": "Votre première étape",
+  "quests.trial.hint": "Une quête à la fois. Chaque étape demande un peu plus et rapporte un peu plus.",
+  "quests.trial.skip": "Passer la Quête",
+  "quests.trial.skipHint": "Vous pouvez passer une quête de l'épreuve par jour pour une autre à la même étape.",
+  "quests.trial.step": "Étape {step}",
+  "quests.trial.title": "Épreuve Infinie",
   "render.jumpToChannel": "Aller à {name}",
   "render.jumpToMessage": "Aller au message dans {name}",
   "reports.aboutAccount": {
@@ -9085,6 +9174,8 @@
   "whatsNew.r20261118.planGemsTitle": "Les offres rapportent plus de gemmes",
   "whatsNew.r20261118.youtubeDirectBody": "Les vidéos se chargent désormais directement depuis YouTube quand tu appuies sur lecture, elles ne te demandent donc plus de te connecter. Pendant la lecture, YouTube peut voir ton adresse.",
   "whatsNew.r20261118.youtubeDirectTitle": "Les vidéos YouTube fonctionnent à nouveau",
+  "whatsNew.r20261123.questsBody": "Terminez trois quêtes du jour et grimpez dans l'Épreuve Infinie pour gagner des gemmes. Elles sont dans Paramètres, Quêtes.",
+  "whatsNew.r20261123.questsTitle": "Quêtes",
   "widgets.about.books": "Les livres que tu préfères, jusqu'à douze.",
   "widgets.about.countdown": "Compte les jours jusqu'à une date qui compte pour toi.",
   "widgets.about.localtime": "Affiche l'heure là où tu es.",

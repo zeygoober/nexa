@@ -25,6 +25,7 @@ var banAllowed = map[string]bool{
 	"GET /api/v1/users/@me/badges/progress": true,
 	"GET /api/v1/gems":                      true,
 	"GET /api/v1/gems/record":               true,
+	"GET /api/v1/quests":                    true,
 	"POST /api/v1/auth/logout":              true,
 	"GET /api/v1/auth/sessions":             true,
 	"DELETE /api/v1/auth/sessions/{id}":     true,

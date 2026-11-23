@@ -628,7 +628,7 @@ serves until SIGINT or SIGTERM.
   `application_guild_installs`, `application_user_installs`, `oauth_codes`, `oauth_tokens` (gone with its
   refresh token, 90 days unused), `interactions` and `ephemeral_messages` (15 minutes), `ephemeral_files`,
   `interaction_files` (a day), `bot_copies`, `roles.managed_by`), badges (`badge_defs`, `user_badges`,
-  `badge_overrides`, `badge_prefs`, `badge_progress`, `badge_holdings`, `badge_trades`), Gems (`gem_wallets`, `gem_ledger`, `gem_watch`), the instance (`instance_settings`).
+  `badge_overrides`, `badge_prefs`, `badge_progress`, `badge_holdings`, `badge_trades`), Gems (`gem_wallets`, `gem_ledger`, `gem_watch`), quests (`quests`, `quest_seen`, `quest_players`), the instance (`instance_settings`).
 - Channel types: `dm`, `group_dm`, `subchat`, `text`, `voice`, `category`, `announcement`, `forum`, `media`,
   `link`, `thread`, `private_thread`. `store.IsForum` is forum or media (posts only), `store.HoldsNoMessages`
   is category or link (no messages, invites, read states, mentions or own key). A channel's `key_conv_id`
@@ -1220,6 +1220,34 @@ A currency earned by chatting, spent on capsules of collectibles, fused and trad
 - `GET /gems/record` is the person's wallet, ledger (`gem_ledger`: spending, trades and held Gems, never earning) and watch days, in the data
   export as `gems.json`; the legal report prints the same. The account purge deletes all three tables. The Privacy Policy does not mention
   Gems yet: the proposed wording is in `docs/proposals/gems-disclosure.md` until the owner asks for the legal text to change.
+
+### Quests (`store/quests.go`, `api/quests.go`, migration 0068; the owner's request, 2026-11-23)
+
+Daily quests and the Infinite Trial pay Gems. Web `api/quests.ts`, `stores/quests.ts`, `settings/QuestsPage.tsx`; Android
+`data/Quests.kt`, `ui/gems/QuestsPage.kt`. Settings, Quests on both, after Gems. Like Gems, the server keeps, counts and pays them.
+
+- Every UTC day a person gets one easy, one medium and one hard quest paying `questDailyRewards` (10, 20, 35), drawn from
+  `questDailyPool`, plus a bonus of `QuestBonusReward` (15) for all three. The Trial is one quest at a time: step n draws a kind by
+  `questLadder` (never the last step's kind; bug reports and suggestions only from step 10), whose target grows with the step, and pays
+  `QuestTrialReward` (15, two more each step, at most 100). A step never goes back. One daily swap (`POST /quests/{id}/reroll`) and one
+  Trial skip (`POST /quests/trial/skip`) a day (`quest_players`), both under `limGemSpend`. `GET /quests` is the board, open to muted accounts.
+- The 13 kinds: messages (only where someone else spoke in the last half hour, `SomeoneElseSpoke`), servers messaged in, call minutes
+  with someone, a call's size, friends, server joins, capsules, fuses, materials reached, trades, Gems earned by chatting, bug reports
+  and suggestions staff resolved. Counting starts when a quest opens. Kinds about different things count each once (`quest_seen`
+  `q:<id>`). Friends and joins count only someone or somewhere new (`ever:friend`, `ever:join`; the migration seeded what people already
+  had), and friends, joins and trades never count an account the alts check ties to the person (`questsLinked`). A trade counts only
+  when both sides gave something. A report counts once however often it is reopened.
+- What must not break: a quest pays once (`done_at = 0` in the paying update, `TestQuestPaysOnceAndMindsTheWallet`), into the wallet as
+  the farming check has it (held during a check or report, nothing while earning is off), and never as `earned`, so quest Gems cannot
+  feed the Gems quest. A quest that spends Gems always costs more than it pays (`TestQuestSpendingNeverPays`). Linked accounts and old
+  friends count nothing (`TestQuestsCountOnlyNewPeopleAndReportsOnce`).
+- Messages and call minutes add up in memory (`questBook`) and are written every `questFlushEvery` (10 s) by `StartBadgeProgress`; the
+  rest is written at once. Whether someone has an open quest of a kind is cached `questKindsFresh` (10 minutes) so most events skip the
+  database. Bots, apps and Nexa's accounts do no quests (`questPerson`).
+- `quests_update` (in `canWait`) carries the board and the quests just `completed`, only when one finishes; the apps toast what it paid.
+  A finished day and a cleared step are kept `questKeepDays` (14), swept hourly. `GET /gems/record` carries them as `quests` (the data
+  export's `gems.json`), and the legal report prints them. The account purge deletes all three tables. The Privacy Policy does not
+  mention quests yet: the proposed wording is in `docs/proposals/quests-disclosure.md` until the owner asks for the legal text to change.
 
 ### Profile widgets (`api/widgets.go`, web `lib/widgets.ts`, Android `ui/profile/Widgets.kt`)
 

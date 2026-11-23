@@ -131,6 +131,7 @@ object Settings {
                     SettingsPageInfo("profiles", t("settings.profile.profiles"), "IdCard"),
                     SettingsPageInfo("badgeIndex", t("badges.index.title"), "Award"),
                     SettingsPageInfo("gems", t("gems.title"), "Gem"),
+                    SettingsPageInfo("quests", t("quests.title"), "Target"),
                     SettingsPageInfo("security", t("settings.security.security"), "KeyRound"),
                     SettingsPageInfo("devices", t("settings.devices.devices"), "MonitorSmartphone"),
                     SettingsPageInfo("subscription", t("support.settingsLabel"), "Heart"),
@@ -651,6 +652,7 @@ private fun SettingsPageContent(id: String, anchor: String?, openPage: (String, 
         "profiles" -> ProfilesPage(anchor)
         "badgeIndex" -> BadgeIndexPage()
         "gems" -> fish.nexa.ui.gems.GemsPage()
+        "quests" -> fish.nexa.ui.gems.QuestsPage()
         "security" -> SecurityPage()
         "devices" -> DevicesPage()
         "subscription" -> fish.nexa.ui.support.SupportPanel(inSettings = true)
@@ -802,6 +804,8 @@ private fun settingsIndex(groups: List<SettingsGroup>): List<SettingResult> {
         "gems" to "gems.team.title",
         "gems" to "gems.capsule.title",
         "gems" to "gems.collection.title",
+        "quests" to "quests.daily.title",
+        "quests" to "quests.trial.title",
         "developers" to "apps.portal.newApp",
         "developers" to "apps.portal.token",
         "developers" to "apps.portal.connect",

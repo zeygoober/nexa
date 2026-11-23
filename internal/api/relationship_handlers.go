@@ -169,6 +169,7 @@ func (s *Server) handleFriendAccept(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	s.emitRelationship(r, me, target)
+	s.questFriends(r.Context(), me, target)
 	// Becoming friends opens the conversation straight away, so neither of you
 	// has to go looking for a way to start it.
 	resp := map[string]any{"type": "friend", "user": target.Public()}

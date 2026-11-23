@@ -8223,6 +8223,95 @@
   "profile.profileCard.tradeBadges": "Trocar Emblemas",
   "profile.profileCard.viewBanner": "Ver banner",
   "profile.profileCard.viewProfilePicture": "Ver foto de perfil",
+  "quests.actionFailed": "Não foi possível fazer isso. Tente de novo em instantes.",
+  "quests.bonus": {
+    "one": "Conclua as três e ganhe mais {count} gema",
+    "other": "Conclua as três e ganhe mais {count} gemas"
+  },
+  "quests.daily.title": "Missões Diárias",
+  "quests.done": "Concluída",
+  "quests.failed": "Não foi possível carregar suas missões.",
+  "quests.finished": {
+    "one": "Missão concluída. Você ganhou {count} gema.",
+    "other": "Missão concluída. Você ganhou {count} gemas."
+  },
+  "quests.hint": "Conclua missões para ganhar gemas. As missões diárias mudam todo dia à meia-noite UTC.",
+  "quests.kind.bugs": {
+    "one": "Tenha {count} relatório de bug aceito",
+    "other": "Tenha {count} relatórios de bug aceitos"
+  },
+  "quests.kind.call_minutes": {
+    "one": "Passe {count} minuto em uma chamada com alguém",
+    "other": "Passe {count} minutos em uma chamada com alguém"
+  },
+  "quests.kind.call_size": {
+    "one": "Participe de uma chamada com {count} pessoa",
+    "other": "Participe de uma chamada com {count} pessoas"
+  },
+  "quests.kind.capsules": {
+    "one": "Abra {count} cápsula",
+    "other": "Abra {count} cápsulas"
+  },
+  "quests.kind.dailies": {
+    "one": "Conclua {count} missão diária",
+    "other": "Conclua {count} missões diárias"
+  },
+  "quests.kind.friends": {
+    "one": "Faça {count} novo amigo",
+    "other": "Faça {count} novos amigos"
+  },
+  "quests.kind.fuses": {
+    "one": "Funda emblemas {count} vez",
+    "other": "Funda emblemas {count} vezes"
+  },
+  "quests.kind.gems": {
+    "one": "Ganhe {count} gema conversando",
+    "other": "Ganhe {count} gemas conversando"
+  },
+  "quests.kind.ideas": {
+    "one": "Tenha {count} sugestão aceita",
+    "other": "Tenha {count} sugestões aceitas"
+  },
+  "quests.kind.joins": {
+    "one": "Entre em {count} servidor em que você nunca esteve",
+    "other": "Entre em {count} servidores em que você nunca esteve"
+  },
+  "quests.kind.materials": {
+    "one": "Vença {count} fusão",
+    "other": "Vença {count} fusões"
+  },
+  "quests.kind.messages": {
+    "one": "Envie {count} mensagem onde outras pessoas estão conversando",
+    "other": "Envie {count} mensagens onde outras pessoas estão conversando"
+  },
+  "quests.kind.servers": {
+    "one": "Envie uma mensagem em {count} servidor",
+    "other": "Envie uma mensagem em {count} servidores diferentes"
+  },
+  "quests.kind.trades": {
+    "one": "Troque com {count} pessoa",
+    "other": "Troque com {count} pessoas diferentes"
+  },
+  "quests.level.1": "Fácil",
+  "quests.level.2": "Média",
+  "quests.level.3": "Difícil",
+  "quests.progress": "{progress} de {target}",
+  "quests.resetsIn": "Novas missões diárias em {time}",
+  "quests.swap": "Trocar Missão",
+  "quests.swapHint": "Você pode trocar uma missão diária por dia por outra igualmente difícil.",
+  "quests.time.hm": "{h} h {m} min",
+  "quests.time.m": "{m} min",
+  "quests.title": "Missões",
+  "quests.trial.cleared": {
+    "one": "{count} etapa concluída",
+    "other": "{count} etapas concluídas"
+  },
+  "quests.trial.first": "Sua primeira etapa",
+  "quests.trial.hint": "Uma missão por vez. Cada etapa pede um pouco mais e paga um pouco mais.",
+  "quests.trial.skip": "Pular Missão",
+  "quests.trial.skipHint": "Você pode pular uma missão do desafio por dia por outra na mesma etapa.",
+  "quests.trial.step": "Etapa {step}",
+  "quests.trial.title": "Desafio Infinito",
   "render.jumpToChannel": "Ir para {name}",
   "render.jumpToMessage": "Ir para a mensagem em {name}",
   "reports.aboutAccount": {
@@ -9086,6 +9175,8 @@
   "whatsNew.r20261118.planGemsTitle": "Planos rendem mais gemas",
   "whatsNew.r20261118.youtubeDirectBody": "Os vídeos agora carregam direto do YouTube quando você aperta play, então não pedem mais para você entrar. Enquanto um vídeo toca, o YouTube pode ver seu endereço.",
   "whatsNew.r20261118.youtubeDirectTitle": "Vídeos do YouTube voltaram a tocar",
+  "whatsNew.r20261123.questsBody": "Conclua três missões diárias e suba no Desafio Infinito para ganhar gemas. Estão em Configurações, Missões.",
+  "whatsNew.r20261123.questsTitle": "Missões",
   "widgets.about.books": "Os livros que você mais ama, até doze.",
   "widgets.about.countdown": "Conte os dias até uma data importante para você.",
   "widgets.about.localtime": "Mostre a hora onde você está.",

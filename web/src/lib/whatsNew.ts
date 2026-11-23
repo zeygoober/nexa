@@ -9,7 +9,7 @@
  * one that day. Its keys are whatsNew.r20260926.<name>Title and ...Body: the
  * id without its dashes and dots.
  */
-import { ArrowLeftRight, Gem, PackageOpen, Medal, AtSign, BookOpen, Award, AudioLines, BadgeCheck, BatteryCharging, BellRing, Bot, Bug, CircleX, Clapperboard, ClipboardCopy, CloudUpload, CodeXml, Compass, CornerUpRight, Eye, EyeOff, Feather, Flag, FolderPlus, Gamepad2, Gavel, Gift, Globe, HandCoins, Headphones, Heart, House, IdCard, ImagePlay, ImagePlus, Images, KeyRound, Keyboard, LayoutGrid, Leaf, Lightbulb, Link, Link2, MapPinOff, Megaphone, MessageCircle, MessageCircleMore, MessageSquareDashed, MessageSquarePlus, MessageSquareText, MessagesSquare, Mic, MonitorUp, MousePointerClick, Move, Music, Newspaper, NotebookPen, Paintbrush, Palette, PanelBottom, PanelsTopLeft, Pause, Pin, Play, Puzzle, QrCode, RefreshCw, RemoveFormatting, Reply, RotateCcw, ScanEye, ScrollText, Search, SendHorizontal, ServerCog, Shapes, ShieldCheck, SlidersHorizontal, Smartphone, Smile, Snowflake, Sparkles, SpellCheck, Sticker, StickyNote, Tag, Timer, Trash2, TvMinimalPlay, Type, UserCheck, UserCog, UserPen, Users, UsersRound, Volume2, Vote, Webhook, ZoomIn, type LucideIcon } from "lucide-react";
+import { ArrowLeftRight, Gem, PackageOpen, Medal, AtSign, BookOpen, Award, AudioLines, BadgeCheck, BatteryCharging, BellRing, Bot, Bug, CircleX, Clapperboard, ClipboardCopy, CloudUpload, CodeXml, Compass, CornerUpRight, Eye, EyeOff, Feather, Flag, FolderPlus, Gamepad2, Gavel, Gift, Globe, HandCoins, Headphones, Heart, House, IdCard, ImagePlay, ImagePlus, Images, KeyRound, Keyboard, LayoutGrid, Leaf, Lightbulb, Link, Link2, MapPinOff, Megaphone, MessageCircle, MessageCircleMore, MessageSquareDashed, MessageSquarePlus, MessageSquareText, MessagesSquare, Mic, MonitorUp, MousePointerClick, Move, Music, Newspaper, NotebookPen, Paintbrush, Palette, PanelBottom, PanelsTopLeft, Pause, Pin, Play, Puzzle, QrCode, RefreshCw, RemoveFormatting, Reply, RotateCcw, ScanEye, ScrollText, Search, SendHorizontal, ServerCog, Shapes, ShieldCheck, SlidersHorizontal, Smartphone, Smile, Snowflake, Sparkles, SpellCheck, Sticker, StickyNote, Tag, Target, Timer, Trash2, TvMinimalPlay, Type, UserCheck, UserCog, UserPen, Users, UsersRound, Volume2, Vote, Webhook, ZoomIn, type LucideIcon } from "lucide-react";
 
 export interface WhatsNewItem {
   icon: LucideIcon;
@@ -28,6 +28,7 @@ export const RELEASES: Release[] = [
   {
     id: "2026-11-23",
     items: [
+      { icon: Target, title: "whatsNew.r20261123.questsTitle", body: "whatsNew.r20261123.questsBody" },
       { icon: Award, title: "whatsNew.r20261123.badgePreviewTitle", body: "whatsNew.r20261123.badgePreviewBody" },
     ],
   },
