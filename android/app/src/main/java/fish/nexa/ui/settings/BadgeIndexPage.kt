@@ -44,10 +44,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.foundation.gestures.awaitEachGesture
-import androidx.compose.foundation.gestures.awaitFirstDown
-import androidx.compose.foundation.gestures.waitForUpOrCancellation
-import fish.nexa.data.SecretBadges
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.LocalLayoutDirection
@@ -72,6 +68,7 @@ import fish.nexa.ui.components.NxTextField
 import fish.nexa.ui.components.pressable
 import fish.nexa.ui.layers.openSheet
 import fish.nexa.ui.components.Txt
+import fish.nexa.ui.profile.BadgeCardPopup
 import fish.nexa.ui.profile.BadgeMark
 import fish.nexa.ui.profile.BadgePill
 import fish.nexa.ui.server.NoSwipe
@@ -83,7 +80,6 @@ import fish.nexa.ui.theme.ring
 import kotlin.math.floor
 import kotlin.math.roundToInt
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withTimeoutOrNull
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
@@ -91,11 +87,11 @@ import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.intOrNull
 
-/** One place in the index: the badge when it is held, otherwise only what draws its shape. */
-private class IndexEntry(val art: String?, val icon: String?, val image: String?, val badge: Badges.Badge?, val category: String, val qty: Int = 0)
+/** One place in the index: the badge when it is held, otherwise what draws its shape and, as [preview], its name and how to earn it. */
+private class IndexEntry(val art: String?, val icon: String?, val image: String?, val badge: Badges.Badge?, val category: String, val qty: Int = 0, val preview: Badges.Badge? = null)
 
 /** The parts of the index, always in this order (web BADGE_SECTIONS). */
-private val SECTIONS = listOf("obtainable", "collectible", "exclusive", "special")
+private val SECTIONS = listOf("obtainable", "collectible", "exclusive")
 
 private class BadgeIndex(val collected: Int, val total: Int, val entries: List<IndexEntry>)
 
@@ -107,7 +103,8 @@ private fun parseIndex(el: kotlinx.serialization.json.JsonElement): BadgeIndex {
         (o["total"] as? JsonPrimitive)?.intOrNull ?: 0,
         (o["entries"] as? JsonArray).orEmpty().mapNotNull { e ->
             val x = e as? JsonObject ?: return@mapNotNull null
-            IndexEntry(x.s("art"), x.s("icon"), x.s("image"), x["badge"]?.let { Badges.parse(JsonArray(listOf(it)))?.firstOrNull() }, x.s("category") ?: "obtainable", (x["qty"] as? JsonPrimitive)?.intOrNull ?: 0)
+            fun one(k: String) = x[k]?.let { Badges.parse(JsonArray(listOf(it)))?.firstOrNull() }
+            IndexEntry(x.s("art"), x.s("icon"), x.s("image"), one("badge"), x.s("category") ?: "obtainable", (x["qty"] as? JsonPrimitive)?.intOrNull ?: 0, one("preview"))
         },
     )
 }
@@ -118,8 +115,8 @@ private const val GAP = 10
 
 /**
  * Settings, Badge Index (web BadgeIndexPage.tsx): every badge there is, each
- * level its own, the ones this account lacks blacked out with nothing that
- * says what they are or how to get them. Staff ranks are not in it.
+ * level its own, the ones this account lacks blacked out; pressing one shows
+ * its name and how to earn it. Staff ranks are not in it.
  */
 @Composable
 fun BadgeIndexPage() {
@@ -183,21 +180,16 @@ fun BadgeIndexPage() {
     var first = true
     for (section in SECTIONS) {
         val entries = i.entries.filter { it.category == section }
-        // Special starts out empty and still says it is there
-        if (entries.isEmpty() && section != "special") continue
+        if (entries.isEmpty()) continue
         if (!first) Spacer(Modifier.height(36.dp))
         first = false
         Txt(t("badges.index.$section"), style = Nx.type.heading.copy(fontSize = Nx.type.sp(18f), lineHeight = Nx.type.sp(24f)), color = c.textStrong, modifier = Modifier.semantics { heading() })
         Spacer(Modifier.height(12.dp))
-        if (entries.isEmpty()) {
-            Txt(t("badges.index.specialEmpty"), style = Nx.type.bodySmall.copy(fontSize = Nx.type.sp(14f)), color = c.textMuted)
-            continue
-        }
         BoxWithConstraints(Modifier.fillMaxWidth()) {
             val columns = (((maxWidth.value + GAP) / (TILE + GAP)).toInt()).coerceAtLeast(1)
             Column(verticalArrangement = Arrangement.spacedBy(GAP.dp)) {
                 for (row in entries.chunked(columns)) Row(horizontalArrangement = Arrangement.spacedBy(GAP.dp)) {
-                    for (e in row) Box(Modifier.weight(1f)) { Tile(e, who.id, who.flags, who.plan) { attempt += 1 } }
+                    for (e in row) Box(Modifier.weight(1f)) { Tile(e, who.id, who.flags, who.plan) }
                     repeat(columns - row.size) { Spacer(Modifier.weight(1f)) }
                 }
             }
@@ -206,10 +198,9 @@ fun BadgeIndexPage() {
 }
 
 @Composable
-private fun Tile(e: IndexEntry, userId: String, flags: Long, plan: String, onFound: () -> Unit) {
+private fun Tile(e: IndexEntry, userId: String, flags: Long, plan: String) {
     val c = Nx.colors
     val b = e.badge
-    val scope = rememberCoroutineScope()
     // the same tile whether collected or not: only the mark says which
     val tile = Modifier.fillMaxWidth().aspectRatio(1f).padding(1.dp).background(c.bgSurface, Radii.Md).ring(Radii.Md, c.borderSubtle)
     if (b != null) {
@@ -228,21 +219,25 @@ private fun Tile(e: IndexEntry, userId: String, flags: Long, plan: String, onFou
         return
     }
     val locked = t("badges.index.locked")
-    // a padlock held still long enough is Curious; nothing shows while it is held, and a scroll lets go
-    val hold = if (e.art != "secret") Modifier else Modifier.pointerInput(Unit) {
-        awaitEachGesture {
-            awaitFirstDown(requireUnconsumed = false)
-            val ended = withTimeoutOrNull(SecretBadges.CURIOUS_HOLD_MS) { waitForUpOrCancellation(); true }
-            if (ended == null) scope.launch { if (SecretBadges.report("curious")) onFound() }
-        }
+    // the name and how to earn it; a plan's look depends on the plan, which only the art names here
+    val look = e.preview?.let { p -> Badges.look(p, userId, flags, e.art?.takeIf { it.startsWith("plan-") }?.removePrefix("plan-") ?: plan) }
+    var open by remember { mutableStateOf(false) }
+    val press = if (look == null) Modifier.semantics { contentDescription = locked }
+    else Modifier.pressable(remember { MutableInteractionSource() }, role = Role.Button) { open = true }.semantics { contentDescription = "$locked: ${look.said}" }
+    Box(tile.then(press), contentAlignment = Alignment.Center) {
+        LockedShape(e, 40.dp)
+        if (open && look != null) BadgeCardPopup(look, e.preview.exist, locked = { LockedShape(e, 52.dp) }) { open = false }
     }
-    Box(tile.then(hold).semantics { contentDescription = locked }, contentAlignment = Alignment.Center) {
-        when {
-            e.art != null -> coil3.compose.AsyncImage(Ota.uri("badges/${e.art}-locked.svg"), null, Modifier.size(40.dp))
-            e.image != null -> coil3.compose.AsyncImage(Media.absolute(e.image), null, Modifier.size(40.dp), colorFilter = ColorFilter.tint(Color.Black))
-            // a badge staff made, blacked out as the art's -locked files are: solid inside, in the same heavier line
-            else -> Icon(e.icon?.takeIf { fish.nexa.ui.Lucide.exists(it) } ?: "award", Color.Black, size = 40.dp, stroke = 2.8f, bodied = true, bodyAlpha = 1f)
-        }
+}
+
+/** A badge not yet collected, blacked out: the art's -locked file, an uploaded picture in black, or a staff badge's icon solid black. */
+@Composable
+private fun LockedShape(e: IndexEntry, size: androidx.compose.ui.unit.Dp) {
+    when {
+        e.art != null -> coil3.compose.AsyncImage(Ota.uri("badges/${e.art}-locked.svg"), null, Modifier.size(size))
+        e.image != null -> coil3.compose.AsyncImage(Media.absolute(e.image), null, Modifier.size(size), colorFilter = ColorFilter.tint(Color.Black))
+        // blacked out as the art's -locked files are: solid inside, in the same heavier line
+        else -> Icon(e.icon?.takeIf { fish.nexa.ui.Lucide.exists(it) } ?: "award", Color.Black, size = size, stroke = 2.8f, bodied = true, bodyAlpha = 1f)
     }
 }
 

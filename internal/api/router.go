@@ -131,7 +131,6 @@ type Server struct {
 	limKeyBad   *ratelimit.Limiter
 	limPass     *ratelimit.Limiter
 	limProfile  *ratelimit.Limiter
-	limLucky    *ratelimit.Limiter
 	limGem      *ratelimit.Limiter
 	limGemSpend *ratelimit.Limiter
 	gemTeams    gemTeamCache
@@ -383,8 +382,6 @@ func NewServer(cfg config.Config, st *store.Store, log *slog.Logger, bc Broadcas
 		// Profile and status changes, per account: each is sent to everyone
 		// who shares a server with the person.
 		limProfile: ratelimit.New(ratelimit.Every(20, time.Minute), 20, 10*time.Minute),
-		// Lucky's draws, per account: one a minute however much is sent.
-		limLucky: ratelimit.New(ratelimit.Every(1, time.Minute), 1, 2*time.Minute),
 		// Gems earned, per account: one a minute however much is sent, before
 		// the database's own check (gems.go) is asked.
 		limGem: ratelimit.New(ratelimit.Every(1, time.Minute), 1, 2*time.Minute),
@@ -509,7 +506,7 @@ func (s *Server) limiters() map[string]*ratelimit.Limiter {
 	out := map[string]*ratelimit.Limiter{
 		"generic": s.limGeneric, "auth-ip": s.limAuthIP, "auth-user": s.limAuthUsr, "register": s.limReg, "signup": s.limSignup, "message": s.limMsg,
 		"upload": s.limUpload, "parts": s.limParts, "links": s.limLinks, "reads": s.limReads, "relay": s.limRelay, "unfurl": s.limUnfurl, "proxy": s.limProxy, "players": s.limPlayers, "refresh": s.limRefresh, "voice": s.limVoice, "turn": s.limTurn,
-		"guest": s.limGuest, "leave-key": s.limLeftKey, "rotator": s.limRotator, "key-reject": s.limKeyBad, "password": s.limPass, "profile": s.limProfile, "lucky": s.limLucky, "gem": s.limGem, "gem-spend": s.limGemSpend, "expressions": s.limExpr,
+		"guest": s.limGuest, "leave-key": s.limLeftKey, "rotator": s.limRotator, "key-reject": s.limKeyBad, "password": s.limPass, "profile": s.limProfile, "gem": s.limGem, "gem-spend": s.limGemSpend, "expressions": s.limExpr,
 		"import": s.limImport, "crash": s.limCrash, "perf": s.limPerf, "bug": s.limBug, "report": s.limReport, "bug-file": s.limBugFile, "key-ask": s.limKeyAsk,
 		"webhook": s.limHook, "webhook-channel": s.limHookCh, "webhook-manage": s.limHookMgr, "poll-vote": s.limVote, "discord": s.limDiscord, "server-tag": s.limTag, "music-search": s.limMusic, "music-preview": s.limPreview,
 		"automod": s.limAutomod, "publish": s.limPublish, "thread": s.limThread, "discover": s.limDiscover,

@@ -3,6 +3,7 @@ package store
 import (
 	"context"
 	"strconv"
+	"strings"
 	"sync"
 	"time"
 
@@ -227,6 +228,18 @@ func tradeCountKey(key string) string {
 
 // of is how many hold this badge of u's. Someone holds it, so never under one,
 // however old the count; 0 only when there is no count at all.
+// lacked is how many hold a badge the asker does not, for the card a locked
+// tile in the index opens: none is none, and a plan is the one its art names.
+func (c *badgeCounts) lacked(b Badge, art string) int {
+	if c == nil {
+		return 0
+	}
+	if b.ID == BadgePlan {
+		return c.n[BadgePlan+":"+strings.TrimPrefix(art, "plan-")]
+	}
+	return c.n[badgeCountKey(b.ID, b.Level)]
+}
+
 func (c *badgeCounts) of(b Badge, u *User) int {
 	if c == nil {
 		return 0

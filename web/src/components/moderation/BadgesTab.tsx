@@ -12,7 +12,7 @@ import { LoadError } from "@/components/common/LoadError";
 import { Spinner } from "@/components/common/Spinner";
 import { Field, TextInput } from "@/components/common/TextInput";
 import { Toggle } from "@/components/common/Toggle";
-import { artLine, COLLECTIBLE_ART, SECRET_BADGES, collectibleArt, CONTRIBUTOR, defBadge, HAND_BADGES, EVENT_COLOURS, EVENT_ICONS, EVENT_PREFIX, hexColour, OVERRIDABLE, type BadgeLook } from "@/lib/badges";
+import { artLine, COLLECTIBLE_ART, collectibleArt, CONTRIBUTOR, defBadge, HAND_BADGES, EVENT_COLOURS, EVENT_ICONS, EVENT_PREFIX, hexColour, OVERRIDABLE, type BadgeLook } from "@/lib/badges";
 import { describeError } from "@/lib/errors";
 import { can, useMyRank } from "@/lib/staffRank";
 import { useModEvents } from "@/stores/moderation";
@@ -390,7 +390,7 @@ export function BadgesTab() {
               <div>
                 <span className={b.label} id="badge-kind-label">{t("badges.staff.indexKind")}</span>
                 <div className={b.segment} role="radiogroup" aria-labelledby="badge-kind-label" data-glide="">
-                  {(["exclusive", "special", "hidden"] as const).map((v) => (
+                  {(["exclusive", "hidden"] as const).map((v) => (
                     <button key={v} type="button" role="radio" aria-checked={indexKind === v} className={b.segmentItem} onClick={() => setIndexKind(v)} data-testid={`badge-kind-${v}`}>
                       {t(v === "hidden" ? "badges.staff.indexKind.hidden" : `badges.index.${v}`)}
                     </button>
@@ -457,27 +457,6 @@ export function BadgesTab() {
                   ))}
                 </ul>
               </section>
-
-              {mayOwners ? (
-                <section aria-labelledby="badge-secret" data-testid="badge-secret">
-                  <h2 className={b.listTitle} id="badge-secret">{t("badges.index.special")}</h2>
-                  <p className={b.listHint}>{t("badges.staff.secretHint")}</p>
-                  <ul className={b.rows}>
-                    {SECRET_BADGES.map((id) => (
-                      <li key={id} className={b.row} data-testid={`badge-def-${id}`}>
-                        <BadgePill badge={{ id }} user={NOBODY} still named />
-                        <span className={b.desc}>{t(`badges.staff.${id}Note`, { word: t("badges.secretWord") })}</span>
-                        <span className={b.tools}>
-                          <Button size="sm" variant="ghost" onClick={() => setOwners({ badge: { id }, label: t(`badges.secret.${id}`), top: 1 })} title={t("badges.owners.buttonHint")} data-testid={`badge-owners-${id}`}>
-                            <Layers size={15} aria-hidden="true" />
-                            {t("badges.owners.button")}
-                          </Button>
-                        </span>
-                      </li>
-                    ))}
-                  </ul>
-                </section>
-              ) : null}
 
               <section aria-labelledby="badge-earned">
                 <h2 className={b.listTitle} id="badge-earned">{t("badges.staff.earned")}</h2>

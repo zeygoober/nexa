@@ -2,9 +2,7 @@ package store
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
-	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -169,8 +167,8 @@ func TestGemTeamCountsNothingBought(t *testing.T) {
 // A collectible held shows on its holder's profile, which is where the team is
 // read from (it once never did, so collectibles added nothing), and in the
 // index as each of its materials; one not held there is its drawing blacked
-// out and never its name.
-func TestCollectiblesShowAndStaySecretLocked(t *testing.T) {
+// out, with its name only on the preview its card reads.
+func TestCollectiblesShowAndLockInTheIndex(t *testing.T) {
 	s := newStore(t)
 	ctx := context.Background()
 	staff := mkUser(t, s, "staff")
@@ -205,14 +203,13 @@ func TestCollectiblesShowAndStaySecretLocked(t *testing.T) {
 		if e.Category != BadgeCollectible {
 			continue
 		}
-		if e.Badge != nil || e.Art != "col-ghost" {
+		if e.Badge != nil || e.Art != "col-ghost" || e.Preview == nil || e.Preview.Name != "Paper Lantern" || e.Qty != 0 {
 			t.Fatalf("a collectible bob lacks reads %+v", e)
 		}
 		locked++
 	}
-	raw, _ := json.Marshal(theirs)
-	if locked != GemMaterials || held != 1 || strings.Contains(string(raw), "Paper Lantern") {
-		t.Fatalf("%d locked, %d held, name sent: %v", locked, held, strings.Contains(string(raw), "Paper Lantern"))
+	if locked != GemMaterials || held != 1 {
+		t.Fatalf("%d locked, %d held", locked, held)
 	}
 }
 

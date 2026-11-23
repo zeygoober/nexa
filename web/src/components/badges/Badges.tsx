@@ -1,4 +1,4 @@
-import { lazy, Suspense, useId, type CSSProperties } from "react";
+import { lazy, Suspense, useId, type CSSProperties, type ReactNode } from "react";
 import type { Badge, PublicUser } from "@/api/types";
 import { Modal } from "@/components/common/Modal";
 import { Tooltip } from "@/components/common/Tooltip";
@@ -45,11 +45,15 @@ export function BadgeMark({ look, size = 20 }: { look: BadgeLook; size?: number 
   );
 }
 
-/** What a badge's tooltip shows: the badge large, its name, and what it means. */
-function BadgeCard({ look, exist }: { look: BadgeLook; exist: number | undefined }) {
+/**
+ * What a badge's tooltip shows: the badge large, its name, and what it means.
+ * [locked] is a badge not collected, blacked out (the Badge Index), drawn on a
+ * well since black would vanish into the tooltip.
+ */
+export function BadgeCard({ look, exist, locked }: { look: BadgeLook; exist: number | undefined; locked?: ReactNode }) {
   return (
     <span className={s.card}>
-      {look.art ? <img className={s.cardArt} src={look.art} alt="" draggable={false} /> : <BadgeMark look={look} size={64} />}
+      {locked ? <span className={s.cardWell} data-testid="badge-card-locked">{locked}</span> : look.art ? <img className={s.cardArt} src={look.art} alt="" draggable={false} /> : <BadgeMark look={look} size={64} />}
       <span className={s.cardName} dir="auto">{look.label}</span>
       {look.tip ? <span className={s.cardTip} dir="auto">{look.tip}</span> : null}
       {exist ? <span className={s.cardExist} dir="auto" data-testid="badge-exist">{t("badges.exist", { count: exist })}</span> : null}

@@ -4,8 +4,6 @@ import (
 	"encoding/json"
 	"strings"
 	"testing"
-
-	"evilion.xyz/chat/internal/store"
 )
 
 // Badges staff give are theirs alone to give (a mod cannot), and one its
@@ -115,28 +113,47 @@ func TestBadgeOverridesAndHolders(t *testing.T) {
 	}
 }
 
-// The index counts each level and no staff rank, and says nothing about a
-// badge until it is held: no name, meaning or colour to spoil how to get it.
-func TestBadgeIndexCountsLevelsAndSpoilsNothing(t *testing.T) {
+// The index counts each level and no staff rank. A badge not held comes with
+// what it is and how to get it, for the card its tile opens, but never as a
+// badge (older apps would draw it collected) and never with anyone's numbers.
+func TestBadgeIndexCountsLevelsAndPreviewsTheLocked(t *testing.T) {
 	_, ts := newTestServer(t)
 	ownTok, _ := register(t, ts, "owner")
 	bobTok, bobID := register(t, ts, "bob")
-	res, body := do(t, ts, "POST", "/api/v1/moderation/badges", ownTok, map[string]any{"name": "Secret Name", "description": "Secret way to get it", "icon": "star", "color": 0x112233, "color2": -1, "glyph": "light", "shape": "circle"})
+	res, body := do(t, ts, "POST", "/api/v1/moderation/badges", ownTok, map[string]any{"name": "Party Hat", "description": "Came to the party", "icon": "star", "color": 0x112233, "color2": -1})
 	if res.StatusCode >= 300 {
 		t.Fatalf("make badge: %d %v", res.StatusCode, body)
 	}
+	party := "event:" + body["id"].(string)
 	if res, body := do(t, ts, "PUT", "/api/v1/moderation/badges/bug_hunter/holders/"+bobID, ownTok, map[string]any{"state": "give", "level": 2}); res.StatusCode >= 300 {
 		t.Fatalf("give level: %d %v", res.StatusCode, body)
 	}
 	_, index := do(t, ts, "GET", "/api/v1/users/@me/badges/index", bobTok, nil)
-	raw, _ := json.Marshal(index)
-	for _, leak := range []string{"Secret", "color", "bug_hunter\",\"level\":3"} {
-		if strings.Contains(string(raw), leak) {
-			t.Errorf("the index gave away %q: %s", leak, raw)
-		}
-	}
 	if index["collected"] != float64(2) {
 		t.Errorf("two levels held should be two collected: %v", index["collected"])
+	}
+	var partyPreview, bug3 map[string]any
+	for _, raw := range index["entries"].([]any) {
+		e := raw.(map[string]any)
+		p, _ := e["preview"].(map[string]any)
+		if p == nil {
+			continue
+		}
+		if e["badge"] != nil || e["qty"] != nil || p["count"] != nil {
+			t.Errorf("a locked entry said too much: %v", e)
+		}
+		if p["id"] == party {
+			partyPreview = p
+		}
+		if e["art"] == "bug-3" {
+			bug3 = p
+		}
+	}
+	if partyPreview == nil || partyPreview["name"] != "Party Hat" || partyPreview["description"] != "Came to the party" {
+		t.Errorf("the locked staff badge's card: %v", partyPreview)
+	}
+	if bug3 == nil || bug3["id"] != "bug_hunter" || bug3["level"] != float64(3) {
+		t.Errorf("Bug Hunter's next level: %v", bug3)
 	}
 	_, staff := do(t, ts, "GET", "/api/v1/users/@me/badges/index", ownTok, nil)
 	if staff["collected"] != float64(0) || staff["total"] != index["total"] {
@@ -230,124 +247,45 @@ func TestBadgeIndexOrderIsTheOwnersAlone(t *testing.T) {
 	}
 }
 
-// A Special badge is a secret: someone without it is told only that there is
-// one in that part of the index, not its name, icon, picture or how many hold
-// it. A hidden one is not in the index at all, and still counts on its holder.
-func TestBadgeIndexKeepsSpecialSecret(t *testing.T) {
+// A badge staff made can be listed as Exclusive or left out of the index;
+// Secret is gone. A hidden one is in nobody's index and still counts on its holder.
+func TestHiddenBadgesStayOutOfTheIndex(t *testing.T) {
 	_, ts := newTestServer(t)
 	owner, _ := register(t, ts, "owner")
 	member, _ := register(t, ts, "member")
 	holder, holderID := register(t, ts, "holder")
-
-	make := func(name, kind string) string {
-		res, body := do(t, ts, "POST", "/api/v1/moderation/badges", owner, map[string]any{"name": name, "icon": "ghost", "color": 0x445566, "index_kind": kind})
-		if res.StatusCode != 200 {
-			t.Fatalf("make %s: %d %v", name, res.StatusCode, body)
-		}
-		id := "event:" + body["id"].(string)
-		if res, body := do(t, ts, "PUT", "/api/v1/moderation/badges/"+id+"/holders/"+holderID, owner, map[string]any{"state": "give"}); res.StatusCode != 204 {
-			t.Fatalf("give %s: %d %v", name, res.StatusCode, body)
-		}
-		return id
+	if res, body := do(t, ts, "POST", "/api/v1/moderation/badges", owner, map[string]any{"name": "Hidden Door", "icon": "ghost", "color": 0x445566, "index_kind": "special"}); res.StatusCode != 400 || errCode(body) != "bad_index_kind" {
+		t.Fatalf("made a Secret badge: %d %v", res.StatusCode, body)
 	}
-	special := make("Hidden Door", "special")
-	hidden := make("Backstage", "hidden")
-
-	raw := func(token, path string) []byte {
+	res, body := do(t, ts, "POST", "/api/v1/moderation/badges", owner, map[string]any{"name": "Backstage", "icon": "ghost", "color": 0x445566, "index_kind": "hidden"})
+	if res.StatusCode != 200 {
+		t.Fatalf("make: %d %v", res.StatusCode, body)
+	}
+	hidden := "event:" + body["id"].(string)
+	if res, body := do(t, ts, "PUT", "/api/v1/moderation/badges/"+hidden+"/holders/"+holderID, owner, map[string]any{"state": "give"}); res.StatusCode != 204 {
+		t.Fatalf("give: %d %v", res.StatusCode, body)
+	}
+	raw := func(token, path string) string {
 		res, body := do(t, ts, "GET", path, token, nil)
 		if res.StatusCode != 200 {
 			t.Fatalf("%s: %d", path, res.StatusCode)
 		}
 		out, _ := json.Marshal(body)
-		return out
+		return string(out)
 	}
-	lacking := raw(member, "/api/v1/users/@me/badges/index")
-	text := string(lacking)
-	for _, leak := range []string{"Hidden Door", "ghost", "Backstage", strings.TrimPrefix(special, "event:"), "exist", "hopeful", "curious", "nosy", "lucky"} {
-		if strings.Contains(text, leak) {
-			t.Errorf("the index told someone without it %q: %s", leak, text)
+	for _, tok := range []string{member, holder} {
+		if text := raw(tok, "/api/v1/users/@me/badges/index"); strings.Contains(text, "Backstage") || strings.Contains(text, `"special"`) {
+			t.Errorf("an index: %s", text)
 		}
 	}
-	var got struct {
-		Entries []struct {
-			Category string `json:"category"`
-			Art      string `json:"art"`
-		} `json:"entries"`
-	}
-	if err := json.Unmarshal(lacking, &got); err != nil {
-		t.Fatal(err)
-	}
-	specials := 0
-	for _, e := range got.Entries {
-		if e.Category == "special" {
-			specials++
-			if e.Art != "secret" {
-				t.Errorf("a locked Special drew as %q", e.Art)
-			}
-		}
-	}
-	if want := 1 + len(store.SecretBadges); specials != want {
-		t.Fatalf("Special entries: %d, want %d (the hidden one left out)", specials, want)
-	}
-
-	var mine struct {
-		Badges []struct {
-			ID    string `json:"id"`
-			Exist int    `json:"exist"`
-		} `json:"badges"`
-	}
-	if err := json.Unmarshal(raw(holder, "/api/v1/users/@me/badges"), &mine); err != nil {
-		t.Fatal(err)
-	}
-	seen := map[string]int{}
-	for _, b := range mine.Badges {
-		seen[b.ID] = b.Exist
-	}
-	if seen[special] != 1 || seen[hidden] != 1 {
-		t.Errorf("holders counted: %v", seen)
-	}
-	held := string(raw(holder, "/api/v1/users/@me/badges/index"))
-	if !strings.Contains(held, "Hidden Door") || strings.Contains(held, "Backstage") {
-		t.Errorf("holder's index: %s", held)
+	if !strings.Contains(raw(holder, "/api/v1/users/@me/badges"), hidden) {
+		t.Error("the holder lost the hidden badge")
 	}
 }
 
-// The Secret badges an app may report are only Curious and Nosy; the server
-// earns the rest itself. Staff saving what they gave keeps what was earned.
-func TestSecretBadgesAreEarnedNotClaimed(t *testing.T) {
-	_, ts := newTestServer(t)
-	owner, _ := register(t, ts, "owner")
-	tok, id := register(t, ts, "member")
-	for _, b := range []string{store.BadgeHopeful, store.BadgeLucky, "contributor"} {
-		if res, body := do(t, ts, "POST", "/api/v1/users/@me/badges/found", tok, map[string]any{"badge": b}); res.StatusCode != 400 {
-			t.Errorf("claimed %s: %d %v", b, res.StatusCode, body)
-		}
-	}
-	for _, want := range []bool{true, false} {
-		if _, body := do(t, ts, "POST", "/api/v1/users/@me/badges/found", tok, map[string]any{"badge": store.BadgeCurious}); body["new"] != want {
-			t.Errorf("curious new: %v, want %v", body["new"], want)
-		}
-	}
-	meNexa(t, ts, tok)
-	if res, body := do(t, ts, "POST", "/api/v1/users/@me/relationships", tok, map[string]any{"username": "nexa"}); res.StatusCode != 403 || errCode(body) != "nexa_system" {
-		t.Fatalf("befriend Nexa: %d %v", res.StatusCode, body)
-	}
-	if res, body := do(t, ts, "PUT", "/api/v1/moderation/users/"+id+"/badges", owner, map[string]any{"badges": []string{}}); res.StatusCode != 200 {
-		t.Fatalf("staff save: %d %v", res.StatusCode, body)
-	}
-	_, body := do(t, ts, "GET", "/api/v1/users/@me/badges", tok, nil)
-	held := map[string]bool{}
-	for _, b := range body["badges"].([]any) {
-		held[b.(map[string]any)["id"].(string)] = true
-	}
-	if !held[store.BadgeHopeful] || !held[store.BadgeCurious] || held[store.BadgeLucky] {
-		t.Errorf("held: %v", held)
-	}
-}
-
-// Only the owner writes a built-in badge's tooltip. It travels on the badge
-// where it is held, never on a locked entry of the index, where it could say
-// what the badge is or how to earn it.
+// Only the owner writes a built-in badge's tooltip, and it travels with the
+// badge wherever it is drawn: where it is held, and on the card a locked tile
+// of the index opens.
 func TestBadgeTipsAreTheOwnersAlone(t *testing.T) {
 	_, ts := newTestServer(t)
 	owner, _ := register(t, ts, "owner")
@@ -377,8 +315,8 @@ func TestBadgeTipsAreTheOwnersAlone(t *testing.T) {
 	}
 
 	_, index := do(t, ts, "GET", "/api/v1/users/@me/badges/index", member, nil)
-	if raw, _ := json.Marshal(index); strings.Contains(string(raw), words) {
-		t.Fatalf("a locked badge carried its tooltip: %s", raw)
+	if raw, _ := json.Marshal(index); !strings.Contains(string(raw), words) {
+		t.Fatalf("a locked badge's card lacks the owner's words: %s", raw)
 	}
 	if res, body := do(t, ts, "PUT", "/api/v1/moderation/users/"+memberID+"/badges", owner, map[string]any{"badges": []string{"mentor"}}); res.StatusCode != 200 {
 		t.Fatalf("give Mentor: %d %v", res.StatusCode, body)

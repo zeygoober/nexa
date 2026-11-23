@@ -26,8 +26,6 @@ object Badges {
     val EXCLUSIVE_HAND = listOf("mentor", "patron", "influencer", "artist")
     /** Every built-in badge staff give by hand (store.HandBadges). */
     val HAND_BADGES = listOf(CONTRIBUTOR) + EXCLUSIVE_HAND
-    /** The Secret badges people find by themselves (store.SecretBadges); staff never give them. */
-    val SECRET_BADGES = listOf("hopeful", "curious", "nosy", "lucky")
     const val EVENT_PREFIX = "event:"
 
     /**
@@ -174,9 +172,6 @@ object Badges {
         "open_mic" -> b.level.coerceIn(1, 3).let { n -> Look("open-mic-$n", t("badges.openMic.l$n"), t("badges.openMicTip", "count" to OPEN_MIC_TIERS[n - 1])) }
         CONTRIBUTOR -> Look("contributor", t("badges.contributor"), t("badges.contributorTip"))
         "mentor", "patron", "influencer", "artist" -> Look(b.id, t("badges.hand.${b.id}"), t("badges.hand.${b.id}Tip"))
-        // the Secret badges: their tooltips say nothing of how they are found
-        "hopeful", "curious", "nosy", "lucky" -> Look(b.id, t("badges.secret.${b.id}"), t("badges.secret.${b.id}Tip"))
-        // a badge staff made says what they wrote for it
         // a collectible is drawn at its material; a badge staff made says what they wrote for it
         else -> if (b.isEvent && b.name != null && b.rarity != null && b.art != null) Look("col-${b.art}-${b.level.coerceIn(1, 5)}", b.name, b.description?.takeIf { it.isNotEmpty() } ?: artLine(b.art))
         else if (b.isEvent && b.name != null) Look(null, b.name, b.description ?: "", b.icon ?: "award", b.color, b.color2, b.dark, b.shape, b.image) else null
@@ -245,7 +240,7 @@ object Badges {
         val dark: Boolean = false,
         val shape: String = "circle",
         val imageId: String = "0",
-        /** Where the Badge Index puts it: "exclusive", "special" or "hidden". */
+        /** Where the Badge Index puts it: "exclusive" or "hidden". */
         val indexKind: String = "exclusive",
         /** Makes it a capsule collectible: common, rare, epic or huge; "" for a badge given by hand. */
         val rarity: String = "",

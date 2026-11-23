@@ -49,7 +49,7 @@ func TradeKey(id string, level int) string {
 // anything people cannot trade: a staff rank, a plan, and whatever is no badge.
 func ParseTradeKey(key string) (id string, level int, ok bool) {
 	switch {
-	case key == BadgeOG || key == BadgeBooster || key == BadgeContributor || IsHandBadge(key) || IsSecretBadge(key):
+	case key == BadgeOG || key == BadgeBooster || key == BadgeContributor || IsHandBadge(key):
 		return key, 0, true
 	case strings.HasPrefix(key, EventBadgePrefix):
 		n := key[len(EventBadgePrefix):]

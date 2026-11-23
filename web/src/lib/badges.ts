@@ -15,8 +15,6 @@ export const CONTRIBUTOR = "contributor";
 export const EXCLUSIVE_HAND = ["mentor", "patron", "influencer", "artist"] as const;
 /** Every built-in badge staff give by hand (store.HandBadges). */
 export const HAND_BADGES: readonly string[] = [CONTRIBUTOR, ...EXCLUSIVE_HAND];
-/** The Secret badges people find by themselves (store.SecretBadges); staff never give them. */
-export const SECRET_BADGES: readonly string[] = ["hopeful", "curious", "nosy", "lucky"];
 export const EVENT_PREFIX = "event:";
 
 /** Whether a badge is an event badge staff made. */
@@ -187,12 +185,6 @@ function builtInLook(b: Badge, user: Who): BadgeLook | null {
     case "influencer":
     case "artist":
       return { art: art(b.id), label: t(`badges.hand.${b.id}`), tip: t(`badges.hand.${b.id}Tip`) };
-    // the Secret badges: their tooltips say nothing of how they are found
-    case "hopeful":
-    case "curious":
-    case "nosy":
-    case "lucky":
-      return { art: art(b.id), label: t(`badges.secret.${b.id}`), tip: t(`badges.secret.${b.id}Tip`) };
     default:
       // a collectible is drawn at its material; a badge staff made says what they wrote for it
       if (isEventBadge(b.id) && b.name && b.rarity && b.art) {

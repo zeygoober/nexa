@@ -97,8 +97,8 @@ func (s *Store) describeBadges(ctx context.Context, list []Badge, plan string) {
 	}
 }
 
-// describeIndex puts the owner's words on what the index shows as held. A
-// locked entry carries no badge, so its words are never sent.
+// describeIndex puts the owner's words on every built-in entry of the index,
+// held or locked, since a locked tile's card says how to get it.
 func (s *Store) describeIndex(ctx context.Context, entries []BadgeIndexEntry) {
 	tips := s.badgeTips(ctx)
 	if len(tips) == 0 {
@@ -106,11 +106,15 @@ func (s *Store) describeIndex(ctx context.Context, entries []BadgeIndexEntry) {
 	}
 	for i := range entries {
 		e := &entries[i]
-		if e.Badge == nil || e.event != "" {
+		b := e.Badge
+		if b == nil {
+			b = e.Preview
+		}
+		if b == nil || e.event != "" {
 			continue
 		}
 		if t := tips[e.Art]; t != "" {
-			e.Badge.Description = t
+			b.Description = t
 		}
 	}
 }

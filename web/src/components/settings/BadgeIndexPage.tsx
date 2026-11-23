@@ -1,12 +1,12 @@
-import { useEffect, useRef, useState } from "react";
-import type { BadgeCategory, BadgeIndex } from "@/api/types";
+import { useEffect, useState } from "react";
+import type { BadgeCategory, BadgeIndex, PublicUser } from "@/api/types";
 import { users } from "@/api/users";
-import { BadgeMark, BadgePill } from "@/components/badges/Badges";
+import { BadgeCard, BadgeMark, BadgePill } from "@/components/badges/Badges";
+import { Tooltip } from "@/components/common/Tooltip";
 import { Button } from "@/components/common/Button";
 import { Spinner } from "@/components/common/Spinner";
 import { t } from "@/i18n";
-import { badgeArt } from "@/lib/badges";
-import { CURIOUS_HOLD_MS, reportFound } from "@/lib/secretBadges";
+import { badgeArt, badgeLook } from "@/lib/badges";
 import { can, useMyRank } from "@/lib/staffRank";
 import { useAuth } from "@/stores/auth";
 import chat from "@/components/chat/Chat.module.css";
@@ -16,33 +16,45 @@ import st from "./Settings.module.css";
 import s from "./BadgeIndexPage.module.css";
 
 /** The parts of the index, always in this order (BadgeArrange too). */
-export const BADGE_SECTIONS: BadgeCategory[] = ["obtainable", "collectible", "exclusive", "special"];
+export const BADGE_SECTIONS: BadgeCategory[] = ["obtainable", "collectible", "exclusive"];
 
-/** A badge not collected: its shape, blacked out, and nothing that says what it is or how to get it. */
-function Locked({ entry, onFound }: { entry: BadgeIndex["entries"][number]; onFound: () => void }) {
-  const held = useRef<number | undefined>(undefined);
-  const letGo = () => window.clearTimeout(held.current);
-  useEffect(() => letGo, []);
-  // a padlock held still long enough is Curious; nothing shows while it is held
-  const hold =
-    entry.art === "secret"
-      ? {
-          onPointerDown: () => {
-            letGo();
-            held.current = window.setTimeout(() => {
-              void reportFound("curious").then((isNew) => isNew && onFound());
-            }, CURIOUS_HOLD_MS);
-          },
-          onPointerUp: letGo,
-          onPointerLeave: letGo,
-          onPointerCancel: letGo,
-          onContextMenu: (e: React.MouseEvent) => e.preventDefault(),
-        }
-      : {};
-  return (
-    <span className={s.tile} data-locked="" role="img" aria-label={t("badges.index.locked")} data-testid="badge-index-locked" {...hold}>
-      {entry.art ? <img className={s.art} src={badgeArt(`${entry.art}-locked`)} alt="" draggable={false} /> : <span className={s.shape}><BadgeMark look={{ iconName: entry.icon, image: entry.image, label: "", tip: "" }} size={40} /></span>}
+type Entry = BadgeIndex["entries"][number];
+type Who = Pick<PublicUser, "id" | "flags" | "plan">;
+
+/** A badge not collected, blacked out: its picture's -locked file, or a badge staff made in the same solid shape. */
+function LockedShape({ entry, size }: { entry: Entry; size: number }) {
+  return entry.art ? (
+    <img className={s.art} style={{ width: size, height: size }} src={badgeArt(`${entry.art}-locked`)} alt="" draggable={false} />
+  ) : (
+    <span className={s.shape} style={{ width: size, height: size }}>
+      <BadgeMark look={{ iconName: entry.icon, image: entry.image, label: "", tip: "" }} size={size} />
     </span>
+  );
+}
+
+/**
+ * A badge not collected: its shape, blacked out. Hovered, focused or tapped it
+ * opens the same card a collected one does, still black, with its name and how
+ * to get it. A server from before previews sends neither, and the tile says only that it is locked.
+ */
+function Locked({ entry, me }: { entry: Entry; me: Who }) {
+  const p = entry.preview;
+  // a plan badge is drawn from the account's plan; here the plan is the one the tile is
+  const look = p ? badgeLook(p, p.id === "plan" ? { ...me, plan: entry.art === "plan-pro" ? "pro" : "supporter" } : me) : null;
+  if (!p || !look) {
+    return (
+      <span className={s.tile} data-locked="" role="img" aria-label={t("badges.index.locked")} data-testid="badge-index-locked">
+        <LockedShape entry={entry} size={40} />
+      </span>
+    );
+  }
+  const said = look.tip ? `${look.label}: ${look.tip}` : look.label;
+  return (
+    <Tooltip text={said} side="top" card={<BadgeCard look={look} exist={p.exist} locked={<LockedShape entry={entry} size={52} />} />}>
+      <span className={s.tile} data-locked="" role="img" tabIndex={0} aria-label={`${t("badges.index.locked")}: ${said}`} data-testid="badge-index-locked">
+        <LockedShape entry={entry} size={40} />
+      </span>
+    </Tooltip>
   );
 }
 
@@ -103,13 +115,11 @@ export default function BadgeIndexPage() {
           </div>
           {BADGE_SECTIONS.map((section) => {
             const entries = index.entries.filter((e) => e.category === section);
-            // Special starts out empty and still says it is there
-            if (!entries.length && section !== "special") return null;
+            if (!entries.length) return null;
             return (
               <section key={section} className={s.section} data-testid={`badge-index-${section}`}>
                 <h3 className={`${st.h5} ${s.sectionTitle}`}>{t(`badges.index.${section}`)}</h3>
-                {entries.length ? (
-                  <ul className={s.grid} data-testid="badge-index-grid">
+                <ul className={s.grid} data-testid="badge-index-grid">
                     {entries.map((e, i) => (
                       <li key={i}>
                         {e.badge ? (
@@ -117,11 +127,10 @@ export default function BadgeIndexPage() {
                             <BadgePill badge={e.badge} user={me} size={40} />
                             {e.qty && e.qty > 1 ? <span className={s.qty} role="img" aria-label={t("badges.index.copies", { count: e.qty })} data-testid="badge-index-qty">×{e.qty}</span> : null}
                           </span>
-                        ) : <Locked entry={e} onFound={load} />}
+                        ) : <Locked entry={e} me={me} />}
                       </li>
                     ))}
                   </ul>
-                ) : <p className={s.note}>{t("badges.index.specialEmpty")}</p>}
               </section>
             );
           })}

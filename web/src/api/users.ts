@@ -129,13 +129,9 @@ export const users = {
   myBadges(): Promise<{ badges: Badge[] }> {
     return api.request("GET", "/users/@me/badges");
   },
-  /** Every badge there is to collect, in a fixed order; one not collected says only what its silhouette is. */
+  /** Every badge there is to collect, in a fixed order; one not collected comes blacked out, with what it is and how to get it. */
   badgeIndex(): Promise<BadgeIndex> {
     return api.request("GET", "/users/@me/badges/index");
-  },
-  /** A Secret badge the app saw this account find (lib/secretBadges.ts). */
-  badgeFound(badge: string): Promise<{ new: boolean }> {
-    return api.request("POST", "/users/@me/badges/found", { badge });
   },
   /** Keeps the order of this account's badges and which it hides (never its staff rank). */
   setBadges(order: string[], hidden: string[]): Promise<{ badges: Badge[] }> {

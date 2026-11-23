@@ -25,7 +25,6 @@ func (s *Server) badgeRoutes(mux *http.ServeMux) {
 	mux.Handle("GET /api/v1/users/@me/badges/index", s.authed(s.handleMyBadgeIndex))
 	mux.Handle("GET /api/v1/users/@me/badges/progress", s.authed(s.handleMyBadgeProgress))
 	mux.Handle("PUT /api/v1/users/@me/badges", s.authed(s.handleMyBadgesPut))
-	mux.Handle("POST /api/v1/users/@me/badges/found", s.authed(s.handleBadgeFound))
 	mux.Handle("GET /api/v1/moderation/badges", s.staff(rankAdmin, s.handleModBadges))
 	mux.Handle("POST /api/v1/moderation/badges", s.staff(rankAdmin, s.handleModBadgeCreate))
 	mux.Handle("POST /api/v1/moderation/badges/image", s.staff(rankAdmin, s.handleModBadgeImage))

@@ -38,17 +38,6 @@ const (
 	EventBadgePrefix  = "event:"        // given by staff: "event:<badge_defs id>"
 )
 
-// The built-in Secret badges. Each is earned once and kept in user_badges
-// (granted_by the holder), since nothing afterwards shows it was earned. How
-// each is earned is never sent to anyone: a locked one is the padlock, a held
-// one says only its name and its tooltip.
-const (
-	BadgeHopeful = "hopeful" // asked Nexa's own account to be friends (api/relationship_handlers.go)
-	BadgeCurious = "curious" // the app reports it (AppFoundBadges)
-	BadgeNosy    = "nosy"    // the app reports it (AppFoundBadges)
-	BadgeLucky   = "lucky"   // a draw on sending a message (api/lucky.go)
-)
-
 // The Exclusive badges staff give by hand, as they give Contributor.
 const (
 	BadgeInfluencer = "influencer" // brought people to Nexa
@@ -68,23 +57,6 @@ var HandBadges = append([]string{BadgeContributor}, ExclusiveHandBadges...)
 // IsHandBadge reports whether a badge is a built-in one staff give by hand.
 func IsHandBadge(id string) bool {
 	for _, b := range HandBadges {
-		if id == b {
-			return true
-		}
-	}
-	return false
-}
-
-// SecretBadges are the built-in Secret badges, in the order they were added.
-var SecretBadges = []string{BadgeHopeful, BadgeCurious, BadgeNosy, BadgeLucky}
-
-// AppFoundBadges are the Secret badges an app reports someone found. Only
-// these: the server earns the others itself, and an app cannot claim them.
-var AppFoundBadges = map[string]bool{BadgeCurious: true, BadgeNosy: true}
-
-// IsSecretBadge reports whether a badge is a built-in Secret one.
-func IsSecretBadge(id string) bool {
-	for _, b := range SecretBadges {
 		if id == b {
 			return true
 		}
@@ -118,7 +90,7 @@ var ReportTiers = [5]int{1, 3, 10, 25, 50}
 var GiftTiers = [3]int{1, 5, 20}
 
 // defaultBadgeOrder is where a badge goes when its holder has not placed it.
-var defaultBadgeOrder = []string{BadgeStaff, BadgePlan, BadgeOG, BadgeMentor, BadgePatron, BadgeInfluencer, BadgeArtist, BadgeYears, BadgeContributor, BadgeBugHunter, BadgeIdeas, BadgeAppDeveloper, BadgeGiftGiver, BadgeFriendly, BadgeHost, BadgeBooster, BadgeRegular, BadgeOpenMic, BadgeHopeful, BadgeCurious, BadgeNosy, BadgeLucky}
+var defaultBadgeOrder = []string{BadgeStaff, BadgePlan, BadgeOG, BadgeMentor, BadgePatron, BadgeInfluencer, BadgeArtist, BadgeYears, BadgeContributor, BadgeBugHunter, BadgeIdeas, BadgeAppDeveloper, BadgeGiftGiver, BadgeFriendly, BadgeHost, BadgeBooster, BadgeRegular, BadgeOpenMic}
 
 // Badge is one badge on a profile. Staff and plan carry nothing more: the
 // clients draw them from the account itself.
@@ -185,7 +157,6 @@ type BadgeDef struct {
 const (
 	BadgeObtainable = "obtainable"
 	BadgeExclusive  = "exclusive"
-	BadgeSpecial    = "special"
 	// BadgeCollectible is the index's part for capsule collectibles (gems.go), each material its own entry
 	BadgeCollectible = "collectible"
 	// BadgeIndexHidden keeps a badge staff made out of the index altogether.
@@ -193,11 +164,7 @@ const (
 )
 
 // BadgeIndexKinds are where staff can put a badge they made.
-var BadgeIndexKinds = map[string]bool{BadgeExclusive: true, BadgeSpecial: true, BadgeIndexHidden: true}
-
-// lockedSpecialArt is what every locked Special badge is drawn as, so the
-// index's answer says nothing about one.
-const lockedSpecialArt = "secret"
+var BadgeIndexKinds = map[string]bool{BadgeExclusive: true, BadgeIndexHidden: true}
 
 // BadgeShapes are the shapes an event badge can take.
 var BadgeShapes = map[string]bool{"circle": true, "rounded": true, "shield": true, "hexagon": true, "star": true, "diamond": true, "seal": true, "ribbon": true}
@@ -350,11 +317,6 @@ func (s *Store) heldBadges(ctx context.Context, u *User, now time.Time) ([]Badge
 	add(BadgeBooster, false)
 	add(BadgeRegular, true)
 	add(BadgeOpenMic, true)
-	for _, id := range SecretBadges {
-		if granted[id] {
-			out = append(out, Badge{ID: id})
-		}
-	}
 	// event badges, oldest given first
 	var events []ids.ID
 	for id := range granted {
@@ -898,29 +860,10 @@ func (s *Store) GrantedBadges(ctx context.Context, uid ids.ID) ([]string, error)
 	}
 	out := make([]string, 0, len(set))
 	for b := range set {
-		if !IsSecretBadge(b) {
-			out = append(out, b)
-		}
+		out = append(out, b)
 	}
 	sort.Strings(out)
 	return out, nil
-}
-
-// AwardSecretBadge gives a person a built-in Secret badge, once, answering
-// whether it is new. Bots, Nexa's accounts and deleted accounts get nothing.
-func (s *Store) AwardSecretBadge(ctx context.Context, u *User, badge string) (bool, error) {
-	if u == nil || u.Flags&(NotPeople|FlagBot|FlagDeleted) != 0 || !IsSecretBadge(badge) {
-		return false, nil
-	}
-	res, err := s.db.W.ExecContext(ctx, `INSERT INTO user_badges (user_id, badge, granted_by, granted_at) VALUES (?,?,?,?) ON CONFLICT DO NOTHING`, int64(u.ID), badge, int64(u.ID), nowMs())
-	if err != nil {
-		return false, err
-	}
-	n, _ := res.RowsAffected()
-	if n > 0 {
-		s.exist.forget()
-	}
-	return n > 0, nil
 }
 
 func (s *Store) badgeDefsByID(ctx context.Context, list []ids.ID) (map[ids.ID]*BadgeDef, error) {
@@ -1084,16 +1027,19 @@ func (s *Store) SetBadgePrefs(ctx context.Context, uid ids.ID, p BadgePrefs) err
 }
 
 // BadgeIndexEntry is one badge to collect, in its part of the index
-// (Category). Art is the picture of a built-in badge. Badge is set only once
-// it is collected: until then nothing says what it is or how to get it, a
-// badge staff made carries only Icon or Image, what its silhouette is drawn
-// from, and a Special one not even that (lockedSpecialArt).
+// (Category). Art is the picture of a built-in badge, and a badge staff made
+// carries Icon or Image: what the tile is drawn from, blacked out until it is
+// collected. Badge is set only once it is collected; until then Preview says
+// what it is and how to get it, for the card a locked tile opens, without the
+// holder's own numbers. Apps from before Preview read only Badge, so a locked
+// badge never comes as one.
 type BadgeIndexEntry struct {
 	Category string `json:"category"`
 	Art      string `json:"art,omitempty"`
 	Icon     string `json:"icon,omitempty"`
 	Image    string `json:"image,omitempty"`
 	Badge    *Badge `json:"badge,omitempty"`
+	Preview  *Badge `json:"preview,omitempty"`
 	// Qty is how many copies the account holds; missing when it holds none.
 	// Only its owner is sent it.
 	Qty int `json:"qty,omitempty"`
@@ -1101,15 +1047,10 @@ type BadgeIndexEntry struct {
 	event string
 	// name is the badge's own, for its place among the locked; never sent
 	name string
-	// secret is a locked built-in Secret badge's own art, for its place; never sent
-	secret string
 }
 
 // key names an entry's place in the order, for the owner's arrangement only.
 func (e BadgeIndexEntry) key() string {
-	if e.secret != "" {
-		return e.secret
-	}
 	if e.event != "" {
 		return e.event
 	}
@@ -1152,8 +1093,11 @@ func (s *Store) MyBadgeIndex(ctx context.Context, u *User) (*BadgeIndex, error) 
 	heldThenLocked(out.Entries, len(order) > 0)
 	counts := s.badgeCounts(ctx)
 	for i := range out.Entries {
-		if b := out.Entries[i].Badge; b != nil {
+		e := &out.Entries[i]
+		if b := e.Badge; b != nil {
 			b.Exist = counts.of(*b, u)
+		} else if b := e.Preview; b != nil {
+			b.Exist = counts.lacked(*b, e.Art)
 		}
 	}
 	return out, nil
@@ -1161,8 +1105,7 @@ func (s *Store) MyBadgeIndex(ctx context.Context, u *User) (*BadgeIndex, error) 
 
 // heldThenLocked puts what the account holds first and what it lacks after it,
 // the locked ones from A to Z, and the held ones too unless heldInPlace keeps
-// them in the owner's order. The names stay here: a locked entry is sent with
-// nothing but its shape, and its place says no more than that.
+// them in the owner's order.
 func heldThenLocked(entries []BadgeIndexEntry, heldInPlace bool) {
 	sort.SliceStable(entries, func(i, j int) bool {
 		a, b := entries[i], entries[j]
@@ -1180,7 +1123,7 @@ func heldThenLocked(entries []BadgeIndexEntry, heldInPlace bool) {
 }
 
 // badgeIndexNames is each built-in entry's English name (web/src/i18n/locales/en.json),
-// which puts the locked ones in order in every language, none of them being shown.
+// which puts the locked ones in the same order in every language.
 var badgeIndexNames = map[string]string{
 	"plan-supporter": "Supporter", "plan-pro": "Pro", "og": "OG", "years": "Years on Nexa", "contributor": "Contributor", "booster": "Booster",
 	"bug-1": "Bug Spotter", "bug-2": "Bug Tracker", "bug-3": "Bug Hunter", "bug-4": "Bug Slayer", "bug-5": "Exterminator",
@@ -1191,7 +1134,6 @@ var badgeIndexNames = map[string]string{
 	"host-1": "Host", "host-2": "Organizer", "host-3": "Mayor",
 	"regular-1": "Regular", "regular-2": "Familiar", "regular-3": "Fixture", "regular-4": "Furniture",
 	"open-mic-1": "Speaker", "open-mic-2": "Verbose", "open-mic-3": "Yapper",
-	"hopeful": "Hopeful", "curious": "Curious", "nosy": "Nosy", "lucky": "Lucky",
 	"influencer": "Influencer", "artist": "Artist", "mentor": "Mentor", "patron": "Patron",
 }
 
@@ -1222,6 +1164,11 @@ func (s *Store) layBadgeIndex(ctx context.Context, held map[string]Badge, qty ma
 		out.Entries = append(out.Entries, e)
 		out.Total++
 	}
+	// a badge not collected: its shape, and what the card a locked tile opens says
+	lock := func(e BadgeIndexEntry, preview Badge) {
+		e.Preview = &preview
+		add(e, nil)
+	}
 	one := func(art, id, category string) {
 		if b, ok := held[id]; ok {
 			e := BadgeIndexEntry{Art: art, Category: category}
@@ -1229,11 +1176,8 @@ func (s *Store) layBadgeIndex(ctx context.Context, held map[string]Badge, qty ma
 				e.Qty = qty[TradeKey(id, b.Level)]
 			}
 			add(e, &b)
-		} else if category == BadgeSpecial {
-			// the padlock, and nothing that tells one Secret badge from another
-			add(BadgeIndexEntry{Art: lockedSpecialArt, Category: category, secret: art, name: badgeIndexNames[art]}, nil)
 		} else {
-			add(BadgeIndexEntry{Art: art, Category: category}, nil)
+			lock(BadgeIndexEntry{Art: art, Category: category}, Badge{ID: id})
 		}
 	}
 	// a level is collected once the badge has reached it; only the highest has the holder's own count
@@ -1243,12 +1187,12 @@ func (s *Store) layBadgeIndex(ctx context.Context, held map[string]Badge, qty ma
 			e := BadgeIndexEntry{Art: art + "-" + strconv.Itoa(n)}
 			if qty != nil {
 				if qty[e.Art] <= 0 {
-					add(e, nil)
+					lock(e, Badge{ID: id, Level: n})
 					continue
 				}
 				e.Qty = qty[e.Art]
 			} else if !ok || b.Level < n {
-				add(e, nil)
+				lock(e, Badge{ID: id, Level: n})
 				continue
 			}
 			at := Badge{ID: id, Level: n}
@@ -1262,7 +1206,8 @@ func (s *Store) layBadgeIndex(ctx context.Context, held map[string]Badge, qty ma
 		if _, ok := held[BadgePlan]; ok && (onPlan == name || onPlan == everyPlan) {
 			add(BadgeIndexEntry{Art: "plan-" + name}, &Badge{ID: BadgePlan})
 		} else {
-			add(BadgeIndexEntry{Art: "plan-" + name}, nil)
+			// which plan is the entry's art; the apps draw a plan badge from it
+			lock(BadgeIndexEntry{Art: "plan-" + name}, Badge{ID: BadgePlan})
 		}
 	}
 	plan("supporter")
@@ -1282,9 +1227,6 @@ func (s *Store) layBadgeIndex(ctx context.Context, held map[string]Badge, qty ma
 	one("booster", BadgeBooster, BadgeObtainable)
 	levels("regular", BadgeRegular, 4)
 	levels("open-mic", BadgeOpenMic, 3)
-	for _, id := range SecretBadges {
-		one(id, id, BadgeSpecial)
-	}
 	defs, err := s.BadgeDefs(ctx)
 	if err != nil {
 		return nil, err
@@ -1293,7 +1235,7 @@ func (s *Store) layBadgeIndex(ctx context.Context, held map[string]Badge, qty ma
 	for i := len(defs) - 1; i >= 0; i-- {
 		d := defs[i]
 		if d.Rarity != "" {
-			// a collectible is a badge at each material; locked, it is its drawing blacked out, never its name
+			// a collectible is a badge at each material; locked, it is its drawing blacked out
 			for m := 1; m <= GemMaterials; m++ {
 				key := TradeKey(EventBadgePrefix+d.ID.String(), m)
 				e := BadgeIndexEntry{Category: BadgeCollectible, event: key, name: d.Name}
@@ -1302,12 +1244,12 @@ func (s *Store) layBadgeIndex(ctx context.Context, held map[string]Badge, qty ma
 					have = qty[key] > 0
 					e.Qty = qty[key]
 				}
+				b := collectibleBadge(d, m)
 				if have {
-					b := collectibleBadge(d, m)
 					add(e, &b)
 				} else {
 					e.Art = "col-" + d.Art
-					add(e, nil)
+					lock(e, b)
 				}
 			}
 			continue
@@ -1320,14 +1262,10 @@ func (s *Store) layBadgeIndex(ctx context.Context, held map[string]Badge, qty ma
 		if b.Image != "" {
 			e.Icon = ""
 		}
-		have, ok := held[b.ID]
-		if !ok && d.IndexKind == BadgeSpecial {
-			e.Art, e.Icon, e.Image = lockedSpecialArt, "", ""
-		}
-		if ok {
+		if have, ok := held[b.ID]; ok {
 			add(e, &have)
 		} else {
-			add(e, nil)
+			lock(e, b)
 		}
 	}
 	s.describeIndex(ctx, out.Entries)
@@ -1398,9 +1336,6 @@ func (s *Store) BadgeArrangement(ctx context.Context) (*BadgeArrangement, error)
 		held[id] = Badge{ID: id, Level: top}
 	}
 	held[BadgeYears] = Badge{ID: BadgeYears, Level: 1}
-	for _, id := range SecretBadges {
-		held[id] = Badge{ID: id}
-	}
 	defs, err := s.BadgeDefs(ctx)
 	if err != nil {
 		return nil, err
@@ -1599,10 +1534,7 @@ func (s *Store) SetGrantedBadges(ctx context.Context, uid, by ids.ID, want []str
 				rows.Close()
 				return err
 			}
-			// a Secret badge was earned, not given, and staff's list never names it
-			if !IsSecretBadge(b) {
-				have[b] = true
-			}
+			have[b] = true
 		}
 		rows.Close()
 		if err := rows.Err(); err != nil {

@@ -59,7 +59,7 @@ func (s *Store) BadgeOwners(ctx context.Context, badge string) ([]BadgeOwner, er
 		for _, h := range all {
 			add(h.UserID, badge)
 		}
-	case IsGrantableBadge(badge) || IsSecretBadge(badge):
+	case IsGrantableBadge(badge):
 		// a collectible is never in user_badges, so only its holdings below count
 		rows, err := s.db.R.QueryContext(ctx, `SELECT u.id FROM user_badges g JOIN users u ON u.id = g.user_id WHERE g.badge = ? AND u.flags & ? = 0`, badge, notPeople)
 		if err != nil {

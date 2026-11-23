@@ -467,11 +467,6 @@ def all_badges():
     yield "booster", icon("rocket", "boost"), True
     for i, tier in enumerate(TIERS[:4], 1):
         yield f"regular-{i}", icon("coffee", tier), True
-    # the Secret badges: locked, every one is the padlock, so none has a locked file of its own
-    yield "hopeful", icon("sunrise", "copper"), False
-    yield "curious", icon("glass", "jade"), False
-    yield "nosy", icon("eye", "violet"), False
-    yield "lucky", icon("clover", "clover"), False
     # Gems: the currency, the capsule, and every collectible's art at each material (store.CollectibleArt)
     yield "gem", (currency_gem, None), False
     yield "capsule", (capsule, None), False
@@ -490,9 +485,6 @@ def main():
         if indexed:
             (OUT / f"{name}-locked.svg").write_text(locked())
             names.add(f"{name}-locked.svg")
-    # every locked Special badge in the Index, which says nothing of what it is; there is no unlocked one
-    (OUT / "secret-locked.svg").write_text(locked_glyph("secret"))
-    names.add("secret-locked.svg")
     # a collectible not held, at any material: its drawing blacked out (store.layBadgeIndex sends art "col-<name>")
     for glyph in COLLECTIBLE_ART:
         (OUT / f"col-{glyph}-locked.svg").write_text(locked_glyph(glyph))

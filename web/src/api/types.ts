@@ -22,13 +22,14 @@ export interface BadgeArrangement {
 }
 
 /** The parts of the Badge Index, in the order it shows them. */
-export type BadgeCategory = "obtainable" | "collectible" | "exclusive" | "special";
+export type BadgeCategory = "obtainable" | "collectible" | "exclusive";
 
 export interface BadgeIndex {
   collected: number;
   total: number;
   /** `qty` is how many copies this account holds (trades can make it more than one); only its owner is sent it. */
-  entries: { art?: string; icon?: string; image?: string; badge?: Badge; category: BadgeCategory; qty?: number }[];
+  /** badge once collected; until then preview, what the locked tile's card says (missing from servers before it) */
+  entries: { art?: string; icon?: string; image?: string; badge?: Badge; preview?: Badge; category: BadgeCategory; qty?: number }[];
 }
 
 /** Some copies of one badge in a trade, named by its Badge Index key (bug-3, og, event:12). */
@@ -100,7 +101,7 @@ export interface Badge {
 export type BadgeShape = "circle" | "rounded" | "shield" | "hexagon" | "star" | "diamond" | "seal" | "ribbon";
 
 /** A badge staff made for an event, with how many hold it. */
-export type BadgeIndexKind = "exclusive" | "special" | "hidden";
+export type BadgeIndexKind = "exclusive" | "hidden";
 
 export interface BadgeDef {
   id: Snowflake;

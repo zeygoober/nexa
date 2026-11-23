@@ -13,7 +13,6 @@ import { desktopBridge } from "@/lib/desktopBridge";
 import { isAndroidBrowser } from "@/lib/platform";
 import { useIsMobile } from "@/hooks/useIsMobile";
 import { searchSettings, settingsIndex, type SettingEntry } from "./settingsIndex";
-import { isSecretWord, reportFound } from "@/lib/secretBadges";
 import s from "./Settings.module.css";
 
 import { t } from "@/i18n";
@@ -266,10 +265,7 @@ export default function SettingsModal({ onClose, page: initial, packId, modalId,
     <div className={s.navSearch}>
       <SearchBox
         value={query}
-        onChange={(v) => {
-          setQuery(v);
-          if (isSecretWord(v)) void reportFound("nosy");
-        }}
+        onChange={setQuery}
         placeholder={t("settings.search.placeholder")}
         aria-label={t("settings.search.placeholder")}
         onEscape={() => setQuery("")}
