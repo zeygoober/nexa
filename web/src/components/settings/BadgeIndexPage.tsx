@@ -50,7 +50,7 @@ function Locked({ entry, me }: { entry: Entry; me: Who }) {
   }
   const said = look.tip ? `${look.label}: ${look.tip}` : look.label;
   return (
-    <Tooltip text={said} side="top" card={<BadgeCard look={look} exist={p.exist} locked={<LockedShape entry={entry} size={52} />} />}>
+    <Tooltip className={s.cell} text={said} side="top" card={<BadgeCard look={look} exist={p.exist} locked={<LockedShape entry={entry} size={52} />} />}>
       <span className={s.tile} data-locked="" role="img" tabIndex={0} aria-label={`${t("badges.index.locked")}: ${said}`} data-testid="badge-index-locked">
         <LockedShape entry={entry} size={40} />
       </span>
