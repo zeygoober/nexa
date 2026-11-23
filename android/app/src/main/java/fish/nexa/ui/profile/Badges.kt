@@ -4,7 +4,6 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import fish.nexa.ui.theme.Radii
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
@@ -148,7 +147,7 @@ private class BadgeCardPlace(private val room: Int, private val clear: Int, priv
 
 /**
  * What pressing a badge opens, as the web's tooltip card: the badge large, its name, and what it means.
- * A badge not yet collected passes its blacked out shape as [locked], drawn on a pale well so it shows on the dark card.
+ * A badge not yet collected passes its blacked out shape as [locked], drawn in the badge's place at the same size.
  */
 @Composable
 internal fun BadgeCardPopup(look: Badges.Look, exist: Int?, locked: (@Composable () -> Unit)? = null, onDismiss: () -> Unit) {
@@ -185,7 +184,7 @@ internal fun BadgeCardPopup(look: Badges.Look, exist: Int?, locked: (@Composable
         ) {
             Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
                 if (locked == null) BadgeMark(look, 64.dp)
-                else Box(Modifier.size(72.dp).background(c.tooltipText.copy(alpha = 0.14f), Radii.Md), contentAlignment = Alignment.Center) { locked() }
+                else Box(Modifier.size(64.dp), contentAlignment = Alignment.Center) { locked() }
                 Spacer(Modifier.height(10.dp))
                 Txt(look.label, style = Nx.type.heading.copy(fontSize = Nx.type.sp(17f), fontWeight = FontWeight(800), lineHeight = Nx.type.sp(21f)), color = c.tooltipText, align = TextAlign.Center)
                 if (look.tip.isNotEmpty()) {

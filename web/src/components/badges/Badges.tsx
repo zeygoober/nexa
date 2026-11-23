@@ -47,8 +47,8 @@ export function BadgeMark({ look, size = 20 }: { look: BadgeLook; size?: number 
 
 /**
  * What a badge's tooltip shows: the badge large, its name, and what it means.
- * [locked] is a badge not collected, blacked out (the Badge Index), drawn on a
- * well since black would vanish into the tooltip.
+ * [locked] is a badge not collected, blacked out (the Badge Index), drawn in
+ * the badge's place at the same size.
  */
 export function BadgeCard({ look, exist, locked }: { look: BadgeLook; exist: number | undefined; locked?: ReactNode }) {
   return (

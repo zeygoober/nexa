@@ -226,7 +226,7 @@ private fun Tile(e: IndexEntry, userId: String, flags: Long, plan: String) {
     else Modifier.pressable(remember { MutableInteractionSource() }, role = Role.Button) { open = true }.semantics { contentDescription = "$locked: ${look.said}" }
     Box(tile.then(press), contentAlignment = Alignment.Center) {
         LockedShape(e, 40.dp)
-        if (open && look != null) BadgeCardPopup(look, e.preview.exist, locked = { LockedShape(e, 52.dp) }) { open = false }
+        if (open && look != null) BadgeCardPopup(look, e.preview.exist, locked = { LockedShape(e, 64.dp) }) { open = false }
     }
 }
 

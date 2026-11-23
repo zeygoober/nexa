@@ -1123,7 +1123,7 @@ The Badge Index (`GET /users/@me/badges/index`, `Store.MyBadgeIndex`; web `setti
 `ui/settings/BadgeIndexPage.kt`, Settings, under Profiles, own account only) counts each level of a tiered badge as its own badge
 and leaves out staff ranks. For what an account lacks the answer carries what draws the black shape (`art`, `icon` or `image`)
 and the badge as `preview` with its name, tip and `exist`, never as `badge`, which older apps draw in colour. Pressing a locked tile (hovering or
-focusing it on the web) opens the badge's card with the black shape on a pale well, its name and how to earn it (the owner's decision, 2026-11-23;
+focusing it on the web) opens the same card a collected badge does, the black shape in its place at the same size, its name and how to earn it (the owner's decision, 2026-11-23;
 web `BadgeCard`'s `locked`, Android `BadgeCardPopup`'s `locked`). The source is public, so no badge's way of earning is a secret. `Badge.count` is the number behind a badge for its tooltip (`naturalLevels`): OG's place in joining, "32nd" in English and the plain number in other languages (`joinPlace` on both clients)
 (people only, deleted accounts included since they keep their row, so nobody's number moves), and the real count for Bug Hunter, Ideas, Gift Giver and App
 Developer; a badge staff overrode has none. Entries the account has collected come first, then what it lacks, each part A to Z by English name unless the owner's order below holds the collected ones (`heldThenLocked`,

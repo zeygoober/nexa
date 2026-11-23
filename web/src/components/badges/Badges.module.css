@@ -82,18 +82,16 @@
   width: 64px;
   height: 64px;
 }
-/* a badge not collected: its black shape on a lifted square of the tooltip, as its tile is on the page */
+/* a badge not collected (the Badge Index): its black shape, as large as a collected badge's and with nothing behind it */
 .cardWell {
   display: grid;
   place-items: center;
-  width: 72px;
-  height: 72px;
-  border-radius: var(--radius-md);
-  background: color-mix(in srgb, var(--tooltip-text) 14%, transparent);
+  width: 64px;
+  height: 64px;
 }
 .cardWell > * {
-  width: 52px;
-  height: 52px;
+  width: 64px;
+  height: 64px;
 }
 .cardName {
   max-width: 100%;
