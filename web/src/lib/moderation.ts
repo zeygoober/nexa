@@ -3,7 +3,7 @@
  * the ban screen and the staff's panel all describe the same action the same
  * way — in the reader's language.
  */
-import { ArrowLeftRight, Award, Ban, Eraser, EyeOff, Gamepad2, Gem, ImageOff, KeyRound, Lock, LockOpen, Megaphone, MessageSquareOff, ServerCog, Settings2, Shapes, ShieldMinus, ShieldPlus, Sticker, UserX, type LucideIcon } from "lucide-react";
+import { ArrowLeftRight, Award, Ban, Eraser, EyeOff, Gamepad2, Gem, ImageOff, KeyRound, Lock, LockOpen, Megaphone, MessageSquareOff, ServerCog, Settings2, Shapes, ShieldMinus, ShieldPlus, Sticker, Swords, UserX, type LucideIcon } from "lucide-react";
 import type { CaseDetails, CaseMessage, MemberCase, ModAction, ModLogEntry, PackField, People, Person, ResetField, ServerField } from "@/api/moderation";
 import type { BugKind, BugStatus } from "@/api/bugs";
 import { bugStatusLabel } from "@/lib/bugs";
@@ -67,6 +67,8 @@ export function actionIcon(action: string): LucideIcon {
     case "gems_give":
     case "gems_take":
       return Gem;
+    case "quest_debug":
+      return Swords;
     case "collectable_give":
     case "collectable_take":
       return Shapes;
@@ -175,6 +177,8 @@ export function actionLabel(action: string): string {
       return t("moderation.log.giftRevoke");
     case "gems_give":
       return t("moderation.log.gemsGive");
+    case "quest_debug":
+      return t("moderation.log.questDebug");
     case "gems_take":
       return t("moderation.log.gemsTake");
     case "collectable_give":
@@ -493,6 +497,15 @@ export function logDetail(e: ModLogEntry): string {
       if (g.plan === "short_name") return t("support.giftLink.shortName");
       return g.plan ? t((g.days ?? 0) >= 365 ? "support.giftLink.yearOf" : "support.giftLink.monthOf", { plan: t(g.plan === "pro" ? "support.plan.pro" : "support.plan.supporter") }) : "";
     }
+    case "quest_debug": {
+      const q = e.details as { action?: string; amount?: number; kind?: string; target?: number; step?: number };
+      if (q.action === "progress") return `+${(q.amount ?? 0).toLocaleString()}`;
+      if (q.action === "set" && q.kind) return t(`quests.kind.${q.kind}`, { count: q.target ?? 0 });
+      if (q.action === "step") return t("quests.trial.step", { step: (q.step ?? 0).toLocaleString() });
+      if (q.action === "new_day") return t("quests.debug.newDay");
+      if (q.action === "uses") return t("quests.debug.resetUses");
+      return "";
+    }
     case "gems_give":
     case "gems_take": {
       const g = e.details as { amount?: number; gems?: number };
@@ -561,7 +574,7 @@ export const LOG_GROUPS: Record<string, string[]> = {
   punishments: ["message_remove", "avatar_remove", "field_reset", "server_reset", "expression_takedown", "app_discovery_hide", "mute", "ban", "delete", "account_delete_profile"],
   lifts: ["unmute", "unban", "expression_relist", "discovery_restore"],
   announcements: ["announcement", "announcement_delete"],
-  access: ["rank_change", "admin_grant", "admin_revoke", "account_disable", "account_enable", "account_view", "owner_join", "server_preview", "badge_owners_view", "trade_log_view", ...OWNER_SERVER_ACTIONS, "gift_link_create", "gift_link_revoke", "gems_give", "gems_take", "collectable_give", "collectable_take"],
+  access: ["rank_change", "admin_grant", "admin_revoke", "account_disable", "account_enable", "account_view", "owner_join", "server_preview", "badge_owners_view", "trade_log_view", ...OWNER_SERVER_ACTIONS, "gift_link_create", "gift_link_revoke", "gems_give", "gems_take", "collectable_give", "collectable_take", "quest_debug"],
   badges: ["badge_change", "badge_create", "badge_edit", "badge_delete", "badge_index_order", "badge_description"],
   games: ["game_list", "game_reject", "game_forget"],
 };

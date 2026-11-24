@@ -70,6 +70,7 @@ fun actionLabel(action: String): String = if (action.startsWith(OWNER_SERVER)) o
     "gift_link_revoke" -> t("moderation.log.giftRevoke")
     "gems_give" -> t("moderation.log.gemsGive")
     "gems_take" -> t("moderation.log.gemsTake")
+    "quest_debug" -> t("moderation.log.questDebug")
     "collectable_give" -> t("moderation.log.collectableGive")
     "collectable_take" -> t("moderation.log.collectableTake")
     "game_list" -> t("moderation.games.logList")
@@ -114,6 +115,7 @@ fun logIcon(action: String): String = if (action == "server_manage" || action.st
     "trade_log_view" -> "ArrowLeftRight"
     "gift_link_create", "gift_link_revoke" -> "Gift"
     "gems_give", "gems_take" -> "Gem"
+    "quest_debug" -> "Swords"
     "collectable_give", "collectable_take" -> "Shapes"
     else -> "KeyRound"
 }
@@ -123,7 +125,7 @@ val LOG_GROUPS: Map<String, List<String>> = mapOf(
     "punishments" to listOf("message_remove", "avatar_remove", "field_reset", "server_reset", "expression_takedown", "app_discovery_hide", "mute", "ban", "delete", "account_delete_profile"),
     "lifts" to listOf("unmute", "unban", "expression_relist", "discovery_restore"),
     "announcements" to listOf("announcement", "announcement_delete"),
-    "access" to listOf("rank_change", "admin_grant", "admin_revoke", "account_disable", "account_enable", "account_view", "owner_join", "server_preview", "badge_owners_view", "trade_log_view", *OWNER_SERVER_ACTIONS.toTypedArray(), "gift_link_create", "gift_link_revoke", "gems_give", "gems_take", "collectable_give", "collectable_take"),
+    "access" to listOf("rank_change", "admin_grant", "admin_revoke", "account_disable", "account_enable", "account_view", "owner_join", "server_preview", "badge_owners_view", "trade_log_view", *OWNER_SERVER_ACTIONS.toTypedArray(), "gift_link_create", "gift_link_revoke", "gems_give", "gems_take", "collectable_give", "collectable_take", "quest_debug"),
     "badges" to listOf("badge_change", "badge_create", "badge_edit", "badge_delete", "badge_index_order", "badge_description"),
     "games" to listOf("game_list", "game_reject", "game_forget"),
 )
@@ -194,6 +196,14 @@ fun logDetail(e: ModLogEntry): String {
             val m = d.str("material")?.toIntOrNull() ?: 1
             t("moderation.log.collectableAmount", "badge" to (d.str("name") ?: ""), "material" to t("gems.material.$m"), "amount" to kotlin.math.abs(a).toString(), "copies" to (d.str("copies") ?: "0"))
         } ?: ""
+        "quest_debug" -> when (d.str("action")) {
+            "progress" -> "+" + fish.nexa.ui.gems.gemNumber(d.str("amount")?.toLongOrNull() ?: 0L)
+            "set" -> d.str("kind")?.let { k -> t("quests.kind.$k", "count" to (d.str("target")?.toLongOrNull() ?: 0L)) } ?: ""
+            "step" -> t("quests.trial.step", "step" to fish.nexa.ui.gems.gemNumber(d.str("step")?.toLongOrNull() ?: 0L))
+            "new_day" -> t("quests.debug.newDay")
+            "uses" -> t("quests.debug.resetUses")
+            else -> ""
+        }
         "gems_give", "gems_take" -> d.str("amount")?.toLongOrNull()?.let { a ->
             t("moderation.log.gemsAmount", "amount" to fish.nexa.ui.gems.gemNumber(kotlin.math.abs(a)), "gems" to fish.nexa.ui.gems.gemNumber(d.str("gems")?.toLongOrNull() ?: 0L))
         } ?: ""

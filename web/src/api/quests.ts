@@ -48,4 +48,21 @@ export const quests = {
   skipTrial(): Promise<QuestBoard> {
     return api.request("POST", "/quests/trial/skip");
   },
+  /** The owner's own quests worked by hand (store/quests_owner.go); logged, and paid as playing would. */
+  debug(body: QuestDebug): Promise<QuestBoard> {
+    return api.request("POST", "/quests/debug", body);
+  },
 };
+
+/** Every kind a daily quest or tower step can ask for (the bonus's "dailies" aside). */
+export const QUEST_KINDS: Exclude<QuestKind, "dailies">[] = [
+  "messages", "servers", "call_minutes", "call_size", "friends", "joins", "capsules",
+  "fuses", "materials", "trades", "gems", "bugs", "ideas",
+];
+
+export type QuestDebug =
+  | { action: "progress"; quest_id: Snowflake; amount: number }
+  | { action: "set"; quest_id: Snowflake; kind: QuestKind; target: number }
+  | { action: "step"; step: number }
+  | { action: "new_day" }
+  | { action: "uses" };

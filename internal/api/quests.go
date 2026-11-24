@@ -29,6 +29,8 @@ func (s *Server) questRoutes(mux *http.ServeMux) {
 	mux.Handle("GET /api/v1/quests", s.authed(s.handleQuests))
 	mux.Handle("POST /api/v1/quests/{id}/reroll", s.userLimited(s.limGemSpend, s.handleQuestReroll))
 	mux.Handle("POST /api/v1/quests/trial/skip", s.userLimited(s.limGemSpend, s.handleTrialSkip))
+	// the owner's own quests, worked by hand (store/quests_owner.go)
+	mux.Handle("POST /api/v1/quests/debug", s.userLimited(s.limManage, s.holdsRank(rankOwner, s.handleQuestDebug)))
 }
 
 // questBook is what this process knows of quests between writes: the kinds
@@ -362,5 +364,34 @@ func (s *Server) handleTrialSkip(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	s.questForget(me.ID)
+	s.questBoardFor(w, r, me)
+}
+
+func (s *Server) handleQuestDebug(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	me := auth.UserFrom(ctx)
+	if !questPerson(me) {
+		WriteError(w, errTradePerson)
+		return
+	}
+	var d store.QuestDebug
+	if err := ReadJSON(w, r, &d, 4<<10); err != nil {
+		WriteError(w, err)
+		return
+	}
+	done, err := s.Store.OwnerQuestDebug(ctx, me.ID, d, &store.ModLogEntry{ModeratorID: me.ID, ModeratorUsername: me.Username, TargetID: &me.ID, TargetUsername: me.Username}, time.Now())
+	if errors.Is(err, store.ErrQuestDebug) {
+		WriteError(w, E(http.StatusBadRequest, "quest_debug", "That quest change is not one Nexa can make."))
+		return
+	}
+	if err != nil {
+		questError(w, err)
+		return
+	}
+	s.questForget(me.ID)
+	if len(done) > 0 {
+		s.gemTeams.forget(me.ID)
+		s.emitQuests(ctx, me.ID, done)
+	}
 	s.questBoardFor(w, r, me)
 }

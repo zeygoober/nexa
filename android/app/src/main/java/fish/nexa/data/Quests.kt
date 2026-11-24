@@ -8,6 +8,8 @@ import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.booleanOrNull
+import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.put
 import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.longOrNull
 
@@ -111,4 +113,22 @@ object Quests {
 
     /** Swaps the Trial's quest for another at the same step, once a day. */
     suspend fun skipTrial(): Board = need(Nexa.api.request("POST", "/quests/trial/skip"))
+
+    /** Every kind a daily quest or tower step can ask for (the bonus's "dailies" aside), as the server's questKinds. */
+    val KINDS = listOf("messages", "servers", "call_minutes", "call_size", "friends", "joins", "capsules", "fuses", "materials", "trades", "gems", "bugs", "ideas")
+
+    /**
+     * The owner's own quests worked by hand (store/quests_owner.go): [action] is progress (with [questId] and
+     * [amount]), set (with [questId], [kind] and [target]), step (with [step]), new_day or uses. Logged, and a
+     * quest finished this way pays as playing would.
+     */
+    suspend fun debug(action: String, questId: String? = null, amount: Long = 0, kind: String? = null, target: Long = 0, step: Long = 0): Board =
+        need(Nexa.api.request("POST", "/quests/debug", buildJsonObject {
+            put("action", action)
+            questId?.let { put("quest_id", it) }
+            if (amount > 0) put("amount", amount)
+            kind?.let { put("kind", it) }
+            if (target > 0) put("target", target)
+            if (step > 0) put("step", step)
+        }))
 }

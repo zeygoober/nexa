@@ -976,7 +976,7 @@ it:
   topics or keys, so it never shows more than a join would; Gift Links (`/moderation/gift-links`, the panel's `gifts` place, web
   `GiftLinksTab.tsx`, Android `ui/moderation/GiftLinks.kt`): free links in `gift_links` claimed at the usual `/gift/<code>`, whose
   `session_id` starts `owner:` (`ownerGiftPrefix`) and whose `plan_gifts` row starts `owner-link:` (`ownerGiftClaim`), which keeps
-  them out of the Your Links list and out of the Gift Giver badge; Give or Take Gems and Give or Take Collectables on a person's page (see Gems); Owners beside a badge's holders in the panel's Badges (`GET /moderation/badges/{badge}/owners`, `Store.BadgeOwners`, logged as `badge_owners_view` with a staff-made badge's name, since its key is only a number; web `BadgeOwnersModal.tsx`, Android `openOwnersSheet` in `BadgeTab.kt`): who holds copies now, most first, each level or material with how many, trades counted; and the Trade Log (`GET /moderation/trades`, `Store.TradeLog`, the panel's `trades` place, logged once per first page, so each filter or search is a line; web `TradesTab.tsx`, Android `ui/moderation/TradeLog.kt`): every trade newest first, by status or a username prefix, read straight from `badge_trades`, so trades from before it existed show too, until one of the two accounts is deleted (`TestBadgeOwnersAndTradeLogAreTheOwnersAlone`). Nexa collects no email address, so there is none to show.
+  them out of the Your Links list and out of the Gift Giver badge; Give or Take Gems and Give or Take Collectables on a person's page (see Gems); Owners beside a badge's holders in the panel's Badges (`GET /moderation/badges/{badge}/owners`, `Store.BadgeOwners`, logged as `badge_owners_view` with a staff-made badge's name, since its key is only a number; web `BadgeOwnersModal.tsx`, Android `openOwnersSheet` in `BadgeTab.kt`): who holds copies now, most first, each level or material with how many, trades counted; and the Trade Log (`GET /moderation/trades`, `Store.TradeLog`, the panel's `trades` place, logged once per first page, so each filter or search is a line; web `TradesTab.tsx`, Android `ui/moderation/TradeLog.kt`): every trade newest first, by status or a username prefix, read straight from `badge_trades`, so trades from before it existed show too, until one of the two accounts is deleted (`TestBadgeOwnersAndTradeLogAreTheOwnersAlone`). The owner also works their own quests by hand (see Quests). Nexa collects no email address, so there is none to show.
 - Manage Server (the owner's decision, 2026-11-09; `api/moderation_manage.go`, `moderation_manage_guard.go`,
   `store/moderation_manage.go`; web `moderation/manage/`, Android `ui/moderation/Manage.kt`), `rankOwner` only, on a server's page,
   member or not: `GET /moderation/servers/{id}/manage` (logged as `owner_server_view`), `.../manage/members` and `POST .../manage`
@@ -1251,6 +1251,18 @@ Daily quests and the Quest Tower (the `trial` track in the code, renamed from In
   A finished day and a cleared step are kept `questKeepDays` (14), swept hourly. `GET /gems/record` carries them as `quests` (the data
   export's `gems.json`), and the legal report prints them. The account purge deletes all three tables. The Privacy Policy does not
   mention quests yet: the proposed wording is in `docs/proposals/quests-disclosure.md` until the owner asks for the legal text to change.
+- The owner's quest tools (the owner's request, 2026-11-24; `store/quests_owner.go`): `POST /quests/debug` (`rankOwner`, under
+  `limManage`) acts only on the owner's own quests, through the same paying and climbing code a played quest takes: add progress (a
+  quest reaching its target pays and opens the next step), give an open quest another kind and target, put the tower at a step (the
+  steps from there up open fresh), draw today's quests again and give back today's swap and skip. Each is written to `mod_log` as
+  `quest_debug` in the same transaction (`TestQuestDebugIsTheOwnersAlone`). The apps show them only to the owner, behind a switch by the
+  page's title (web `DebugStrip` in `QuestsPage.tsx`, Android `DebugStrip` in `QuestsPage.kt`; words in `quests.debug.*`).
+- Finished is a brighter green than the theme's positive colour, mixed from it with dark ink to read on it (web `--quest-done` and
+  `--quest-done-ink`, Android `doneColours`). Clearing a tower step is the climb: the finished step stays 900 ms with its bar full and
+  its reward green, then sinks out of the window toward the cleared rail as the next drops in from the ghost rung above, 420 ms on one
+  curve (`CLIMB_HOLD_MS` on both), the new bar starting at nought. Only a step that follows the last one climbs (a skip or a jump does
+  not), and Reduced motion shows the new step at once. On the web the layers are `data-sinking` and `data-rising`, since `base.css`'s
+  `[data-leaving]` rule stops every animation.
 
 ### Profile widgets (`api/widgets.go`, web `lib/widgets.ts`, Android `ui/profile/Widgets.kt`)
 

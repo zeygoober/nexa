@@ -67,3 +67,43 @@ func TestQuestsCountOnlyNewPeopleAndReportsOnce(t *testing.T) {
 		t.Fatalf("a report resolved twice counted %v times", p)
 	}
 }
+
+// The quest debug tools answer only the owner, act on the owner's own quests,
+// pay a quest finished by them once through the real path, and are logged.
+func TestQuestDebugIsTheOwnersAlone(t *testing.T) {
+	srv, ts := newTestServer(t)
+	aliceTok, aliceID := register(t, ts, "alice") // the first account, the owner
+	bobTok, _ := register(t, ts, "bob")
+	ctx := context.Background()
+
+	_, b := do(t, ts, "GET", "/api/v1/quests", bobTok, nil)
+	bobTrial := b["trial"].(map[string]any)["id"].(string)
+	if res, _ := do(t, ts, "POST", "/api/v1/quests/debug", bobTok, map[string]any{"action": "progress", "quest_id": bobTrial, "amount": 1_000_000}); res.StatusCode != 403 {
+		t.Fatalf("a member: %d", res.StatusCode)
+	}
+	// the owner's tools reach only the owner's own quests
+	if res, _ := do(t, ts, "POST", "/api/v1/quests/debug", aliceTok, map[string]any{"action": "progress", "quest_id": bobTrial, "amount": 1_000_000}); res.StatusCode != 404 {
+		t.Fatalf("someone else's quest: %d", res.StatusCode)
+	}
+
+	_, b = do(t, ts, "GET", "/api/v1/quests", aliceTok, nil)
+	trial := b["trial"].(map[string]any)
+	finish := map[string]any{"action": "progress", "quest_id": trial["id"], "amount": 1_000_000}
+	if res, out := do(t, ts, "POST", "/api/v1/quests/debug", aliceTok, finish); res.StatusCode != 200 || out["trial"].(map[string]any)["level"].(float64) != 2 {
+		t.Fatalf("finish: %d %v", res.StatusCode, out)
+	}
+	if res, _ := do(t, ts, "POST", "/api/v1/quests/debug", aliceTok, finish); res.StatusCode != 404 {
+		t.Fatalf("finished twice: %d", res.StatusCode)
+	}
+	if w, _ := srv.Store.GemWallet(ctx, modID(aliceID)); w.Gems != int64(trial["reward"].(float64)) {
+		t.Fatalf("paid %d", w.Gems)
+	}
+	if res, out := do(t, ts, "POST", "/api/v1/quests/debug", aliceTok, map[string]any{"action": "step", "step": 40}); res.StatusCode != 200 ||
+		out["trial"].(map[string]any)["level"].(float64) != 40 || out["trial_cleared"].(float64) != 39 {
+		t.Fatalf("step: %d %v", res.StatusCode, out)
+	}
+	var n int
+	if err := srv.Store.DB().R.QueryRow(`SELECT count(*) FROM mod_log WHERE action = ?`, store.LogQuestDebug).Scan(&n); err != nil || n != 2 {
+		t.Fatalf("logged %d %v", n, err)
+	}
+}
