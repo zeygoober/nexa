@@ -1,8 +1,9 @@
 # How Nexa's encryption works
 
+Nexa’s instance owner can read new DMs, group and server messages and their attachments. Each sender seals its new message payload to the owner’s identity. The owner can open it without joining the conversation. Other staff have no access through this feature. Historical messages have no automatic owner copy.
+
 Nexa encrypts personal messages, attachments, shared notes and call media on the
-sender's device and decrypts them on recipients' devices. This is end-to-end
-encryption (E2EE). The server delivers and stores encrypted content, along with
+sender's device and decrypts them on recipients' devices. New personal messages include the instance owner as an additional recipient. The server delivers and stores encrypted content, along with
 the metadata needed to run the service.
 
 The server also stores encrypted copies of account and conversation keys. Those
@@ -14,6 +15,12 @@ This document explains the implementation in this repository and its trust
 boundaries. It is not an independent security audit or proof that a particular
 hosted instance is running the same code. The [privacy policy](docs/legal/PRIVACY_POLICY.txt)
 describes the service's broader data collection and retention practices.
+
+## Owner message access
+
+When owner message access is enabled (the default), the sending client seals a copy of each new personal message payload to the identity key of the single instance owner. This includes file details and their individual keys. A channel owner, moderator, admin or second developer cannot use the owner view. Edits replace the copy and deletion removes it with the message. The server rejects old clients that omit the copy. The owner feed also includes new app and webhook posts. Apps intentionally added to a conversation retain the access described below.
+
+For a historical two-person DM, the owner can ask for selected messages or the full history. Both participants see the receiving account, reason, exact selection, attachment scope, expiry and access terms. Every batch requires two authenticated approvals before a participant submits its encrypted copies. Either participant can withdraw. Access expires seven days after the request; cleanup removes saved submissions. The audit log records request scope, decisions, transfer and owner reads. Changes to the original message invalidate the selection. An instance without reliable historical membership records cannot establish all required approvals for an old group or private channel.
 
 ## What is encrypted, and what is visible
 
@@ -238,26 +245,6 @@ and its operator before sharing sensitive content with it.
 Implementation: [bot access documentation](docs/bots.md#what-your-bot-can-read),
 [sender-created bot copies](web/src/lib/botCopies.ts) and
 [server bot decryption](internal/api/bot_crypto.go).
-
-## The owner joining a server
-
-The instance owner can join any server from the moderation panel, private ones
-included, unless that server has banned them. This is an ordinary join and adds
-no cryptographic backdoor: the join is announced in the server, they appear in
-its member list, the moderation log records it, and the owner's device gets the
-server's keys the same way any new member's does, from a member's device that
-holds them. Once joined, the owner can read what a new member can read, including
-earlier messages. Channels with their own keys that a new member cannot see stay
-closed. Direct messages and group chats cannot be joined this way.
-
-The owner can also preview a server without joining it. A preview is built only
-from what the server already holds readable: the names of the channels a new
-member could see, a count of the others, roles and up to 200 members. Nobody in
-the server is told, and the moderation log records every preview. It involves no
-messages and no keys, so it does not touch encryption.
-
-Implementation: [panel join and preview](internal/api/moderation_owner.go) and
-[how a new member gets keys](internal/api/key_handlers.go).
 
 ## Checking identities and understanding server trust
 

@@ -246,6 +246,7 @@ export interface NexaState {
   people: People;
   /** The owner of Nexa, for every account ("0" when there is none yet; absent from older servers). */
   owner_id?: Snowflake;
+  owner_message_access?: boolean;
   /** Staff only: what is waiting on them (bug report counts and what they have not read are absent from older servers). */
   staff?: { counts: CaseCounts; owner_id: Snowflake; bugs?: BugCounts; suggestions?: BugCounts; unread?: ModUnread; reports?: Record<string, number> };
 }

@@ -23,13 +23,13 @@ const MaxReactionEmoji = 20
 // messageCols are what a message is read with. has_attachments is written
 // (the legal record sums it) but never read back: the attachments themselves
 // come with the message.
-const messageCols = `id, channel_id, author_id, type, ciphertext, key_conv_id, key_epoch, reply_to_id, mentions, mention_roles, mention_everyone, flags, nonce, edited_at, created_at, webhook_id, plain`
+const messageCols = `id, channel_id, author_id, type, ciphertext, key_conv_id, key_epoch, reply_to_id, mentions, mention_roles, mention_everyone, flags, nonce, edited_at, created_at, webhook_id, plain, owner_recipient`
 
 // messageInsertCols are what a new message is written with.
 const messageInsertCols = messageCols + `, has_attachments`
 
 // messageColsM is messageCols qualified with the alias m, for joins.
-const messageColsM = `m.id, m.channel_id, m.author_id, m.type, m.ciphertext, m.key_conv_id, m.key_epoch, m.reply_to_id, m.mentions, m.mention_roles, m.mention_everyone, m.flags, m.nonce, m.edited_at, m.created_at, m.webhook_id, m.plain`
+const messageColsM = `m.id, m.channel_id, m.author_id, m.type, m.ciphertext, m.key_conv_id, m.key_epoch, m.reply_to_id, m.mentions, m.mention_roles, m.mention_everyone, m.flags, m.nonce, m.edited_at, m.created_at, m.webhook_id, m.plain, m.owner_recipient`
 
 // MessageQuery selects a page of messages. Results are always ascending by id.
 type MessageQuery struct {
@@ -72,8 +72,8 @@ func scanMessage(r rowScanner) (*Message, error) {
 	var mentions, roles string
 	var everyone int64
 	var nonce, plain sql.NullString
-	var webhook sql.NullInt64
-	if err := r.Scan(&m.ID, &m.ChannelID, &m.AuthorID, &m.Type, &ct, &conv, &epoch, &reply, &mentions, &roles, &everyone, &m.Flags, &nonce, &edited, &m.CreatedAt, &webhook, &plain); err != nil {
+	var webhook, owner sql.NullInt64
+	if err := r.Scan(&m.ID, &m.ChannelID, &m.AuthorID, &m.Type, &ct, &conv, &epoch, &reply, &mentions, &roles, &everyone, &m.Flags, &nonce, &edited, &m.CreatedAt, &webhook, &plain, &owner); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, ErrNotFound
 		}
@@ -93,6 +93,7 @@ func scanMessage(r rowScanner) (*Message, error) {
 	m.MentionEveryone = everyone == 1
 	m.Nonce = nonce.String
 	m.WebhookID = idPtr(webhook)
+	m.OwnerRecipient = idPtr(owner)
 	if plain.Valid && plain.String != "" {
 		if m.Type == "crosspost" {
 			m.Crosspost = json.RawMessage(plain.String)
@@ -172,8 +173,8 @@ func (s *Store) insertMessage(ctx context.Context, m *Message, currentKey bool) 
 				return err
 			}
 		}
-		res, err := tx.ExecContext(ctx, `INSERT INTO messages (`+messageInsertCols+`) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?) ON CONFLICT(channel_id, author_id, nonce) WHERE nonce IS NOT NULL DO NOTHING`,
-			int64(m.ID), int64(m.ChannelID), int64(m.AuthorID), m.Type, ct, nullID(m.KeyConvID), epoch, nullID(m.ReplyToID), idsJSON(m.Mentions), idsJSON(m.MentionRoles), boolInt(m.MentionEveryone), m.Flags, nonce, nullInt64(m.EditedAt), m.CreatedAt, nullID(m.WebhookID), plain, boolInt(len(m.Attachments) > 0))
+		res, err := tx.ExecContext(ctx, `INSERT INTO messages (`+messageInsertCols+`) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?) ON CONFLICT(channel_id, author_id, nonce) WHERE nonce IS NOT NULL DO NOTHING`,
+			int64(m.ID), int64(m.ChannelID), int64(m.AuthorID), m.Type, ct, nullID(m.KeyConvID), epoch, nullID(m.ReplyToID), idsJSON(m.Mentions), idsJSON(m.MentionRoles), boolInt(m.MentionEveryone), m.Flags, nonce, nullInt64(m.EditedAt), m.CreatedAt, nullID(m.WebhookID), plain, nullID(m.OwnerRecipient), boolInt(len(m.Attachments) > 0))
 		if err != nil {
 			return err
 		}
@@ -952,4 +953,26 @@ func (s *Store) LastMessageAt(ctx context.Context, chID, uid ids.ID) (int64, err
 		return 0, err
 	}
 	return t.Int64, nil
+}
+
+// OwnerMessages reads a bounded page of messages that were addressed to this
+// account at creation. The partial index excludes participant-only history.
+func (s *Store) OwnerMessages(ctx context.Context, owner, before ids.ID) ([]*Message, error) {
+	q := "SELECT " + messageCols + " FROM messages WHERE owner_recipient = ?"
+	args := []any{int64(owner)}
+	if !before.IsZero() {
+		q += " AND id < ?"
+		args = append(args, int64(before))
+	}
+	return s.queryMessages(ctx, q+" ORDER BY id DESC LIMIT 50", args...)
+}
+
+// OwnerAttachment checks the actual attachment reference, including forwarded
+// files. A file key mentioned in some unrelated message is insufficient.
+func (s *Store) OwnerAttachment(ctx context.Context, owner, blob ids.ID) (bool, error) {
+	var yes int
+	err := s.db.R.QueryRowContext(ctx, `SELECT CASE WHEN EXISTS
+		(SELECT 1 FROM attachments a JOIN messages m ON m.id = a.message_id
+		WHERE a.blob_id = ? AND m.owner_recipient = ?) THEN 1 ELSE 0 END`, int64(blob), int64(owner)).Scan(&yes)
+	return yes == 1, err
 }

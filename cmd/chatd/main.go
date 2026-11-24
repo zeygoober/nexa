@@ -352,6 +352,9 @@ func maintenance(ctx context.Context, log *slog.Logger, st *store.Store, m *medi
 		} else if n > 0 {
 			log.Info("address sweep", "removed", n)
 		}
+		if err := st.ExpireHistoryReviews(ctx); err != nil {
+			log.Warn("historical review expiry", "err", err)
+		}
 		if err := st.SweepGemWatch(ctx, time.Now()); err != nil {
 			log.Warn("gem watch sweep", "err", err)
 		}

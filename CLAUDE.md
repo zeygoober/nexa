@@ -95,6 +95,43 @@ code change without need. `make build` picks the route by itself (see Android, R
 Build the literal request. "Custom" packs or themes mean letting people make their own, not adding built-in
 ones. If an extra seems worth having, suggest it instead of shipping it.
 
+### Instance owner access to new messages
+
+The messaging clients seal a separate copy of each new personal message to the instance owner named in the signed-in account state, using the pinned identity key. The owner can page through messages in the moderation panel. Migration 0069 tracks the recipient on the message itself. Legacy edits never opt a message in. Call media, shared notes and conversation keys stay on their existing paths. The default for OWNER_MESSAGE_ACCESS is 1. A participant-only installation may set it to 0. Edits retain the message’s original policy.
+
+### Explicit sharing of historical messages for investigations
+
+The owner's decision (2026-11-21): previously sent messages may be made accessible to the owner through an
+explicit sharing process. An owner-requested historical review may cover selected messages, a date range or
+the entire available conversation history, including selected attachments. This feature direction is
+approved for implementation under the following rules. Migration 0069 and the owner_history handlers implement fixed two-person DMs. The staff Message access tab opens requests, and participants inspect, approve, share or withdraw from their Nexa inbox. A request expires in seven days. Large selections use separately approved batches of 50. Former memberships cannot be reconstructed reliably for legacy groups or server channels, so the server declines those requests.
+
+- Before transfer, participants see the owner's receiving account, the investigation reason, the exact
+  messages and attachments being shared, the retention period and who can access the submitted copy.
+  Each participant approves that specific scope through their own authenticated account. Both people in a
+  DM must approve. For a group chat or private channel, everyone who participated in the selected historical
+  segment must approve, including former participants. Missing or declined approval leaves the request pending
+  or cancelled. Acceptance of general Terms and read notifications cannot substitute for this approval.
+- Freeze the proposed content as a bounded snapshot. Record each approval against its version. Expanding
+  the range, adding attachments or changing included content requires fresh approval. Future messages require
+  a separate request. Participants can inspect and withdraw their approval before transfer.
+- An authorized participant's client decrypts the approved snapshot using keys it already legitimately holds
+  and submits readable copies of that content. Keep identity keys, conversation roots, epoch keys and note
+  keys on the existing participant key paths. This workflow grants access only to the submitted snapshot.
+  Its limits include unavailable or deleted content and content for which participants have lost their keys.
+- Attribute requests and access to the owner's real account. Record the reason, scope, approvals, transfer,
+  owner views, withdrawals and deletion in the audit trail. Check owner rank and the current approved scope
+  on the server for every access. Withdrawal after transfer ends further access through this workflow, subject
+  to the retention terms shown before approval. Explain that copies already downloaded cannot be recalled.
+- Describe the process and retention accurately in the approval flow and public disclosures before release.
+  Keep approval for historical sharing distinct from any prospective change to how new messages are stored.
+  Treat the older blanket-key-sharing proposal in `docs/proposals/owner-access-disclosure.md` as superseded
+  for this workflow. Update its wording when preparing the disclosures for this feature.
+
+This rule covers the new owner-requested historical review. The existing participant-submitted message-report
+flow is described under Safety reports. Verify approval enforcement, scope changes, withdrawal, concurrent
+transfer attempts and owner-only access when implementing the feature on web and Android.
+
 ### Tests earn their place
 
 The owner's rule (2026-11-01): keep a test in the suite only when what it guards is easy to break and costly

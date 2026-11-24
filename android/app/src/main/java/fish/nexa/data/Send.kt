@@ -362,12 +362,14 @@ object Send {
             val (epoch, _) = Nexa.keys.ensureConvKey(conv, current = true) ?: throw IllegalStateException("waiting_for_key")
             val chanKey = Nexa.keys.channelKey(conv, epoch, channelId) ?: throw IllegalStateException("waiting_for_key")
             val env = withContext(Dispatchers.Default) { MessageCrypto.encrypt(chanKey, Aad(conv, epoch, channelId, meId), payload) }
+            val standing = NexaInbox.standing.value
+            val envelope = if (standing?.ownerMessageAccess == true) OwnerMessages.attach(env, standing.ownerId, meId, channelId, payload) else env.toJson()
             val replyTo = opts.replyTo
             val author = replyTo?.let { replyAuthor(channelId, it) }
             var mentions = if (opts.ping == false && author != null) w.mentions.filter { it != author } else w.mentions
             if (replyTo != null && opts.ping != false && author != null && author != meId && author !in mentions) mentions = mentions + author
             val body = buildJsonObject {
-                put("ciphertext", env.toJson())
+                put("ciphertext", envelope)
                 put("key_conv_id", conv)
                 put("key_epoch", epoch)
                 putJsonArray("mentions") { mentions.forEach { add(JsonPrimitive(it)) } }
@@ -487,7 +489,7 @@ object Send {
         if (chanKey == null) throw IllegalStateException("waiting_for_key")
         val env = withContext(Dispatchers.Default) { MessageCrypto.encrypt(chanKey, Aad(conv, epoch, channelId, me.id), payload) }
         val body = buildJsonObject {
-            put("ciphertext", env.toJson())
+            put("ciphertext", if (existing.m.ownerRecipient == null) env.toJson() else OwnerMessages.attach(env, existing.m.ownerRecipient, me.id, channelId, payload))
             put("key_conv_id", conv)
             put("key_epoch", epoch)
             putJsonArray("mentions") { mentions.forEach { add(JsonPrimitive(it)) } }

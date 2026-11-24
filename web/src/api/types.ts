@@ -914,6 +914,7 @@ export interface Message {
   /** Widened with `string` so an unknown future type does not break parsing. */
   type: MessageType | string;
   ciphertext: Envelope | null;
+  owner_recipient?: Snowflake;
   key_conv_id: Snowflake | null;
   key_epoch: number | null;
   reply_to_id: Snowflake | null;

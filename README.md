@@ -21,7 +21,7 @@ Try [Nexa in your browser](https://nexa.pm) or [download an app](https://nexa.pm
 
 ## Privacy
 
-Personal messages, attachments, shared notes and calls use end-to-end encryption.
+Nexa’s instance owner can read new personal messages and their attachments, including DMs and private channels. Each sender encrypts a separate message copy to the owner’s account. Shared notes and calls use participant-only encryption.
 The server stores encrypted content along with the metadata needed to deliver it.
 Content shared with bots is readable by the server and the bot; bots with Message
 Content access can also read accessible channel history.

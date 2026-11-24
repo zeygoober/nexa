@@ -71,7 +71,8 @@ export function LegalHighlights() {
  * brought, for an agreement from before it.
  */
 export function LegalChanges({ previous }: { previous: string }) {
-  const changes = [t("legal.newOwnerPreview")];
+  const changes = [t("legal.newMessageAccess")];
+  if (previous < "2026-11-08.2") changes.push(t("legal.newOwnerPreview"));
   if (previous < "2026-11-08.1") changes.push(t("legal.newOwnerAccess"));
   if (previous < "2026-11-07.1") changes.push(t("legal.newOwner"));
   if (previous < "2026-11-06.1") changes.push(t("legal.newFileStorage"));

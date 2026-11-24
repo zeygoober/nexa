@@ -400,7 +400,7 @@ func (s *Server) postBotMessage(r *http.Request, bot *store.User, app *store.App
 			return nil, err
 		}
 	}
-	if err := s.Store.InsertMessage(ctx, m); err != nil {
+	if err := s.insertAppMessage(ctx, m); err != nil {
 		if errors.Is(err, store.ErrAlreadyExists) && in.Nonce != "" {
 			if existing, err := s.Store.MessageByNonce(ctx, ch.ID, bot.ID, in.Nonce, bot.ID); err == nil {
 				return existing, nil

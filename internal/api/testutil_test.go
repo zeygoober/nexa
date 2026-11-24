@@ -77,6 +77,8 @@ func newTestServer(t *testing.T) (*Server, *httptest.Server) {
 	}
 	cfg, _ := config.Load(func(k string) string {
 		switch k {
+		case "OWNER_MESSAGE_ACCESS":
+			return "0" // existing fixtures model participant-only messages
 		case "DATA_DIR":
 			return dir
 		case "PUBLIC_URL":

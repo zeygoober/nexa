@@ -50,14 +50,15 @@ type Config struct {
 	// repository (tools/android_release.py writes them), so a git pull is all
 	// it takes to offer a new version. It defaults to "downloads/android" in
 	// the working directory, which is the repository chatd runs from.
-	AndroidDir      string
-	MaxUploadBytes  int64
-	MaxAvatarBytes  int64
-	MaxEmojiBytes   int64
-	MaxStickerBytes int64
-	Registration    string // open | invite | closed
-	RegistrationKey string // when Registration == "invite": a shared key accepted at register time
-	AdminUsername   string
+	AndroidDir         string
+	MaxUploadBytes     int64
+	MaxAvatarBytes     int64
+	MaxEmojiBytes      int64
+	MaxStickerBytes    int64
+	Registration       string // open | invite | closed
+	RegistrationKey    string // when Registration == "invite": a shared key accepted at register time
+	OwnerMessageAccess bool
+	AdminUsername      string
 	// StunURLs are the STUN servers handed to clients. "none" in STUN_URLS
 	// turns them off, which is what a LAN-only setup wants.
 	StunURLs       []string
@@ -234,6 +235,13 @@ func Load(getenv func(string) string) (Config, error) {
 	str("REGISTRATION", &c.Registration)
 	str("REGISTRATION_KEY", &c.RegistrationKey)
 	str("ADMIN_USERNAME", &c.AdminUsername)
+	switch strings.TrimSpace(getenv("OWNER_MESSAGE_ACCESS")) {
+	case "", "1":
+		c.OwnerMessageAccess = true
+	case "0":
+	default:
+		return c, fmt.Errorf("OWNER_MESSAGE_ACCESS must be 0 or 1")
+	}
 	str("TURN_USERNAME", &c.TurnUsername)
 	str("TURN_CREDENTIAL", &c.TurnCredential)
 	str("TURN_KEY_ID", &c.TurnKeyID)

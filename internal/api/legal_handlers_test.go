@@ -103,10 +103,11 @@ func TestLegalReport(t *testing.T) {
 		}
 	}
 
-	// The stated limitation has to be unmistakable, because its whole purpose is
-	// that the same request does not come back.
+	// The stated limits have to be unmistakable, because their whole purpose is
+	// that the same request does not come back. Since owner access to new
+	// messages (migration 0069) the report says what the owner can read.
 	for _, want := range []string{
-		"no escrow, master or recovery key of any kind",
+		"Historical access requires",
 		"Calls are not recorded.",
 		"No email address is collected",
 		"recording facility in this software",

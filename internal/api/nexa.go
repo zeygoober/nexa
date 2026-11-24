@@ -221,8 +221,9 @@ type nexaState struct {
 	People map[string]person `json:"people"`
 	// OwnerID is the owner of Nexa (0: none yet), for every account: the
 	// app crowns the owner wherever they are listed.
-	OwnerID ids.ID        `json:"owner_id"`
-	Staff   *staffSummary `json:"staff,omitempty"`
+	OwnerMessageAccess bool          `json:"owner_message_access"`
+	OwnerID            ids.ID        `json:"owner_id"`
+	Staff              *staffSummary `json:"staff,omitempty"`
 }
 
 // staffSummary is what staff see on arrival: how much is waiting on them.
@@ -281,6 +282,7 @@ func (s *Server) nexaState(ctx context.Context, u *store.User) (*nexaState, erro
 	if st.Latest, err = s.Store.NexaLatest(ctx, u.ID, u.CreatedAt); err != nil {
 		return nil, err
 	}
+	st.OwnerMessageAccess = s.Cfg.OwnerMessageAccess
 	st.OwnerID, _ = s.Store.InstanceOwnerID(ctx)
 	if rank := s.rankOf(ctx, u); rank != rankNone {
 		counts, err := s.Store.CountModCases(ctx, now)

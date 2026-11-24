@@ -1084,7 +1084,7 @@ func (s *Server) handleWebhookExecute(source string) http.HandlerFunc {
 		whID := wh.ID
 		m := &store.Message{ChannelID: ch.ID, AuthorID: author.ID, Type: "default", WebhookID: &whID, Webhook: plain,
 			Mentions: users, MentionRoles: roles, MentionEveryone: everyone, Flags: in.Flags, NewPoll: newPoll, Attachments: rows}
-		if err := s.Store.InsertMessage(ctx, m); err != nil {
+		if err := s.insertAppMessage(ctx, m); err != nil {
 			writeDiscordError(w, err)
 			return
 		}

@@ -747,6 +747,7 @@ data class Message(
     @SerialName("author_id") val authorId: Snowflake = "",
     val type: String = "default",
     val ciphertext: JsonElement? = null,
+    @SerialName("owner_recipient") val ownerRecipient: String? = null,
     @SerialName("key_conv_id") val keyConvId: Snowflake? = null,
     @SerialName("key_epoch") val keyEpoch: Int? = null,
     @SerialName("reply_to_id") val replyToId: Snowflake? = null,

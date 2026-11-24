@@ -637,6 +637,7 @@ fun NexaPage() {
         }
         val state = rememberLazyListState()
         LazyColumn(Modifier.weight(1f).fillMaxWidth(), state = state, reverseLayout = true, verticalArrangement = Arrangement.Top, contentPadding = androidx.compose.foundation.layout.PaddingValues(bottom = 20.dp)) {
+            item("historical-reviews") { fish.nexa.ui.moderation.HistoryReviews() }
             when {
                 list == null -> item("loading") { Box(Modifier.fillMaxWidth().padding(12.dp), contentAlignment = Alignment.Center) { Spinner(size = 24.dp) } }
                 list.isEmpty() -> item("empty") { Txt(t("nexa.empty"), style = Nx.type.bodySmall.copy(fontSize = Nx.type.sp(14f)), color = c.textMuted, modifier = Modifier.padding(horizontal = 16.dp, vertical = 32.dp)) }

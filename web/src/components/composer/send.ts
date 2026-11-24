@@ -3,6 +3,8 @@ import { stage as perfStage } from "@/lib/perfReports";
 import { messages as messagesApi } from "@/api/messages";
 import type { SendMessageRequest } from "@/api/types";
 import { brokenLimit, encryptMessage, type AttachmentMeta, type MessagePayload, type PollPayload } from "@/crypto/message";
+import { attachOwnerCopy } from "@/lib/ownerMessages";
+import { useNexa } from "@/stores/nexa";
 import { addressedBots, sealCopies } from "@/lib/botCopies";
 import { goesInOneRequest, sendInWorker, uploadStaged, type Staged } from "@/lib/attachments";
 import { encryptedSize } from "@/crypto/fileChunks";
@@ -459,6 +461,8 @@ async function deliver(channelId: string, meId: string, w: Written, tmp: string,
     const chanKey = channelKeyFor(conv, key.epoch, channelId);
     if (!chanKey) throw new Error("waiting_for_key");
     const ciphertext = await encryptMessage(chanKey, { conv, epoch: key.epoch, channelId, authorId: meId }, payload);
+    const state = useNexa.getState().state;
+    if (state?.owner_message_access) await attachOwnerCopy(ciphertext, state.owner_id, meId, channelId, payload);
     const body: SendMessageRequest = { ciphertext, key_conv_id: conv, key_epoch: key.epoch, mentions: opts.ping === false ? mentions.filter((id) => !opts.replyTo || id !== replyAuthor(channelId, opts.replyTo)) : mentions, nonce };
     if (opts.replyTo) {
       body.reply_to_id = opts.replyTo;
@@ -585,6 +589,7 @@ export async function editMessage(channelId: string, messageId: string, rawText:
   const chanKey = channelKeyFor(conv, useEpoch, channelId);
   if (!chanKey) throw new Error("waiting_for_key");
   const ciphertext = await encryptMessage(chanKey, { conv, epoch: useEpoch, channelId, authorId: me.id }, payload);
+  if (existing.owner_recipient) await attachOwnerCopy(ciphertext, existing.owner_recipient, me.id, channelId, payload);
   const edit: Partial<SendMessageRequest> = { ciphertext, key_conv_id: conv, key_epoch: useEpoch, mentions, mention_roles: roles, mention_everyone: everyone };
   // the apps it is addressed to get the edit too; an app no longer addressed loses its copy
   const bots = addressedBots(channelId, mentions, replied, me.id);

@@ -1,3 +1,4 @@
+import { HistoryReviews } from "@/components/moderation/HistoryReviews";
 import { Info, LockOpen, Megaphone } from "lucide-react";
 import { Fragment, useEffect, useLayoutEffect, useRef, type ReactNode } from "react";
 import { useNavigate } from "react-router-dom";
@@ -95,6 +96,7 @@ export default function NexaPage() {
         <ReportBugButton from="nexa" labelled />
       </header>
       <div className={s.feed} ref={scroller} onScroll={onScroll}>
+        <HistoryReviews />
         {more ? (
           <div className={s.more}>
             <Button size="sm" variant="ghost" loading={loading} onClick={() => void loadOlder()}>

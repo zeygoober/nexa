@@ -51,6 +51,7 @@ export const STAFF_GROUPS: { id: string; label: () => string; places: StaffPlace
     label: () => t("moderation.nav.records"),
     places: [
       { id: "logs", label: () => t("moderation.tabs.logs"), icon: ScrollText, rank: "helper" },
+      { id: "messages", label: () => t("ownerMessages.title"), icon: ScrollText, rank: "owner" },
       { id: "trades", label: () => t("moderation.tabs.trades"), icon: ArrowLeftRight, rank: "owner" },
     ],
   },

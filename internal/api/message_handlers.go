@@ -63,12 +63,17 @@ func (s *Server) messageRoutes(mux *http.ServeMux) {
 var errMessageTooLong = E(http.StatusRequestEntityTooLarge, "message_too_long", "The message is too long. Shorten it and try again.")
 
 // envelope mirrors the client's encrypted message format.
+type ownerCopy struct {
+	ID  ids.ID `json:"id"`
+	Box []byte `json:"box"`
+}
 type envelope struct {
-	V     int    `json:"v"`
-	Conv  ids.ID `json:"conv"`
-	Epoch int    `json:"epoch"`
-	IV    string `json:"iv"`
-	CT    string `json:"ct"`
+	Owner *ownerCopy `json:"owner,omitempty"`
+	V     int        `json:"v"`
+	Conv  ids.ID     `json:"conv"`
+	Epoch int        `json:"epoch"`
+	IV    string     `json:"iv"`
+	CT    string     `json:"ct"`
 }
 
 // validEnvelope checks structure only; the server never decrypts.
@@ -340,6 +345,10 @@ func (s *Server) checkEnvelope(w http.ResponseWriter, r *http.Request, ch *store
 		WriteError(w, E(http.StatusBadRequest, "bad_envelope", "The encrypted message envelope is malformed."))
 		return nil, false
 	}
+	return s.checkEnvelopeEpoch(w, r, ch, body, env)
+}
+
+func (s *Server) checkEnvelopeEpoch(w http.ResponseWriter, r *http.Request, ch *store.Channel, body *messageBody, env *envelope) (*envelope, bool) {
 	conv, err := s.convForChannel(r, ch)
 	if err != nil {
 		WriteError(w, err)
@@ -478,7 +487,7 @@ func (s *Server) handleMessageCreate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var body messageBody
-	if err := ReadJSON(w, r, &body, maxEnvelopeBytes+16<<10); err != nil {
+	if err := ReadJSON(w, r, &body, maxChatEnvelopeBytes+16<<10); err != nil {
 		WriteError(w, err)
 		return
 	}
@@ -507,7 +516,7 @@ func (s *Server) handleMessageCreate(w http.ResponseWriter, r *http.Request) {
 	if !s.mayTalkYet(w, r, ch, me) {
 		return
 	}
-	env, ok := s.checkEnvelope(w, r, ch, &body)
+	env, ok := s.checkChatEnvelope(w, r, ch, &body, s.Cfg.OwnerMessageAccess)
 	if !ok {
 		return
 	}
@@ -633,6 +642,9 @@ func (s *Server) handleMessageCreate(w http.ResponseWriter, r *http.Request) {
 		}
 		m.Attachments = append(m.Attachments, store.Attachment{BlobID: a.BlobID, Size: b.Size})
 	}
+	if env.Owner != nil {
+		m.OwnerRecipient = &env.Owner.ID
+	}
 	if err := s.Store.InsertEncryptedMessage(ctx, m); err != nil {
 		if errors.Is(err, store.ErrAlreadyExists) {
 			if existing, err := s.Store.MessageByNonce(ctx, ch.ID, me.ID, body.Nonce, me.ID); err == nil {
@@ -696,7 +708,7 @@ func (s *Server) handleMessageEdit(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var body messageBody
-	if err := ReadJSON(w, r, &body, maxEnvelopeBytes+16<<10); err != nil {
+	if err := ReadJSON(w, r, &body, maxChatEnvelopeBytes+16<<10); err != nil {
 		WriteError(w, err)
 		return
 	}
@@ -737,8 +749,12 @@ func (s *Server) handleMessageEdit(w http.ResponseWriter, r *http.Request) {
 		if s.dmBlocked(w, r, ch, me) {
 			return
 		}
-		env, ok := s.checkEnvelope(w, r, ch, &body)
+		env, ok := s.checkChatEnvelope(w, r, ch, &body, m.OwnerRecipient != nil)
 		if !ok {
+			return
+		}
+		if m.OwnerRecipient != nil && *m.OwnerRecipient != env.Owner.ID {
+			WriteError(w, E(409, "owner_changed", "The owner account for this message has changed."))
 			return
 		}
 		// an edit is held to what sending it would have been: without the

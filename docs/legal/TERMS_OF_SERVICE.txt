@@ -1,7 +1,7 @@
 NEXA - TERMS OF SERVICE
 Site: nexa.pm
 Contact the owner (zey) here: in the app, message @zey
-Effective: 2026-11-08
+Effective: 2026-11-21
 
 These Terms are the agreement between you and the owner of Nexa.
 They are short on purpose and written in plain language. The Privacy
@@ -9,18 +9,15 @@ Policy is part of them.
 
 1. WHAT NEXA IS
 
-Nexa is a chat service. Your messages, files, and calls are encrypted
-on your device with keys the server never has. Nobody who runs Nexa
-can read them from outside a conversation, monitor them, or switch
-that off. That is how the software works, not a promise that could be
-quietly waived later. One way around it is an app that you or a
-server's manager choose to add: what is meant for an app reaches it
-(section 3). The other is the owner joining a server as a visible
-member (section 5).
+Nexa is a chat service. Personal messages, files, and calls are
+encrypted on your device. Nexa’s instance owner can read new personal
+messages and their files, including DMs, groups and private channels. Apps
+that you or a server's manager choose to add can read what reaches
+them (section 3).
 
 The owner and a team of moderators (called staff in these Terms) keep
-Nexa running. Staff only ever work with the small part of Nexa that is
-not encrypted: public profiles, what servers show everyone (their
+Nexa running. Staff use information that is not end-to-end
+encrypted: public profiles, what servers show everyone (their
 names, icons, banners, and descriptions), community membership,
 moderation cases, bug reports, and the delivery details the server
 needs to work.
@@ -50,12 +47,10 @@ needs to work.
 - Message text, file contents and names, notes, call audio and
   video, and your settings are encrypted before they leave your
   device. The server stores only ciphertext it cannot read.
-- Nobody who runs Nexa holds a key to any of it, apart from the keys
-  of the apps people add (below) and the keys of a server the owner
-  has joined as a member (section 5). Other than those, there is no
-  admin panel, setting, or software switch that decrypts content
-  already sent, and nothing in the software that intercepts future
-  content in readable form.
+- Your app encrypts a separate copy of each new personal message to the
+  instance owner. The owner can read that copy and its files. Other
+  staff do not receive this access. Earlier messages require separate
+  participant approval. The owner receives no conversation keys.
 - A few things are not end-to-end encrypted, because Nexa itself
   has to read them: your public profile, moderation cases and the
   threads that go with them, announcements from Nexa, bug reports
@@ -107,8 +102,7 @@ Please keep Nexa decent. These rules apply everywhere on it:
      around access controls, rate limits, or anyone's security, and
      no new accounts to get around a mute or a ban. To enforce this,
      staff can see which accounts have signed in from the same IP
-     addresses, and the owner can see the addresses themselves (the
-     Privacy Policy, sections 3e and 3n, says what is kept).
+     addresses (the Privacy Policy, section 3e, says what is kept).
 
 NSFW communities and channels:
 
@@ -135,20 +129,7 @@ NSFW communities and channels:
 What staff can see is limited by the encryption. They moderate what is
 public (profiles, what servers show everyone, and public images) and
 what is reported to them. If someone you talk to shows staff something
-you sent them, staff can act on it. Nobody goes looking through chats.
-
-The owner can join any server from the moderation panel, private ones
-included, unless that server has banned the owner's account. It is an
-ordinary join that everyone in the server sees, it is written to the
-moderation log, and the owner can then read what a new member can read
-there (the Privacy Policy, section 3n). Direct messages and group
-chats cannot be joined this way.
-
-The owner can also preview a server from the moderation panel without
-joining it: the channel names a new member could see, its roles and
-up to 200 of its members. Nobody in the server is told, every preview
-is written to the moderation log, and a preview shows no messages or
-keys (the Privacy Policy, section 3n).
+you sent them, staff can act on it.
 
 When a rule is broken, staff can:
 
@@ -193,9 +174,8 @@ Every action is taken for a reason, and you are told:
 
 Everything else only comes up if there is a valid legal order that
 has to be followed. Even then, only what the server actually holds
-can be handed over (see the Privacy Policy). Message text, file
-contents, and call audio still cannot be handed over, because nobody
-here has a way to read them, apart from what was opened for an app.
+can be handed over (see the Privacy Policy). The owner can supply messages and files accessible
+to the owner under section 3. Call media is not recorded.
 
 6. NEXA, THE OFFICIAL ACCOUNT
 

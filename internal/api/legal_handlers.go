@@ -1028,34 +1028,12 @@ func legalBugReports(d *legalDoc, rec *store.AccountRecord) {
 
 func legalUnavailable(d *legalDoc) {
 	d.head("DATA NOT AVAILABLE", "stated limitation of the service")
-	d.para(
-		"  The categories below cannot be produced in response to this request or to any",
-		"  further process, because the operator does not hold them and has no means of",
-		"  obtaining them. This is a property of how the software works, not a policy",
-		"  choice, and it cannot be waived by the operator.",
-	)
-	d.para(
-		"  MESSAGE CONTENT.",
-		"  Every message is encrypted on the sender's device before it is sent. The key",
-		"  is a conversation key generated on a member's device and sealed to each",
-		"  member's public key; the server stores only the sealed ciphertext, in the",
-		"  messages table. The operator holds no conversation key, no member's private",
-		"  key, and no escrow, master or recovery key of any kind. A member's private key",
-		"  exists on this server only in a form unwrapped by that member's password, and",
-		"  the password never reaches the server — the browser sends a verifier derived",
-		"  from it. There is no setting, no administrative action and no software change",
-		"  available to the operator that would decrypt message content already sent.",
-		"  The one exception is a message a program posts through a community's webhook:",
-		"  it arrives readable, is stored as it came, and belongs to the webhook rather",
-		"  than to any person's account.",
-	)
-	d.para(
-		"  ATTACHMENT CONTENT.",
-		"  Files are encrypted on the sender's device with a key carried inside the",
-		"  encrypted message, and uploaded as ciphertext. The operator can produce the",
-		"  stored ciphertext and its length; it cannot produce the file, its name, its",
-		"  type, its dimensions or a hash of its plaintext, and none of those is stored.",
-	)
+	d.para("  MESSAGE CONTENT.", "  The instance owner can read new personal messages addressed to the owner,",
+		"  including DMs, groups and private channels. Historical access requires",
+		"  participant approval of a specific selection. The owner can also read",
+		"  messages from apps and webhooks that were stored in readable form.")
+	d.para("  ATTACHMENT CONTENT.", "  An owner-addressed message includes its file details and decryption keys.",
+		"  Historical files require an approved request that explicitly includes them.")
 	d.para(
 		"  CALL AUDIO AND VIDEO.",
 		"  Calls are not recorded. Media is not written to disk at any point. Where a",
@@ -1065,11 +1043,9 @@ func legalUnavailable(d *legalDoc) {
 		"  recording facility in this software and no interception capability to enable.",
 	)
 	d.para(
-		"  REAL-TIME INTERCEPTION.",
-		"  There is no mechanism in this software by which the operator could be made to",
-		"  deliver future message or call content in readable form. Content is encrypted",
-		"  before it arrives; an order to hand over what arrives would deliver the same",
-		"  ciphertext this document already describes.",
+		"  FUTURE CONTENT.",
+		"  The owner's app can open copies of newly sent personal messages.",
+		"  Calls use separate media keys and have no owner copy.",
 	)
 	d.para(
 		"  DELETED CONTENT.",

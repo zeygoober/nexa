@@ -639,6 +639,7 @@ const (
 
 // Message is an encrypted message row plus its attachments and reactions.
 type Message struct {
+	OwnerRecipient  *ids.ID           `json:"owner_recipient,omitempty"`
 	ID              ids.ID            `json:"id"`
 	ChannelID       ids.ID            `json:"channel_id"`
 	AuthorID        ids.ID            `json:"author_id"`

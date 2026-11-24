@@ -3,6 +3,10 @@ package db
 // undoCommunities takes away what migration 0032 adds, for the tests that
 // take the schema back to an older version and run the migrations again.
 const undoCommunities = `
+DROP TABLE owner_history_files;
+DROP TABLE owner_history_reviews;
+DROP INDEX messages_owner_recipient;
+ALTER TABLE messages DROP COLUMN owner_recipient;
 DROP TABLE quest_players;
 DROP TABLE quest_seen;
 DROP INDEX quests_open;

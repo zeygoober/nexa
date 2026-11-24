@@ -193,6 +193,7 @@ data class NexaStanding(
     /** When Nexa last had anything for this account (0 for never). */
     val latest: Long = 0,
     val ownerId: String? = null,
+    val ownerMessageAccess: Boolean = false,
 ) {
     companion object {
         fun parse(el: JsonElement?): Pair<NexaStanding, Map<String, NexaPerson>>? {
@@ -209,6 +210,7 @@ data class NexaStanding(
                 unread = s("unread")?.toIntOrNull() ?: 0,
                 latest = s("latest")?.toLongOrNull() ?: 0,
                 ownerId = s("owner_id"),
+                ownerMessageAccess = s("owner_message_access") == "true",
             ) to people
         }
     }

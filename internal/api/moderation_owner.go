@@ -18,6 +18,8 @@ import (
 // the Privacy Policy, the Terms and ENCRYPTION.md say that they exist.
 
 func (s *Server) modOwnerRoutes(mux *http.ServeMux) {
+	s.ownerHistoryRoutes(mux)
+	mux.Handle("GET /api/v1/moderation/messages", s.staff(rankOwner, s.handleOwnerMessages))
 	mux.Handle("GET /api/v1/moderation/users/{id}/account", s.staff(rankOwner, s.handleModAccount))
 	mux.Handle("POST /api/v1/moderation/servers/{id}/join", s.staff(rankOwner, s.handleModServerJoin))
 	mux.Handle("GET /api/v1/moderation/servers/{id}/preview", s.staff(rankOwner, s.handleModServerPreview))

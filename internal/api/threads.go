@@ -137,7 +137,7 @@ func (s *Server) handleThreadCreate(w http.ResponseWriter, r *http.Request) {
 		Tags        []ids.ID        `json:"applied_tags"`
 		Message     json.RawMessage `json:"message"`
 	}
-	if err := ReadJSON(w, r, &req, maxEnvelopeBytes+32<<10); err != nil {
+	if err := ReadJSON(w, r, &req, maxChatEnvelopeBytes+32<<10); err != nil {
 		WriteError(w, err)
 		return
 	}
@@ -308,12 +308,9 @@ func (s *Server) dropThread(ctx context.Context, th *store.Channel) {
 // postFirstMessage writes a forum post's opening message, as sending it would.
 func (s *Server) postFirstMessage(r *http.Request, th *store.Channel, me *store.User, body *messageBody) (*store.Message, error) {
 	ctx := r.Context()
-	if len(body.Ciphertext) > maxEnvelopeBytes {
-		return nil, errMessageTooLong
-	}
-	env, ok := validEnvelope(body.Ciphertext)
-	if !ok {
-		return nil, E(http.StatusBadRequest, "bad_envelope", "The encrypted message envelope is malformed.")
+	env, err := s.chatEnvelope(ctx, body, s.Cfg.OwnerMessageAccess)
+	if err != nil {
+		return nil, err
 	}
 	fresh, err := s.Store.ChannelByID(ctx, th.ID)
 	if err != nil {
@@ -350,6 +347,9 @@ func (s *Server) postFirstMessage(r *http.Request, th *store.Channel, me *store.
 		if ok, _ := s.canAccess(r, me, th, NeedAttach); !ok {
 			return nil, E(http.StatusForbidden, "missing_permission", "You cannot attach files here.")
 		}
+	}
+	if env.Owner != nil {
+		m.OwnerRecipient = &env.Owner.ID
 	}
 	if err := s.Store.InsertEncryptedMessage(ctx, m); err != nil {
 		return nil, err

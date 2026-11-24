@@ -13,6 +13,7 @@ import { DecryptError } from "./keys";
 
 export interface Envelope {
   v: 1;
+  owner?: { id: string; box: string };
   conv: string;
   epoch: number;
   /** base64 of the 12-byte GCM nonce. */

@@ -670,6 +670,18 @@ func (s *Server) handleAttachmentDownload(w http.ResponseWriter, r *http.Request
 			allowed = true
 		}
 	}
+	if !allowed && s.rankOf(r.Context(), me) == rankOwner {
+		if ok, err := s.Store.OwnerAttachment(r.Context(), me.ID, id); err == nil && ok {
+			if err := s.Store.AppendModLog(r.Context(), &store.ModLogEntry{Action: "owner_message_file_view", ModeratorID: me.ID, ModeratorUsername: me.Username, Details: mustJSON(map[string]any{"blob_id": id})}); err != nil {
+				WriteError(w, err)
+				return
+			}
+			allowed = true
+		} else if review, err := s.Store.HistoricalAttachmentReview(r.Context(), me.ID, id); err == nil {
+			_, err = s.Store.HistoryAction(r.Context(), me, review, "view", nil)
+			allowed = err == nil
+		}
+	}
 	// held by nothing yet: only the uploader may fetch it
 	if !allowed && errors.Is(err, store.ErrNotFound) && b.OwnerID != nil && *b.OwnerID == me.ID {
 		allowed = true
