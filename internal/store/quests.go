@@ -151,6 +151,8 @@ func QuestTrialReward(step int64) int64 {
 var (
 	ErrQuestNone = errors.New("no such quest")
 	ErrQuestUsed = errors.New("already used today")
+	// ErrQuestSwapsOff answers a swap or a skip while QuestSwapsOpen is false.
+	ErrQuestSwapsOff = errors.New("quest swaps are off")
 )
 
 // Quest is one quest as its holder sees it.
@@ -531,7 +533,7 @@ func (s *Store) QuestBoard(ctx context.Context, uid ids.ID, now time.Time) (*Que
 		if err := tx.QueryRowContext(ctx, `SELECT reroll_day, skip_day FROM quest_players WHERE user_id = ?`, int64(uid)).Scan(&reroll, &skip); err != nil {
 			return err
 		}
-		b.Cleared, b.RerollLeft, b.SkipLeft = step-1, reroll != day, skip != day
+		b.Cleared, b.RerollLeft, b.SkipLeft = step-1, QuestSwapsOpen && reroll != day, QuestSwapsOpen && skip != day
 		rows, err := tx.QueryContext(ctx, `SELECT `+questCols+` FROM quests WHERE user_id = ? AND ((track IN (?, ?) AND period = ?) OR (track = ? AND period = ?)) ORDER BY slot`,
 			int64(uid), QuestDaily, QuestBonus, day, QuestTrial, step)
 		if err != nil {
@@ -574,9 +576,17 @@ func restartQuestTx(ctx context.Context, tx *db.Tx, uid ids.ID, q *Quest, kind s
 	return err
 }
 
+// QuestSwapsOpen says whether people may swap a daily quest or skip a tower
+// step. Off by the owner's decision (2026-11-24) until they want it back: the
+// board then says none are left, which every app already takes as no buttons.
+const QuestSwapsOpen = false
+
 // RerollQuest swaps one of today's unfinished daily quests for another of the
 // same difficulty, once a day.
 func (s *Store) RerollQuest(ctx context.Context, uid, id ids.ID, now time.Time) error {
+	if !QuestSwapsOpen {
+		return ErrQuestSwapsOff
+	}
 	ms := now.UnixMilli()
 	day := questDay(ms)
 	return s.Tx(ctx, func(tx *db.Tx) error {
@@ -622,6 +632,9 @@ func (s *Store) RerollQuest(ctx context.Context, uid, id ids.ID, now time.Time) 
 // SkipTrialQuest swaps the Trial's open step for another kind at the same
 // step, once a day, so a quest nobody could do never stops the climb.
 func (s *Store) SkipTrialQuest(ctx context.Context, uid ids.ID, now time.Time) error {
+	if !QuestSwapsOpen {
+		return ErrQuestSwapsOff
+	}
 	ms := now.UnixMilli()
 	day := questDay(ms)
 	return s.Tx(ctx, func(tx *db.Tx) error {

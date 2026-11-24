@@ -301,8 +301,9 @@ func (s *Server) emitQuests(ctx context.Context, uid ids.ID, done []store.Quest)
 }
 
 var (
-	errQuestNone = E(http.StatusNotFound, "quest_none", "That quest is finished or gone.")
-	errQuestUsed = E(http.StatusConflict, "quest_used", "You can do that again tomorrow.")
+	errQuestNone     = E(http.StatusNotFound, "quest_none", "That quest is finished or gone.")
+	errQuestUsed     = E(http.StatusConflict, "quest_used", "You can do that again tomorrow.")
+	errQuestSwapsOff = E(http.StatusForbidden, "quest_swaps_off", "Quests cannot be swapped or skipped for now.")
 )
 
 func questError(w http.ResponseWriter, err error) {
@@ -311,6 +312,8 @@ func questError(w http.ResponseWriter, err error) {
 		WriteError(w, errQuestNone)
 	case errors.Is(err, store.ErrQuestUsed):
 		WriteError(w, errQuestUsed)
+	case errors.Is(err, store.ErrQuestSwapsOff):
+		WriteError(w, errQuestSwapsOff)
 	default:
 		WriteError(w, err)
 	}

@@ -1232,8 +1232,11 @@ Daily quests and the Quest Tower (the `trial` track in the code, renamed from In
   request, 2026-11-24): a target is the kind's base times `questTowerGrowth` (1.07) per step and the pay 15 times `questRewardGrowth`
   (1.04) per step, in fives from 20, so Gems per effort fall slowly as someone climbs. A kind with a natural ceiling (`most`: call size,
   friends, materials and the like) leaves the draw once its target passes it, so deep steps are messages, call minutes and Gems, which
-  never leave (`TestQuestSpendingNeverPays` holds that the tower can always draw). A step never goes back. One daily swap
-  (`POST /quests/{id}/reroll`) and one tower skip (`POST /quests/trial/skip`) a day (`quest_players`), both under `limGemSpend`. `GET /quests` is the board, open to muted accounts.
+  never leave (`TestQuestSpendingNeverPays` holds that the tower can always draw). A step never goes back. Swapping a daily
+  quest (`POST /quests/{id}/reroll`) and skipping a tower step (`POST /quests/trial/skip`), once a day each (`quest_players`,
+  `limGemSpend`), are off (the owner's decision, 2026-11-24): `store.QuestSwapsOpen` is false, so the board says `reroll_left` and
+  `skip_left` are false, which every app takes as no buttons, and both routes answer 403 `quest_swaps_off`. The code stays for when
+  the owner wants them back. `GET /quests` is the board, open to muted accounts.
 - The 13 kinds: messages (only where someone else spoke in the last half hour, `SomeoneElseSpoke`), servers messaged in, call minutes
   with someone, a call's size, friends, server joins, capsules, fuses, materials reached, trades, Gems earned by chatting, bug reports
   and suggestions staff resolved. Counting starts when a quest opens. Kinds about different things count each once (`quest_seen`
@@ -1254,7 +1257,7 @@ Daily quests and the Quest Tower (the `trial` track in the code, renamed from In
 - The owner's quest tools (the owner's request, 2026-11-24; `store/quests_owner.go`): `POST /quests/debug` (`rankOwner`, under
   `limManage`) acts only on the owner's own quests, through the same paying and climbing code a played quest takes: add progress (a
   quest reaching its target pays and opens the next step), give an open quest another kind and target, put the tower at a step (the
-  steps from there up open fresh), draw today's quests again and give back today's swap and skip. Each is written to `mod_log` as
+  steps from there up open fresh), draw today's quests again and give back today's swap and skip (the apps no longer offer that one while swaps are off). Each is written to `mod_log` as
   `quest_debug` in the same transaction (`TestQuestDebugIsTheOwnersAlone`). The apps show them only to the owner, behind a switch by the
   page's title (web `DebugStrip` in `QuestsPage.tsx`, Android `DebugStrip` in `QuestsPage.kt`; words in `quests.debug.*`).
 - Finished is a brighter green than the theme's positive colour, mixed from it with dark ink to read on it (web `--quest-done` and

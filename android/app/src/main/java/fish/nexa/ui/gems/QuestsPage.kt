@@ -278,10 +278,10 @@ fun QuestsPage() {
     }
     if (b.rerollLeft && b.daily.any { !it.done }) Note(t("quests.swapHint"), Modifier.padding(top = 10.dp))
     if (debug) {
-        FlowRow(Modifier.fillMaxWidth().padding(top = 10.dp), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            NxButton(t("quests.debug.newDay"), { act("debug:day", { Quests.debug("new_day") }) }, kind = ButtonKind.SECONDARY, size = ButtonSize.SM, loading = busy == "debug:day", enabled = busy == null)
-            NxButton(t("quests.debug.resetUses"), { act("debug:uses", { Quests.debug("uses") }) }, kind = ButtonKind.SECONDARY, size = ButtonSize.SM, loading = busy == "debug:uses", enabled = busy == null)
-        }
+        NxButton(
+            t("quests.debug.newDay"), { act("debug:day", { Quests.debug("new_day") }) },
+            Modifier.padding(top = 10.dp), kind = ButtonKind.SECONDARY, size = ButtonSize.SM, loading = busy == "debug:day", enabled = busy == null,
+        )
     }
 
     // the Quest Tower

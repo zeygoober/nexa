@@ -405,10 +405,6 @@ export default function QuestsPage() {
               onClick={() => void act("debug:day", () => questsApi.debug({ action: "new_day" }))}>
               {t("quests.debug.newDay")}
             </Button>
-            <Button variant="secondary" size="sm" loading={busy === "debug:uses"} disabled={busy !== null}
-              onClick={() => void act("debug:uses", () => questsApi.debug({ action: "uses" }))}>
-              {t("quests.debug.resetUses")}
-            </Button>
           </div>
         ) : null}
       </section>
