@@ -1258,14 +1258,16 @@ Daily quests and the Quest Tower (the `trial` track in the code, renamed from In
   `quest_debug` in the same transaction (`TestQuestDebugIsTheOwnersAlone`). The apps show them only to the owner, behind a switch by the
   page's title (web `DebugStrip` in `QuestsPage.tsx`, Android `DebugStrip` in `QuestsPage.kt`; words in `quests.debug.*`).
 - Finished is a brighter green than the theme's positive colour, mixed from it with dark ink to read on it (web `--quest-done` and
-  `--quest-done-ink`, Android `doneColours`). Clearing a tower step is the climb (the owner's choice, 2026-11-24, "Next frame opens
-  above"): the finished step stays 900 ms with its bar full and its reward green, the rail draws up solid to the ghost rung (240 ms),
-  then that rung opens into the next step's own frame while the finished frame folds shut into the line below and a new ghost rung
-  grows in above, 520 ms on one curve (`CLIMB_HOLD_MS`, `CLIMB_DRAW_MS`, `CLIMB_OPEN_MS` on both). The heights add up, so the ladder
-  never changes height and the new frame comes to rest where the old one stood. Only a step that follows the last one climbs (a skip or
-  a jump does not), and Reduced motion shows the new step at once. The web runs it with the Web Animations API in a layout effect with
-  `fill: "forwards"` (without it the folded frame stood full height for one frame before React removed it), marked `data-drawing`,
-  `data-unfolding`, `data-opening` and `data-folding`; Android with `heightBetween` and `TowerFrame` in `QuestsPage.kt`.
+  `--quest-done-ink`, Android `doneColours`). Clearing a tower step is the climb (the owner's choice, 2026-11-24): the finished step
+  stays 900 ms with its bar full and its reward green, the rail draws up solid to the ghost rung (240 ms), then the view climbs the
+  tower, 560 ms on one curve (`CLIMB_HOLD_MS`, `CLIMB_DRAW_MS`, `CLIMB_PAN_MS` on both). The ladder is a window onto the tower: the
+  next step's whole frame comes down from above while the finished frame slides down out of sight, and the rung between them changes
+  from "Step n" to the new cleared count on the way; the window's height eases from one frame's to the other's. Frames never shrink or
+  fold (the owner turned down both a slide inside one frame and a fold). Only a step that follows the last one climbs (a skip or a jump
+  does not), and Reduced motion shows the new step at once. The web runs it with the Web Animations API in a layout effect with
+  `fill: "forwards"` (without it the tower jumps back for one frame before React settles it), on `.ladder[data-panning]` and its
+  `.tower`; Android with `TowerWindow`, a `Layout` in `QuestsPage.kt`. The shapes must line up at both ends: the rung between the
+  frames starts where the ghost rung stood and ends where the cleared rung settles.
 
 ### Profile widgets (`api/widgets.go`, web `lib/widgets.ts`, Android `ui/profile/Widgets.kt`)
 

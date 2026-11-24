@@ -314,8 +314,12 @@
   margin-top: 10px;
 }
 
-/* the climb: the line draws up to the ghost rung, which opens into the next step's own frame while the finished frame
-   folds shut into the line below (the heights in QuestsPage's layout effect, so the ladder never changes height) */
+/* the climb: the line draws up to the ghost rung, then the ladder is a window onto the tower and the view climbs to
+   the next step's frame, the finished one going down out of sight (the distances in QuestsPage's layout effect) */
+.tower {
+  display: flex;
+  flex-direction: column;
+}
 .rung {
   transition: opacity 240ms ease-out;
 }
@@ -336,29 +340,20 @@
 @keyframes railUp {
   from { transform: scaleY(0); }
 }
-.rung[data-unfolding],
-.window[data-opening] {
+.ladder[data-panning] {
   overflow: clip;
 }
-/* the finished frame gives up its highlight to the next at once, and the line shows through as it folds */
-.window[data-folding] {
-  position: relative;
-  overflow: clip;
+/* the finished frame gives up its highlight to the next at once */
+.window[data-left] {
   pointer-events: none;
   box-shadow: inset 0 0 0 1px var(--border-subtle);
 }
-.window[data-folding]::before {
-  content: "";
-  position: absolute;
-  inset-block: 0;
-  inset-inline-start: calc(var(--step-col) / 2 - 1px);
-  width: 2px;
-  background: var(--text-brand);
-  animation: lineThrough 520ms both;
+/* the rung between the two frames, its words changing as it goes from above the finished step to below the next */
+.labels {
+  display: grid;
 }
-@keyframes lineThrough {
-  0%, 30% { opacity: 0; }
-  100% { opacity: 1; }
+.labels > span {
+  grid-area: 1 / 1;
 }
 .held {
   display: contents;

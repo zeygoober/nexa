@@ -46,7 +46,7 @@ import androidx.compose.runtime.key
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.clipToBounds
-import androidx.compose.ui.layout.layout
+import androidx.compose.ui.layout.Layout
 import androidx.compose.ui.unit.Constraints
 import kotlin.math.roundToInt
 import androidx.compose.ui.draw.drawBehind
@@ -99,12 +99,12 @@ import kotlinx.coroutines.launch
  */
 
 /** The climb's beats (web QuestsPage's): how long a finished tower step shows full, the line drawing up to the next
- * rung, then the next frame opening from that rung as the finished one folds into the line. */
+ * rung, then the view climbing to the next step's frame. */
 private const val CLIMB_HOLD_MS = 900L
 private const val CLIMB_DRAW_MS = 240
-private const val CLIMB_OPEN_MS = 520
+private const val CLIMB_PAN_MS = 560
 private val CLIMB_EASE = CubicBezierEasing(0.5f, 0f, 0.2f, 1f)
-/** A rung's height, which the next frame opens from. */
+/** A rung's least height. */
 private val RUNG = 34.dp
 
 /** The width of the Trial's step column, which its rail runs down the middle of (web --step-col). */
@@ -289,10 +289,9 @@ fun QuestsPage() {
     Heading(t("quests.trial.title"), Modifier.settingAnchor("questsTrial").padding(top = 28.dp))
     Note(t("quests.trial.hint"), Modifier.padding(top = 4.dp, bottom = 14.dp))
     // the climb (web QuestsPage's): a step finished while the page is open fills and pops where it stands, the line
-    // draws up to the ghost rung above, and that rung opens into the next step's own frame as the finished frame folds
-    // shut into the line below. The heights always add up to the same, so the new frame comes to rest where the
-    // finished one stood. Fixed when the step changes, so the finished step never shows its old state; a swap or a
-    // jump is instant.
+    // draws up to the ghost rung above, and the view climbs the tower to the next step's own frame, the finished one
+    // going down out of sight. Fixed when the step changes, so the finished step never shows its old state; a swap or
+    // a jump is instant.
     val last = remember { arrayOfNulls<Quests.Quest>(1) }
     val winHeight = remember { intArrayOf(0) }
     val reduced = Nx.motion.reduced
@@ -301,10 +300,10 @@ fun QuestsPage() {
     }
     last[0] = trial
     val heldHeight = remember(trial.id) { winHeight[0] }
-    // 0 holding, 1 drawing the line, 2 opening and folding, 3 done
+    // 0 holding, 1 drawing the line, 2 climbing, 3 done
     var phase by remember(trial.id) { mutableIntStateOf(if (climbFrom != null) 0 else 3) }
     val draw = remember(trial.id) { Animatable(0f) }
-    val open = remember(trial.id) { Animatable(0f) }
+    val pan = remember(trial.id) { Animatable(0f) }
     LaunchedEffect(trial.id) {
         if (climbFrom == null) return@LaunchedEffect
         delay(CLIMB_HOLD_MS)
@@ -312,31 +311,25 @@ fun QuestsPage() {
         launch { draw.animateTo(1f, tween(CLIMB_DRAW_MS, easing = CubicBezierEasing(0.2f, 0.8f, 0.2f, 1f))) }
         delay(CLIMB_DRAW_MS.toLong())
         phase = 2
-        open.animateTo(1f, tween(CLIMB_OPEN_MS, easing = CLIMB_EASE))
+        pan.animateTo(1f, tween(CLIMB_PAN_MS, easing = CLIMB_EASE))
         phase = 3
     }
     val from = climbFrom?.takeIf { phase < 3 }
-    val opening = from != null && phase == 2
-    // the frame and the rungs show the finished step until the next frame opens
-    val at = if (from != null && !opening) from else trial
-    val cleared = if (from != null && !opening) maxOf(0L, from.level - 1) else b.trialCleared
-    val rung = with(LocalDensity.current) { RUNG.roundToPx() }
-    Column(Modifier.fillMaxWidth()) {
+    val panning = from != null && phase == 2
+    // the ghost rung names the step above the finished one until the view climbs; the rung under the finished frame
+    // keeps its count while it goes down out of sight
+    val at = if (from != null && !panning) from else trial
+    val cleared = if (from != null) maxOf(0L, from.level - 1) else b.trialCleared
+    fun clearedText(n: Long) = if (n > 0) t("quests.trial.cleared", "count" to n) else t("quests.trial.first")
+    TowerWindow(pan = { if (panning) pan.value else null }) {
         key("next") {
             Rung(
                 t("quests.trial.step", "step" to gemNumber(at.level + 1)), next = true,
                 drawn = { if (from != null && phase == 1) draw.value else 0f },
-                modifier = if (opening) Modifier.heightBetween({ open.value }, { 0 }, { it }).graphicsLayer { alpha = open.value } else Modifier,
             )
         }
-        // keyed by step, so the finished frame keeps its filled bar and popped pill as the next opens above it
-        if (from == null || opening) key(trial.id) {
-            TowerFrame(
-                accent = true, fold = null, q = trial, fresh = fresh(trial),
-                modifier = (if (opening) Modifier.heightBetween({ open.value }, { rung }, { it }) else Modifier)
-                    .onSizeChanged { if (from == null) winHeight[0] = it.height },
-                contentAlpha = { (if (opening) (open.value / 0.6f).coerceAtMost(1f) else 1f) },
-            ) {
+        if (from == null || panning) key(trial.id) {
+            TowerFrame(accent = true, q = trial, fresh = fresh(trial), modifier = Modifier.onSizeChanged { if (from == null) winHeight[0] = it.height }) {
                 if (b.skipLeft && !trial.done) {
                     NxButton(
                         t("quests.trial.skip"), { act("trial", { Quests.skipTrial() }) },
@@ -347,16 +340,23 @@ fun QuestsPage() {
                 if (debug && !trial.done) DebugStrip(trial, busy, ::act)
             }
         }
+        // the rung between the two frames, its words changing as it goes from above the finished step to below the next
+        if (from != null && panning) key("link") {
+            Rung(
+                t("quests.trial.step", "step" to gemNumber(from.level + 1)), next = false,
+                then = clearedText(b.trialCleared), turn = { pan.value },
+            )
+        }
+        // keyed by step, so the finished frame keeps its filled bar and popped pill as the view climbs away
         if (from != null) key(from.id) {
             TowerFrame(
-                accent = !opening, fold = if (opening) ({ open.value }) else null, q = from, fresh = fresh(from),
-                modifier = (if (opening) Modifier.heightBetween({ open.value }, { it }, { 0 }).clearAndSetSemantics {} else Modifier)
-                    // the finished step holds the height it had with its controls until it folds
+                accent = !panning, q = from, fresh = fresh(from),
+                modifier = (if (panning) Modifier.clearAndSetSemantics {} else Modifier)
+                    // the finished step holds the height it had with its controls
                     .heightIn(min = with(LocalDensity.current) { heldHeight.toDp() }),
-                contentAlpha = { if (opening) (1f - open.value / 0.5f).coerceAtLeast(0f) else 1f },
             ) {}
         }
-        Rung(if (cleared > 0) t("quests.trial.cleared", "count" to cleared) else t("quests.trial.first"), next = false)
+        key("cleared") { Rung(clearedText(cleared), next = false) }
     }
     if (b.skipLeft && !at.done) Note(t("quests.trial.skipHint"), Modifier.padding(top = 10.dp))
     if (debug) {
@@ -377,39 +377,45 @@ fun QuestsPage() {
 }
 
 /**
- * One step's frame on the ladder: the surface and its rings, the accent ring only on the step being climbed. A frame
- * folding (`fold` its progress) gives up the accent at once, and its surface fades as the rail shows through.
+ * The ladder: a window onto the tower. While the view climbs (`pan` its progress, null otherwise) it holds the ghost
+ * rung, the next frame, the rung between, the finished frame and the rung under it, and slides them down by the next
+ * frame and its rung while its height eases from the finished frame's to the next's (web QuestsPage's layout effect).
  */
 @Composable
-private fun TowerFrame(
-    accent: Boolean, fold: (() -> Float)?, modifier: Modifier, contentAlpha: () -> Float,
-    q: Quests.Quest, fresh: Boolean, controls: @Composable ColumnScope.() -> Unit,
-) {
+private fun TowerWindow(pan: () -> Float?, content: @Composable () -> Unit) {
+    Layout(content, Modifier.fillMaxWidth().clipToBounds()) { ms, c ->
+        val ps = ms.map { it.measure(c.copy(minHeight = 0, maxHeight = Constraints.Infinity)) }
+        val hs = ps.map { it.height }
+        val p = pan()
+        var height = hs.sum()
+        var top = 0
+        if (p != null && ps.size == 5) {
+            val before = hs[2] + hs[3] + hs[4]
+            val after = hs[0] + hs[1] + hs[2]
+            height = (before + (after - before) * p).roundToInt()
+            top = -((hs[0] + hs[1]) * (1f - p)).roundToInt()
+        }
+        layout(c.maxWidth, height.coerceIn(c.minHeight, c.maxHeight)) {
+            var y = top
+            ps.forEach { it.place(0, y); y += it.height }
+        }
+    }
+}
+
+/** One step's frame on the ladder: the surface and its rings, the accent ring only on the step being climbed. */
+@Composable
+private fun TowerFrame(accent: Boolean, q: Quests.Quest, fresh: Boolean, modifier: Modifier, controls: @Composable ColumnScope.() -> Unit) {
     val c = Nx.colors
     Box(
         Modifier.fillMaxWidth()
-            .drawBehind {
-                val f = fold?.invoke() ?: return@drawBehind
-                val x = STEP_COL.toPx() / 2
-                drawLine(c.textBrand.copy(alpha = ((f - 0.3f) / 0.7f).coerceIn(0f, 1f)), Offset(x, 0f), Offset(x, size.height), 2 * density)
-            }
-            .graphicsLayer { alpha = 1f - (fold?.invoke() ?: 0f) }
             .background(c.bgSurface, Radii.Md)
             .then(if (accent) Modifier.ring(Radii.Md, c.textBrand.copy(alpha = 0.4f), 2.dp) else Modifier)
             .ring(Radii.Md, c.borderSubtle)
             .clip(Radii.Md)
             .then(modifier),
     ) {
-        TowerStep(q, fresh, Modifier.graphicsLayer { alpha = contentAlpha() }, controls)
+        TowerStep(q, fresh, Modifier, controls)
     }
-}
-
-/** A height that runs from `start` to `end` of what its content measures as `progress` goes from 0 to 1. */
-private fun Modifier.heightBetween(progress: () -> Float, start: (Int) -> Int, end: (Int) -> Int) = clipToBounds().layout { m, c ->
-    val pl = m.measure(c.copy(minHeight = 0, maxHeight = Constraints.Infinity))
-    val p = progress()
-    val h = (start(pl.height) + (end(pl.height) - start(pl.height)) * p).roundToInt()
-    layout(pl.width, h.coerceIn(c.minHeight, c.maxHeight)) { pl.place(0, 0) }
 }
 
 /** One step of the Quest Tower in its frame: the step's number in the rail's column, then the quest. */
@@ -591,11 +597,11 @@ private fun Progress(q: Quests.Quest) {
 
 /** A step of the ladder outside the window: the rail through the step column, dashed toward what is to come. */
 @Composable
-private fun Rung(text: String, next: Boolean, drawn: () -> Float = { 0f }, modifier: Modifier = Modifier) {
+private fun Rung(text: String, next: Boolean, drawn: () -> Float = { 0f }, then: String? = null, turn: () -> Float = { 0f }) {
     val c = Nx.colors
     Row(
         // the ghost rung comes up to full strength as the line draws up through it
-        modifier.fillMaxWidth().heightIn(min = RUNG).height(IntrinsicSize.Min).graphicsLayer { alpha = if (next) 0.7f + 0.3f * drawn() else 1f },
+        Modifier.fillMaxWidth().heightIn(min = RUNG).height(IntrinsicSize.Min).graphicsLayer { alpha = if (next) 0.7f + 0.3f * drawn() else 1f },
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Box(
@@ -610,6 +616,12 @@ private fun Rung(text: String, next: Boolean, drawn: () -> Float = { 0f }, modif
                 if (d > 0f) drawLine(c.textBrand, Offset(x, size.height * (1f - d)), Offset(x, size.height), 2 * density)
             },
         )
-        Txt(text, style = Nx.type.bodySmall.copy(fontSize = Nx.type.sp(13f), fontFeatureSettings = "tnum"), color = c.textMuted, modifier = Modifier.padding(vertical = 8.dp))
+        val style = Nx.type.bodySmall.copy(fontSize = Nx.type.sp(13f), fontFeatureSettings = "tnum")
+        if (then == null) Txt(text, style = style, color = c.textMuted, modifier = Modifier.padding(vertical = 8.dp))
+        else Box {
+            // the words it had go by 40% of the way, the words it ends with come in from 60%
+            Txt(text, style = style, color = c.textMuted, modifier = Modifier.padding(vertical = 8.dp).graphicsLayer { alpha = (1f - turn() / 0.4f).coerceIn(0f, 1f) })
+            Txt(then, style = style, color = c.textMuted, modifier = Modifier.padding(vertical = 8.dp).graphicsLayer { alpha = ((turn() - 0.6f) / 0.4f).coerceIn(0f, 1f) })
+        }
     }
 }

@@ -65,13 +65,11 @@ function Progress({ q }: { q: Quest }) {
 }
 
 /** The climb's beats: how long a finished tower step shows full, then the line drawing up to the next rung, then the
- * next frame opening from that rung as the finished one folds into the line (Android's are the same). */
+ * view climbing to the next step's frame (Android's are the same). */
 const CLIMB_HOLD_MS = 900;
 const CLIMB_DRAW_MS = 240;
-const CLIMB_OPEN_MS = 520;
+const CLIMB_PAN_MS = 560;
 const CLIMB_EASE = "cubic-bezier(0.5, 0, 0.2, 1)";
-/** A rung's height, which the next frame opens from. */
-const RUNG_PX = 34;
 
 /** Runs one request that answers the board, and says whether it worked. */
 type Act = (key: string, run: () => Promise<QuestBoard>) => Promise<boolean>;
@@ -175,11 +173,11 @@ export default function QuestsPage() {
   const fresh = (q: Quest) => q.done_at > 0 && !doneAtOpen.has(q.id);
 
   // the climb: a tower step finished while the page is open fills and pops where it stands, the line draws up to the
-  // ghost rung above, and that rung opens into the next step's own frame as the finished frame folds shut into the
-  // line below. Decided while rendering, so the finished step never shows its old state for a frame; a swap or a jump
+  // ghost rung above, and the view climbs the tower to the next step's own frame, the finished one going down out of
+  // sight. Decided while rendering, so the finished step never shows its old state for a frame; a swap or a jump
   // is instant.
   const [shown, setShown] = useState<Quest | null>(null);
-  const [climb, setClimb] = useState<{ from: Quest; phase: "hold" | "draw" | "open" } | null>(null);
+  const [climb, setClimb] = useState<{ from: Quest; phase: "hold" | "draw" | "pan" } | null>(null);
   const trialNow = board?.trial ?? null;
   if (trialNow !== shown) {
     if (shown && trialNow && trialNow.id !== shown.id) {
@@ -193,39 +191,44 @@ export default function QuestsPage() {
   useEffect(() => {
     if (phase !== "hold" && phase !== "draw") return;
     const id = window.setTimeout(
-      () => setClimb((c) => (c ? { ...c, phase: c.phase === "hold" ? "draw" : "open" } : c)),
+      () => setClimb((c) => (c ? { ...c, phase: c.phase === "hold" ? "draw" : "pan" } : c)),
       phase === "hold" ? CLIMB_HOLD_MS : CLIMB_DRAW_MS,
     );
     return () => window.clearTimeout(id);
   }, [phase]);
+  const ladderRef = useRef<HTMLDivElement>(null);
+  const trackRef = useRef<HTMLDivElement>(null);
   const ghostRef = useRef<HTMLDivElement>(null);
   const nextRef = useRef<HTMLDivElement>(null);
+  const linkRef = useRef<HTMLDivElement>(null);
   const foldRef = useRef<HTMLDivElement>(null);
-  // the open and the fold, started before the first frame of the open is painted: the new rung unfolds above, the
-  // next frame grows from a rung's height to its own and the finished one shrinks to nothing, so the ladder's height
-  // never changes and the new frame comes to rest where the finished one stood
+  const clearedRef = useRef<HTMLDivElement>(null);
+  // the pan, started before its first frame is painted: the ladder is a window onto the tower, which slides down by
+  // the next frame and its rung so the view climbs from the finished frame to the next, while the window's height
+  // eases from the one to the other. The rung between them goes from "Step n" to "n - 1 steps cleared" on the way.
   useLayoutEffect(() => {
-    const ghost = ghostRef.current, next = nextRef.current, fold = foldRef.current;
-    if (phase !== "open" || !ghost || !next || !fold) return;
-    // each holds its last frame until the climb ends and they are cancelled, or the folded frame would show again for
-    // the frame between its animation ending and the state that removes it
-    const timing: KeyframeAnimationOptions = { duration: CLIMB_OPEN_MS, easing: CLIMB_EASE, fill: "forwards" };
-    const surface = getComputedStyle(fold);
+    const ladder = ladderRef.current, track = trackRef.current, ghost = ghostRef.current, next = nextRef.current;
+    const link = linkRef.current, fold = foldRef.current, done = clearedRef.current;
+    if (phase !== "pan" || !ladder || !track || !ghost || !next || !link || !fold || !done) return;
+    // each holds its last frame until the climb ends and they are cancelled, or the tower would jump back for the
+    // frame between its animation ending and the state that settles it
+    const timing: KeyframeAnimationOptions = { duration: CLIMB_PAN_MS, easing: CLIMB_EASE, fill: "forwards" };
+    const shift = ghost.offsetHeight + next.offsetHeight;
+    const before = link.offsetHeight + fold.offsetHeight + done.offsetHeight;
+    const after = ghost.offsetHeight + next.offsetHeight + link.offsetHeight;
+    const [was, now] = link.querySelectorAll("[data-label]");
     const runs = [
-      ghost.animate([{ height: "0px", minHeight: "0px", opacity: 0 }, { height: `${RUNG_PX}px`, minHeight: `${RUNG_PX}px`, opacity: 0.7 }], timing),
-      next.animate([{ height: `${RUNG_PX}px` }, { height: `${next.offsetHeight}px` }], timing),
-      fold.animate(
-        [
-          { height: `${fold.offsetHeight}px`, backgroundColor: surface.backgroundColor, boxShadow: surface.boxShadow },
-          { height: "0px", backgroundColor: "transparent", boxShadow: "none" },
-        ],
-        timing,
-      ),
-      ...[...next.children].map((el) => el.animate([{ opacity: 0 }, { opacity: 1, offset: 0.6 }, { opacity: 1 }], timing)),
-      ...[...fold.children].map((el) => el.animate([{ opacity: 1 }, { opacity: 0, offset: 0.5 }, { opacity: 0 }], timing)),
+      track.animate([{ transform: `translateY(${-shift}px)` }, { transform: "translateY(0)" }], timing),
+      ladder.animate([{ height: `${before}px` }, { height: `${after}px` }], timing),
+      ...(was && now
+        ? [
+            was.animate([{ opacity: 1 }, { opacity: 0, offset: 0.4 }, { opacity: 0 }], timing),
+            now.animate([{ opacity: 0 }, { opacity: 0, offset: 0.6 }, { opacity: 1 }], timing),
+          ]
+        : []),
     ];
     let live = true;
-    void runs[1]!.finished.then(() => live && setClimb(null), () => undefined);
+    void runs[0]!.finished.then(() => live && setClimb(null), () => undefined);
     return () => {
       live = false;
       for (const r of runs) r.cancel();
@@ -301,7 +304,7 @@ export default function QuestsPage() {
     </>
   );
   // one tower step's contents in its frame. A step finished during a climb keeps the controls it had, out of sight and
-  // out of reach, so its frame holds its height until it folds.
+  // out of reach, so its frame holds its height as the view climbs away from it.
   const stepLayer = (q: Quest, held = false) => (
     <>
       <strong className={s.step} aria-label={t("quests.trial.step", { step: fmt(q.level) })}>{fmt(q.level)}</strong>
@@ -320,10 +323,12 @@ export default function QuestsPage() {
     </>
   );
   const from = climb && trial && climb.from.id !== trial.id ? climb.from : null;
-  const opening = from && phase === "open" ? from : null;
-  // the frame and the rungs show the finished step until the next frame opens
-  const at = from && !opening ? from : trial;
-  const cleared = from && !opening ? Math.max(0, from.level - 1) : board.trial_cleared;
+  const panning = !!from && phase === "pan";
+  // the ghost rung names the step above the finished one until the view climbs; the rung under the finished frame
+  // keeps its count while it goes down out of sight
+  const at = from && !panning ? from : trial;
+  const cleared = from ? Math.max(0, from.level - 1) : board.trial_cleared;
+  const clearedText = (n: number) => (n ? t("quests.trial.cleared", { count: n }) : t("quests.trial.first"));
   const goTo = Math.floor(Number(step) || 0);
 
   return (
@@ -412,36 +417,44 @@ export default function QuestsPage() {
         <section className={s.section} data-testid="quests-trial">
           <h3 className={`${st.h5} ${s.sectionTitle}`}>{t("quests.trial.title")}</h3>
           <p className={`${s.note} ${s.trialHint}`}>{t("quests.trial.hint")}</p>
-          <div className={s.ladder}>
-            <div
-              key="next"
-              ref={ghostRef}
-              className={s.rung}
-              data-next=""
-              data-drawing={(from && phase === "draw") || undefined}
-              data-unfolding={opening ? "" : undefined}
-              aria-hidden="true"
-            >
-              <span className={s.rail} />
-              <span>{t("quests.trial.step", { step: fmt((at?.level ?? 0) + 1) })}</span>
-            </div>
-            {/* keyed by step, so the finished frame keeps its filled bar and popped reward as the next opens above it */}
-            {from && !opening ? null : (
-              <div key={trial.id} ref={nextRef} className={s.window} data-opening={opening ? "" : undefined} data-testid="quest-trial">
-                {stepLayer(trial)}
+          <div ref={ladderRef} className={s.ladder} data-panning={panning ? "" : undefined}>
+            <div ref={trackRef} className={s.tower}>
+              <div
+                key="next"
+                ref={ghostRef}
+                className={s.rung}
+                data-next=""
+                data-drawing={(from && phase === "draw") || undefined}
+                aria-hidden="true"
+              >
+                <span className={s.rail} />
+                <span>{t("quests.trial.step", { step: fmt((at?.level ?? 0) + 1) })}</span>
               </div>
-            )}
-            {from ? (
-              <div key={from.id} ref={foldRef} className={s.window} data-folding={opening ? "" : undefined} aria-hidden={opening ? true : undefined}
-                data-testid={opening ? undefined : "quest-trial"}>
-                {stepLayer(from, true)}
+              {from && !panning ? null : (
+                <div key={trial.id} ref={nextRef} className={s.window} data-testid="quest-trial">
+                  {stepLayer(trial)}
+                </div>
+              )}
+              {from && panning ? (
+                <div key="link" ref={linkRef} className={s.rung} aria-hidden="true">
+                  <span className={s.rail} />
+                  <span className={s.labels}>
+                    <span data-label="">{t("quests.trial.step", { step: fmt(from.level + 1) })}</span>
+                    <span data-label="">{clearedText(board.trial_cleared)}</span>
+                  </span>
+                </div>
+              ) : null}
+              {/* keyed by step, so the finished frame keeps its filled bar and popped reward as the view climbs away */}
+              {from ? (
+                <div key={from.id} ref={foldRef} className={s.window} data-left={panning ? "" : undefined} aria-hidden={panning || undefined}
+                  data-testid={panning ? undefined : "quest-trial"}>
+                  {stepLayer(from, true)}
+                </div>
+              ) : null}
+              <div key="cleared" ref={clearedRef} className={s.rung} data-done="">
+                <span className={s.rail} />
+                <span data-testid={panning ? undefined : "quests-cleared"}>{clearedText(cleared)}</span>
               </div>
-            ) : null}
-            <div className={s.rung} data-done="">
-              <span className={s.rail} />
-              <span data-testid="quests-cleared">
-                {cleared ? t("quests.trial.cleared", { count: cleared }) : t("quests.trial.first")}
-              </span>
             </div>
           </div>
           {board.skip_left && at && !at.done_at ? <p className={s.note}>{t("quests.trial.skipHint")}</p> : null}
