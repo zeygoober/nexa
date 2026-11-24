@@ -1258,11 +1258,14 @@ Daily quests and the Quest Tower (the `trial` track in the code, renamed from In
   `quest_debug` in the same transaction (`TestQuestDebugIsTheOwnersAlone`). The apps show them only to the owner, behind a switch by the
   page's title (web `DebugStrip` in `QuestsPage.tsx`, Android `DebugStrip` in `QuestsPage.kt`; words in `quests.debug.*`).
 - Finished is a brighter green than the theme's positive colour, mixed from it with dark ink to read on it (web `--quest-done` and
-  `--quest-done-ink`, Android `doneColours`). Clearing a tower step is the climb: the finished step stays 900 ms with its bar full and
-  its reward green, then sinks out of the window toward the cleared rail as the next drops in from the ghost rung above, 420 ms on one
-  curve (`CLIMB_HOLD_MS` on both), the new bar starting at nought. Only a step that follows the last one climbs (a skip or a jump does
-  not), and Reduced motion shows the new step at once. On the web the layers are `data-sinking` and `data-rising`, since `base.css`'s
-  `[data-leaving]` rule stops every animation.
+  `--quest-done-ink`, Android `doneColours`). Clearing a tower step is the climb (the owner's choice, 2026-11-24, "Next frame opens
+  above"): the finished step stays 900 ms with its bar full and its reward green, the rail draws up solid to the ghost rung (240 ms),
+  then that rung opens into the next step's own frame while the finished frame folds shut into the line below and a new ghost rung
+  grows in above, 520 ms on one curve (`CLIMB_HOLD_MS`, `CLIMB_DRAW_MS`, `CLIMB_OPEN_MS` on both). The heights add up, so the ladder
+  never changes height and the new frame comes to rest where the old one stood. Only a step that follows the last one climbs (a skip or
+  a jump does not), and Reduced motion shows the new step at once. The web runs it with the Web Animations API in a layout effect with
+  `fill: "forwards"` (without it the folded frame stood full height for one frame before React removed it), marked `data-drawing`,
+  `data-unfolding`, `data-opening` and `data-folding`; Android with `heightBetween` and `TowerFrame` in `QuestsPage.kt`.
 
 ### Profile widgets (`api/widgets.go`, web `lib/widgets.ts`, Android `ui/profile/Widgets.kt`)
 
