@@ -1223,14 +1223,17 @@ A currency earned by chatting, spent on capsules of collectibles, fused and trad
 
 ### Quests (`store/quests.go`, `api/quests.go`, migration 0068; the owner's request, 2026-11-23)
 
-Daily quests and the Infinite Trial pay Gems. Web `api/quests.ts`, `stores/quests.ts`, `settings/QuestsPage.tsx`; Android
+Daily quests and the Quest Tower (the `trial` track in the code, renamed from Infinite Trial on 2026-11-24) pay Gems. Web `api/quests.ts`, `stores/quests.ts`, `settings/QuestsPage.tsx`; Android
 `data/Quests.kt`, `ui/gems/QuestsPage.kt`. Settings, Quests on both, after Gems. Like Gems, the server keeps, counts and pays them.
 
 - Every UTC day a person gets one easy, one medium and one hard quest paying `questDailyRewards` (10, 20, 35), drawn from
-  `questDailyPool`, plus a bonus of `QuestBonusReward` (15) for all three. The Trial is one quest at a time: step n draws a kind by
-  `questLadder` (never the last step's kind; bug reports and suggestions only from step 10), whose target grows with the step, and pays
-  `QuestTrialReward` (15, two more each step, at most 100). A step never goes back. One daily swap (`POST /quests/{id}/reroll`) and one
-  Trial skip (`POST /quests/trial/skip`) a day (`quest_players`), both under `limGemSpend`. `GET /quests` is the board, open to muted accounts.
+  `questDailyPool`, plus a bonus of `QuestBonusReward` (15) for all three. The tower is one quest at a time: step n draws a kind by
+  `questLadder` (never the last step's kind; bug reports and suggestions only from step 5). Both curves are exponential (the owner's
+  request, 2026-11-24): a target is the kind's base times `questTowerGrowth` (1.07) per step and the pay 15 times `questRewardGrowth`
+  (1.04) per step, in fives from 20, so Gems per effort fall slowly as someone climbs. A kind with a natural ceiling (`most`: call size,
+  friends, materials and the like) leaves the draw once its target passes it, so deep steps are messages, call minutes and Gems, which
+  never leave (`TestQuestSpendingNeverPays` holds that the tower can always draw). A step never goes back. One daily swap
+  (`POST /quests/{id}/reroll`) and one tower skip (`POST /quests/trial/skip`) a day (`quest_players`), both under `limGemSpend`. `GET /quests` is the board, open to muted accounts.
 - The 13 kinds: messages (only where someone else spoke in the last half hour, `SomeoneElseSpoke`), servers messaged in, call minutes
   with someone, a call's size, friends, server joins, capsules, fuses, materials reached, trades, Gems earned by chatting, bug reports
   and suggestions staff resolved. Counting starts when a quest opens. Kinds about different things count each once (`quest_seen`

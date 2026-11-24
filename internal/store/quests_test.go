@@ -107,15 +107,25 @@ func TestQuestCountsEachOnceAndTheTrialStartsOver(t *testing.T) {
 	}
 }
 
-// A quest that spends Gems pays less than doing it costs, at every Trial step
-// and every daily slot, so quests never turn Gems into more Gems.
+// A quest that spends Gems pays less than doing it costs, at every tower step
+// and every daily slot, so quests never turn Gems into more Gems; and the
+// tower always has something to draw however high someone climbs.
 func TestQuestSpendingNeverPays(t *testing.T) {
 	spend := map[string]bool{QuestCapsules: true, QuestFuses: true, QuestMaterials: true}
 	for step := int64(1); step <= 5000; step++ {
 		for k := range spend {
-			if QuestTrialTarget(k, step)*GemCapsulePrice <= QuestTrialReward(step) {
+			if n := QuestTrialTarget(k, step); n > 0 && n*GemCapsulePrice <= QuestTrialReward(step) {
 				t.Fatalf("step %d: %s pays more than it costs", step, k)
 			}
+		}
+		// the kinds with no end keep the tower drawable at every step
+		for _, k := range []string{QuestMessages, QuestCallMinutes, QuestGems} {
+			if QuestTrialTarget(k, step) <= 0 {
+				t.Fatalf("step %d: %s retired", step, k)
+			}
+		}
+		if _, err := drawTrial(step, QuestGems); err != nil {
+			t.Fatalf("step %d: nothing to draw", step)
 		}
 	}
 	for slot, pool := range questDailyPool {

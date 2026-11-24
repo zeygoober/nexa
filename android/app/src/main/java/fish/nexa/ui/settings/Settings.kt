@@ -131,7 +131,7 @@ object Settings {
                     SettingsPageInfo("profiles", t("settings.profile.profiles"), "IdCard"),
                     SettingsPageInfo("badgeIndex", t("badges.index.title"), "Award"),
                     SettingsPageInfo("gems", t("gems.title"), "Gem"),
-                    SettingsPageInfo("quests", t("quests.title"), "Target"),
+                    SettingsPageInfo("quests", t("quests.title"), "Swords"),
                     SettingsPageInfo("security", t("settings.security.security"), "KeyRound"),
                     SettingsPageInfo("devices", t("settings.devices.devices"), "MonitorSmartphone"),
                     SettingsPageInfo("subscription", t("support.settingsLabel"), "Heart"),

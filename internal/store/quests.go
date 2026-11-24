@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"math"
 	"time"
 
 	"evilion.xyz/chat/internal/db"
@@ -12,7 +13,8 @@ import (
 
 // Quests (migration 0068). Every UTC day a person has three daily quests, one
 // easy, one medium and one hard, and a bonus for finishing all three; and the
-// Infinite Trial, one quest at a time, each step asking more than the last.
+// Quest Tower (the trial track), one quest at a time, each step asking more
+// than the last.
 // A quest pays its Gems the moment it is finished, into the same wallet the
 // farming check watches: held while a check or report is open, nothing while
 // earning is off. Quest Gems never count towards a Gems quest.
@@ -72,48 +74,78 @@ var questDailyPool = [3][]questPick{
 	{{QuestMessages, 50}, {QuestServers, 5}, {QuestCallMinutes, 30}, {QuestCallSize, 4}, {QuestFriends, 2}, {QuestJoins, 2}, {QuestCapsules, 3}, {QuestMaterials, 1}, {QuestTrades, 2}, {QuestGems, 120}},
 }
 
-// questRung is how a kind's Trial target grows: base at step 1, then step
-// hundredths more each step, never above most.
+// questRung is a kind on the Quest Tower: its target at step 1, the most it
+// can ask (0 for kinds with no natural end), how often the tower draws it and
+// the first step it can appear.
 type questRung struct {
-	base, step, most int64
-	weight           int // how often the Trial draws it
-	from             int64
+	base, most int64
+	weight     int
+	from       int64
 }
 
-// questLadder is the Infinite Trial: a kind is drawn by weight (never the
-// last step's), its target grows with the step, and the reward grows more
-// slowly (QuestTrialReward), so a deep step is an achievement and never a
-// better way to earn than chatting. Staff-gated kinds start at step 10.
+// The Quest Tower grows exponentially: every target is questTowerGrowth times
+// the last step's, and the reward questRewardGrowth times, which is slower, so
+// each step pays more Gems than the last but fewer per hour of effort. A kind
+// with a natural end (there are only so many new friends to make) leaves the
+// draw once its target passes most, so deep steps are messages, call minutes
+// and Gems and the tower never flattens. The owner's request, 2026-11-24: the
+// first curve grew by a fixed amount and stopped rising at step 43.
+const (
+	questTowerGrowth  = 1.07
+	questRewardGrowth = 1.04
+	questTargetMax    = 1_000_000_000 // past any step a person can reach; keeps the numbers in range
+	questRewardMax    = 1_000_000
+)
+
+// questLadder is the Quest Tower (the trial track): a kind is drawn by weight
+// (never the last step's), its target grows with the step, and staff-gated
+// kinds start at step 5.
 var questLadder = map[string]questRung{
-	QuestMessages:    {10, 300, 500, 3, 1},
-	QuestServers:     {2, 15, 15, 2, 1},
-	QuestCallMinutes: {5, 200, 240, 2, 1},
-	QuestCallSize:    {2, 10, 8, 1, 1},
-	QuestFriends:     {1, 10, 10, 1, 1},
-	QuestJoins:       {1, 10, 10, 1, 1},
-	QuestCapsules:    {1, 10, 10, 1, 1},
-	QuestFuses:       {1, 20, 20, 1, 1},
-	QuestMaterials:   {1, 8, 6, 1, 1},
-	QuestTrades:      {1, 10, 8, 1, 1},
-	QuestGems:        {20, 1000, 2000, 3, 1},
-	QuestBugs:        {1, 4, 3, 1, 10},
-	QuestIdeas:       {1, 4, 3, 1, 10},
+	QuestMessages:    {10, 0, 3, 1},
+	QuestServers:     {2, 10, 2, 1},
+	QuestCallMinutes: {5, 0, 2, 1},
+	QuestCallSize:    {2, 6, 1, 1},
+	QuestFriends:     {1, 5, 1, 1},
+	QuestJoins:       {1, 5, 1, 1},
+	QuestCapsules:    {1, 10, 1, 1},
+	QuestFuses:       {1, 15, 1, 1},
+	QuestMaterials:   {1, 3, 1, 1},
+	QuestTrades:      {1, 5, 1, 1},
+	QuestGems:        {20, 0, 3, 1},
+	QuestBugs:        {1, 3, 1, 5},
+	QuestIdeas:       {1, 3, 1, 5},
 }
 
 // questKinds is every kind the Trial can draw, in a fixed order, so a draw
 // depends only on the random number.
 var questKinds = []string{QuestMessages, QuestServers, QuestCallMinutes, QuestCallSize, QuestFriends, QuestJoins, QuestCapsules, QuestFuses, QuestMaterials, QuestTrades, QuestGems, QuestBugs, QuestIdeas}
 
-// QuestTrialTarget is what step asks of kind.
+// QuestTrialTarget is what step asks of kind, or 0 once kind has passed its
+// end and is no longer drawn.
 func QuestTrialTarget(kind string, step int64) int64 {
 	r := questLadder[kind]
-	return min(r.most, r.base+r.step*(max(step, 1)-1)/100)
+	v := float64(r.base) * math.Pow(questTowerGrowth, float64(max(step, 1)-1))
+	n := int64(questTargetMax)
+	if v < questTargetMax {
+		n = max(r.base, int64(math.Round(v)))
+	}
+	if r.most > 0 && n > r.most {
+		return 0
+	}
+	return n
 }
 
-// QuestTrialReward is what a Trial step pays: 15 at the first, two more each
-// step, at most 100.
+// QuestTrialReward is what a Quest Tower step pays: 15 at the first, growing
+// by questRewardGrowth each step, in fives from 20.
 func QuestTrialReward(step int64) int64 {
-	return min(100, 15+2*(max(step, 1)-1))
+	v := 15 * math.Pow(questRewardGrowth, float64(max(step, 1)-1))
+	switch {
+	case v >= questRewardMax:
+		return questRewardMax
+	case v < 20:
+		return int64(math.Round(v))
+	}
+	return 5 * int64(math.Round(v/5))
 }
 
 var (
@@ -214,7 +246,7 @@ func drawDaily(slot int, not map[string]bool) (questPick, error) {
 func drawTrial(step int64, not string) (string, error) {
 	weights := make([]int, len(questKinds))
 	for i, k := range questKinds {
-		if r := questLadder[k]; k != not && step >= r.from {
+		if r := questLadder[k]; k != not && step >= r.from && QuestTrialTarget(k, step) > 0 {
 			weights[i] = r.weight
 		}
 	}

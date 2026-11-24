@@ -13,7 +13,7 @@ import kotlinx.serialization.json.longOrNull
 
 /**
  * Quests (web api/quests.ts, stores/quests.ts; internal/api/quests.go): three
- * daily quests and their bonus, and the Infinite Trial, paid in Gems by the
+ * daily quests and their bonus, and the Quest Tower, paid in Gems by the
  * server the moment one is finished. The app only shows the board.
  */
 object Quests {

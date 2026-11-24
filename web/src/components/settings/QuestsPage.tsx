@@ -60,7 +60,7 @@ function Progress({ q }: { q: Quest }) {
   );
 }
 
-/** Settings, Quests: today's three quests and their bonus, and the Infinite Trial. */
+/** Settings, Quests: today's three quests and their bonus, and the Quest Tower. */
 export default function QuestsPage() {
   const { board, error, load, set } = useQuests();
   const toast = useUI((u) => u.toast);

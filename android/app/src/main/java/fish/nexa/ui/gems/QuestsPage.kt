@@ -209,7 +209,7 @@ fun QuestsPage() {
     }
     if (b.rerollLeft && b.daily.any { !it.done }) Note(t("quests.swapHint"), Modifier.padding(top = 10.dp))
 
-    // the Infinite Trial
+    // the Quest Tower
     val trial = b.trial ?: return
     Heading(t("quests.trial.title"), Modifier.settingAnchor("questsTrial").padding(top = 28.dp))
     Note(t("quests.trial.hint"), Modifier.padding(top = 4.dp, bottom = 14.dp))

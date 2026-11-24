@@ -1,7 +1,7 @@
 import { api } from "./client";
 import type { Snowflake } from "./types";
 
-/** Quests (api/quests.go): three daily quests with a bonus for all three, and the Infinite Trial. Paid in Gems when finished. */
+/** Quests (api/quests.go): three daily quests with a bonus for all three, and the Quest Tower. Paid in Gems when finished. */
 
 export type QuestKind =
   | "messages" | "servers" | "call_minutes" | "call_size" | "friends" | "joins" | "capsules"

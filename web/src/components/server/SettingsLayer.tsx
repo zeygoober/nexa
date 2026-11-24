@@ -1,4 +1,4 @@
-import { AppWindow, AudioLines, Award, Ban, Bot, Compass, Flag, ShieldAlert, Bell, ChevronLeft, ChevronRight, Code, DatabaseZap, Gamepad2, Gavel, Gem, Heart, IdCard, Info, Keyboard, KeyRound, Languages, Link, Lock, MessagesSquare, Mic, Monitor, MonitorSmartphone, Palette, PanelsTopLeft, PersonStanding, Puzzle, Scale, ScrollText, Settings2, Shield, ShieldCheck, SlidersHorizontal, Smile, Sticker, Tag, Tags, Target, Trash2, UserRound, Users, Webhook, Wrench, X, type LucideIcon } from "lucide-react";
+import { AppWindow, AudioLines, Award, Ban, Bot, Compass, Flag, ShieldAlert, Bell, ChevronLeft, ChevronRight, Code, DatabaseZap, Gamepad2, Gavel, Gem, Heart, IdCard, Info, Keyboard, KeyRound, Languages, Link, Lock, MessagesSquare, Mic, Monitor, MonitorSmartphone, Palette, PanelsTopLeft, PersonStanding, Puzzle, Scale, ScrollText, Settings2, Shield, ShieldCheck, SlidersHorizontal, Smile, Sticker, Tag, Tags, Swords, Trash2, UserRound, Users, Webhook, Wrench, X, type LucideIcon } from "lucide-react";
 import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { Button } from "@/components/common/Button";
@@ -17,7 +17,7 @@ const NAV_ICONS: Record<string, LucideIcon> = {
   profiles: IdCard,
   badgeIndex: Award,
   gems: Gem,
-  quests: Target,
+  quests: Swords,
   privacy: ShieldCheck,
   activity: Gamepad2,
   keybinds: Keyboard,

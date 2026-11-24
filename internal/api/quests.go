@@ -13,7 +13,7 @@ import (
 	"evilion.xyz/chat/internal/store"
 )
 
-// Quests (store/quests.go): three daily quests and the Infinite Trial, paid
+// Quests (store/quests.go): three daily quests and the Quest Tower, paid
 // in Gems the moment they are finished. What people do is counted here as it
 // happens; messages and calls, which come often, are added up in memory and
 // written together every questFlushEvery, everything else at once.
